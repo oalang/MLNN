@@ -1,0 +1,133 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import loss
+from mlnn import MLNN
+
+from sklearn.datasets import load_wine
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+
+
+def main():
+    data = load_wine()
+
+    X_original = np.array(data['data'])
+    Y_original = np.array(data['target'], dtype=int)
+
+    split = StratifiedShuffleSplit(n_splits=1, test_size=0.3, random_state=42)
+    for train_index, test_index in split.split(X_original, Y_original):
+        X_train, Y_train = X_original[train_index, :], Y_original[train_index]
+        X_test, Y_test = X_original[test_index, :], Y_original[test_index]
+
+    X_train, Y_train = X_original, Y_original
+    X_test, Y_test = X_original, Y_original
+
+    pipeline = Pipeline([('std_scaler', StandardScaler())])
+    X_train_scaled = pipeline.fit_transform(X_train)
+    X_test_scaled = pipeline.transform(X_test)
+
+    pca = PCA(n_components=2)
+    X_train_2D = pca.fit_transform(X_train_scaled)
+
+    plt.figure(figsize=(4, 4))
+    plt.scatter(X_train_2D[:, 0], X_train_2D[:, 1], c=Y_train)
+
+    knn = KNeighborsClassifier(3)
+    knn.fit(X_train_scaled, Y_train)
+    Y_test_pred = knn.predict(X_test_scaled)
+    accuracy = accuracy_score(Y_test, Y_test_pred)
+    print(f"accuracy = {accuracy: .3f}")
+
+    config = 3
+    e_mode = 1
+
+    r = 1
+    s = 0
+    l = 1
+    inner = loss.SmoothReLU(.5)
+    outer = loss.SmoothReLU(.5)
+
+    alpha_0 = 1e-3
+    armijo = 1e-6
+    max_backtracks = 50
+
+    min_delta_F = 1e-6
+    max_steps = 100
+    max_time = 1
+
+    X = X_train_scaled
+    Y = Y_train
+    T = np.where(np.equal(Y.reshape(-1, 1), Y.reshape(1, -1)), 1, -1)
+    N = np.sum(T == 1, axis=1) - 1
+
+    sigma2 = 10 ** 1.12
+    P = X @ X.T
+    D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
+    G = np.exp(D / (-2 * sigma2))
+
+    n, d = X.shape
+
+    if config == 1:
+        a_mode = 'WX'
+        A = np.zeros((d, d))
+        B = X
+    elif config == 2:
+        a_mode = 'MX'
+        A = np.zeros((n, n))
+        B = X
+    elif config == 3:
+        a_mode = 'MXX'
+        A = np.zeros((n, n))
+        B = P
+    elif config == 4:
+        a_mode = 'MG'
+        A = np.zeros((n, n))
+        B = P
+    elif config == 5:
+        a_mode = 'MXX'
+        A = np.zeros((n, n))
+        B = G
+    elif config == 6:
+        a_mode = 'MG'
+        A = np.zeros((n, n))
+        B = G
+
+    if e_mode == 1:
+        E = np.zeros(1)
+    elif e_mode == 2:
+        E = np.zeros(n)
+
+    mlnn_params = {
+        'r': r,
+        's': s,
+        'l': l,
+        'inner': inner,
+        'outer': outer,
+        'a_mode': a_mode,
+    }
+
+    line_search_params = {
+        'alpha_0': alpha_0,
+        'armijo': armijo,
+        'max_backtracks': max_backtracks,
+    }
+
+    optimize_params = {
+        'min_delta_F': min_delta_F,
+        'max_steps': max_steps,
+        'max_time': max_time,
+    }
+
+    mlnn = MLNN(B, T, N, A, E, mlnn_params, line_search_params, optimize_params)
+    mlnn.optimize(verbose=True)
+    mlnn.minimize(verbose=True)
+
+    plt.show()
+
+
+if __name__ == '__main__':
+    main()
