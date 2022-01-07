@@ -126,7 +126,7 @@ def main():
     mlnn.optimize(verbose=True)
     mlnn.minimize(verbose=True)
 
-    plt.show()
+    #plt.show()
 
 
 if __name__ == '__main__':
