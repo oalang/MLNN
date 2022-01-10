@@ -4,7 +4,7 @@ from loss import ReLU
 
 
 class MLNN:
-    def __init__(self, B, T, N, A_0=None, E_0=None, mlnn_params={}, line_search_params={}, optimize_params={}):
+    def __init__(self, B, T, N, A_0=None, E_0=None, mlnn_params=None, line_search_params=None, optimize_params=None):
         self.r = 0
         self.s = 0
         self.l = 1
@@ -25,9 +25,14 @@ class MLNN:
         self.min_delta_F = 1e-6
         self.verbose_optimize = False
 
-        self.apply_params(mlnn_params)
-        self.apply_params(line_search_params)
-        self.apply_params(optimize_params)
+        if mlnn_params:
+            self.apply_params(mlnn_params)
+        if line_search_params:
+            self.apply_params(line_search_params)
+        if optimize_params:
+            self.apply_params(optimize_params)
+
+        assert self.l > 0
 
         self.B = B
         self.T = T
@@ -76,16 +81,18 @@ class MLNN:
 
         self.steps = 0
         self.F_count = 0
-        self.dA_count = 0
-        self.dE_count = 0
+        self.dFdA_count = 0
+        self.dFdE_count = 0
 
         self.time_0 = time.perf_counter()
         self.run_time = None
 
         if not self.r:
             self.R = 0
+            self.dRdA = 0
         if not self.s:
             self.S = 0
+            self.dSdE = 0
 
     @property
     def time(self):
@@ -101,11 +108,11 @@ class MLNN:
 
         if self.a_mode == 'MX' or self.a_mode == 'MXX' or self.a_mode == 'MG':
             self.C = None
-        self.D = None
+        self.P = None
         if self.a_mode == 'WX' or self.a_mode == 'MG':
-            self.dA = None
+            self.dLdA = None
         if self.a_mode == 'MX' or self.a_mode == 'MXX':
-            self.phiA = None
+            self.gFgA = None
 
     @property
     def T(self):
@@ -137,8 +144,8 @@ class MLNN:
         self._A = A
 
         self.C = None
-        if self.r:
-            self.dA = None
+        if self.r and (self.a_mode == 'WX' or self.a_mode == 'MX' or self.a_mode == 'MXX'):
+            self.dRdA = None
 
     @property
     def E(self):
@@ -152,7 +159,7 @@ class MLNN:
             self.S = None
         self.I = None
         if self.s:
-            self.dE = None
+            self.dSdE = None
 
     @property
     def C(self):
@@ -166,7 +173,7 @@ class MLNN:
 
         if self.r:
             self.R = None
-        self.D = None
+        self.P = None
 
     @property
     def R(self):
@@ -181,18 +188,6 @@ class MLNN:
         self.F = None
 
     @property
-    def D(self):
-        if self._D is None:
-            self._compute_D()
-        return self._D
-
-    @D.setter
-    def D(self, D):
-        self._D = D
-
-        self.I = None
-
-    @property
     def S(self):
         if self._S is None:
             self._compute_S()
@@ -203,6 +198,32 @@ class MLNN:
         self._S = S
 
         self.F = None
+
+    @property
+    def P(self):
+        if self._P is None:
+            self._compute_P()
+        return self._P
+
+    @P.setter
+    def P(self, P):
+        self._P = P
+
+        self.D = None
+        if self.r and self.a_mode == 'MG':
+            self.dRdA = None
+
+    @property
+    def D(self):
+        if self._D is None:
+            self._compute_D()
+        return self._D
+
+    @D.setter
+    def D(self, D):
+        self._D = D
+
+        self.I = None
 
     @property
     def I(self):
@@ -262,18 +283,55 @@ class MLNN:
     def V(self, V):
         self._V = V
 
-        self.dA = None
-        self.dE = None
+        self.dLdA = None
+        self.dLdE = None
 
     @property
-    def dA(self):
-        if self._dA is None:
-            self._compute_dA()
-        return self._dA
+    def dRdA(self):
+        if self._dRdA is None:
+            self._compute_dRdA()
+        return self._dRdA
 
-    @dA.setter
-    def dA(self, dA):
-        self._dA = dA
+    @dRdA.setter
+    def dRdA(self, dRdA):
+        self._dRdA = dRdA
+
+        self.dFdA = None
+
+    @property
+    def dLdA(self):
+        if self._dLdA is None:
+            self._compute_dLdA()
+        return self._dLdA
+
+    @dLdA.setter
+    def dLdA(self, dLdA):
+        self._dLdA = dLdA
+
+        self.dFdA = None
+
+    @property
+    def dFdA(self):
+        if self._dFdA is None:
+            self._compute_dFdA()
+        return self._dFdA
+
+    @dFdA.setter
+    def dFdA(self, dFdA):
+        self._dFdA = dFdA
+
+        self.gFgA = None
+        self.phiA = None
+
+    @property
+    def gFgA(self):
+        if self._gFgA is None:
+            self._compute_gFgA()
+        return self._gFgA
+
+    @gFgA.setter
+    def gFgA(self, gFgA):
+        self._gFgA = gFgA
 
         self.phiA = None
 
@@ -288,14 +346,51 @@ class MLNN:
         self._phiA = phiA
 
     @property
-    def dE(self):
-        if self._dE is None:
-            self._compute_dE()
-        return self._dE
+    def dSdE(self):
+        if self._dSdE is None:
+            self._compute_dSdE()
+        return self._dSdE
 
-    @dE.setter
-    def dE(self, dE):
-        self._dE = dE
+    @dSdE.setter
+    def dSdE(self, dSdE):
+        self._dSdE = dSdE
+
+        self.dFdE = None
+
+    @property
+    def dLdE(self):
+        if self._dLdE is None:
+            self._compute_dLdE()
+        return self._dLdE
+
+    @dLdE.setter
+    def dLdE(self, dLdE):
+        self._dLdE = dLdE
+
+        self.dFdE = None
+
+    @property
+    def dFdE(self):
+        if self._dFdE is None:
+            self._compute_dFdE()
+        return self._dFdE
+
+    @dFdE.setter
+    def dFdE(self, dFdE):
+        self._dFdE = dFdE
+
+        self.gFgE = None
+        self.phiE = None
+
+    @property
+    def gFgE(self):
+        if self._gFgE is None:
+            self._compute_gFgE()
+        return self._gFgE
+
+    @gFgE.setter
+    def gFgE(self, gFgE):
+        self._gFgE = gFgE
 
         self.phiE = None
 
@@ -322,20 +417,21 @@ class MLNN:
     def _compute_R(self):
         self.R = self.r * .5 * np.dot(self.C.T.ravel(), self.C.ravel())
 
-    def _compute_D(self):
-        if self.a_mode == 'WX':
-            P = self.B @ self.C @ self.B.T
-        elif self.a_mode == 'MX':
-            P = self.B @ self.C @ self.B.T
-        elif self.a_mode == 'MXX':
-            P = self.B @ self.C
-        elif self.a_mode == 'MG':
-            P = self.B @ self.C
-
-        self.D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
-
     def _compute_S(self):
         self.S = self.s * .5 * np.sum(np.square(self.E - 1))
+
+    def _compute_P(self):
+        if self.a_mode == 'WX':
+            self.P = self.B @ self.C @ self.B.T
+        elif self.a_mode == 'MX':
+            self.P = self.B @ self.C @ self.B.T
+        elif self.a_mode == 'MXX':
+            self.P = self.B @ self.C
+        elif self.a_mode == 'MG':
+            self.P = self.B @ self.C
+
+    def _compute_D(self):
+        self.D = self.P.diagonal().reshape(-1, 1) + self.P.diagonal().reshape(1, -1) - 2 * self.P
 
     def _compute_I(self):
         self.I = self.T * (self.D - self.E.reshape(-1, 1))
@@ -348,60 +444,69 @@ class MLNN:
 
     def _compute_F(self):
         self.F = self.R + self.S + self.L
-
         self.F_count += 1
 
     def _compute_V(self):
         self.V = self.l * self.outer.grad(self.O).reshape(-1, 1) * self.inner.grad(self.I) * self.T
 
-    def _compute_dA(self):
+    def _compute_dRdA(self):
+        if self.a_mode == 'WX':
+            self.dRdA = self.r * self.A
+        elif self.a_mode == 'MX':
+            self.dRdA = self.r * self.A
+        elif self.a_mode == 'MXX':
+            self.dRdA = self.r * self.A
+        elif self.a_mode == 'MG':
+            self.dRdA = self.r * self.P
+
+    def _compute_dLdA(self):
         Z = self.V + self.V.T
         U = np.diag(np.sum(Z, axis=0)) - Z
 
         if self.a_mode == 'WX':
-            self.dA = self.B.T @ U @ self.B
-            if self.r:
-                self.dA += self.r * self.A
+            self.dLdA = self.B.T @ U @ self.B
         elif self.a_mode == 'MX':
-            self.dA = U
-            if self.r:
-                self.dA += self.r * self.A
+            self.dLdA = U
         elif self.a_mode == 'MXX':
-            self.dA = U
-            if self.r:
-                self.dA += self.r * self.A
+            self.dLdA = U
         elif self.a_mode == 'MG':
-            if self.r:
-                U += self.r * self.A
-            self.dA = self.B.T @ U @ self.B
+            self.dLdA = self.B.T @ U @ self.B
 
-        self.dA_count += 1
+    def _compute_dFdA(self):
+        self.dFdA = self.dRdA + self.dLdA
+        self.dFdA_count += 1
+
+    def _compute_gFgA(self):
+        if self.a_mode == 'WX':
+            self.gFgA = self.dFdA
+        elif self.a_mode == 'MX':
+            self.gFgA = self.B.T @ self.dFdA @ self.B
+        elif self.a_mode == 'MXX':
+            self.gFgA = self.B.T @ self.dFdA @ self.B
+        elif self.a_mode == 'MG':
+            self.gFgA = self.dFdA
 
     def _compute_phiA(self):
-        if self.a_mode == 'WX':
-            Z = self.dA
-        elif self.a_mode == 'MX':
-            Z = self.B.T @ self.dA @ self.B
-        elif self.a_mode == 'MXX':
-            Z = self.dA @ self.B
-        elif self.a_mode == 'MG':
-            Z = self.dA
+        self.phiA = -np.dot(self.dFdA.ravel(), self.gFgA.ravel())
 
-        self.phiA = -np.dot(Z.T.ravel(), Z.ravel())
+    def _compute_dSdE(self):
+        self.dSdE = self.s * (self.E - 1)
 
-    def _compute_dE(self):
+    def _compute_dLdE(self):
         if self.e_mode == 'single':
-            self.dE = -np.sum(self.V)
+            self.dLdE = -np.sum(self.V)
         elif self.e_mode == 'multiple':
-            self.dE = -np.sum(self.V, axis=1)
+            self.dLdE = -np.sum(self.V, axis=1)
 
-        if self.s:
-            self.dE += self.s * (self.E - 1)
+    def _compute_dFdE(self):
+        self.dFdE = self.dSdE + self.dLdE
+        self.dFdE_count += 1
 
-        self.dE_count += 1
+    def _compute_gFgE(self):
+        self.gFgE = self.dFdE
 
     def _compute_phiE(self):
-        self.phiE = -np.dot(self.dE.T.ravel(), self.dE.ravel())
+        self.phiE = -np.dot(self.dFdE, self.gFgE)
 
     def take_step(self, arguments='AE', alpha_0=None, verbose=None):
         if alpha_0 is None:
@@ -420,12 +525,12 @@ class MLNN:
         # Compute phi, the gradient of F with respect to the step size, alpha.
         phi = 0
         if 'A' in arguments:
-            dA = self.dA
+            dA = self.dFdA
             phi += self.phiA
         else:
             dA = None
         if 'E' in arguments:
-            dE = self.dE
+            dE = self.dFdE
             phi += self.phiE
         else:
             dE = None
@@ -732,6 +837,6 @@ class MLNN:
         print(f"  run_time = {self.run_time:f} seconds")
         print("")
         print(f" F function calls: {self.F_count:d}")
-        print(f"dA function calls: {self.dA_count:d}")
-        print(f"dE function calls: {self.dE_count:d}")
+        print(f"dA function calls: {self.dFdA_count:d}")
+        print(f"dE function calls: {self.dFdE_count:d}")
         print("")
