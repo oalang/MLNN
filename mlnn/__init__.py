@@ -10,6 +10,7 @@ class MLNN:
         self.l = 1
         self.inner = ReLU(1)
         self.outer = ReLU(1)
+        self.decompose = False
         self.a_mode = 'WX'
         self.e_mode = 'single'
 
@@ -89,7 +90,7 @@ class MLNN:
 
         if not self.r:
             self.R = 0
-            self.dRdA = 0
+            self.dRdM = 0
         if not self.s:
             self.S = 0
             self.dSdE = 0
@@ -143,9 +144,7 @@ class MLNN:
     def A(self, A):
         self._A = A
 
-        self.C = None
-        if self.r and (self.a_mode == 'WX' or self.a_mode == 'MX' or self.a_mode == 'MXX'):
-            self.dRdA = None
+        self.M = None
 
     @property
     def E(self):
@@ -160,6 +159,20 @@ class MLNN:
         self.I = None
         if self.s:
             self.dSdE = None
+
+    @property
+    def M(self):
+        if self._M is None:
+            self._compute_M()
+        return self._M
+
+    @M.setter
+    def M(self, M):
+        self._M = M
+
+        self.C = None
+        if self.r and (self.a_mode == 'WX' or self.a_mode == 'MX' or self.a_mode == 'MXX'):
+            self.dRdM = None
 
     @property
     def C(self):
@@ -283,32 +296,57 @@ class MLNN:
     def V(self, V):
         self._V = V
 
-        self.dLdA = None
+        self.dLdM = None
         self.dLdE = None
 
     @property
-    def dRdA(self):
-        if self._dRdA is None:
-            self._compute_dRdA()
-        return self._dRdA
+    def dRdM(self):
+        if self._dRdM is None:
+            self._compute_dRdM()
+        return self._dRdM
 
-    @dRdA.setter
-    def dRdA(self, dRdA):
-        self._dRdA = dRdA
+    @dRdM.setter
+    def dRdM(self, dRdM):
+        self._dRdM = dRdM
 
+        self.dFdM = None
+
+    @property
+    def dLdM(self):
+        if self._dLdM is None:
+            self._compute_dLdM()
+        return self._dLdM
+
+    @dLdM.setter
+    def dLdM(self, dLdM):
+        self._dLdM = dLdM
+
+        self.dFdM = None
+
+    @property
+    def dFdM(self):
+        if self._dFdM is None:
+            self._compute_dFdM()
+        return self._dFdM
+
+    @dFdM.setter
+    def dFdM(self, dFdM):
+        self._dFdM = dFdM
+
+        self.gFgM = None
         self.dFdA = None
 
     @property
-    def dLdA(self):
-        if self._dLdA is None:
-            self._compute_dLdA()
-        return self._dLdA
+    def gFgM(self):
+        if self._gFgM is None:
+            self._compute_gFgM()
+        return self._gFgM
 
-    @dLdA.setter
-    def dLdA(self, dLdA):
-        self._dLdA = dLdA
+    @gFgM.setter
+    def gFgM(self, gFgM):
+        self._gFgM = gFgM
 
-        self.dFdA = None
+        self.gFgA = None
 
     @property
     def dFdA(self):
@@ -320,7 +358,6 @@ class MLNN:
     def dFdA(self, dFdA):
         self._dFdA = dFdA
 
-        self.gFgA = None
         self.phiA = None
 
     @property
@@ -404,15 +441,21 @@ class MLNN:
     def phiE(self, phiE):
         self._phiE = phiE
 
+    def _compute_M(self):
+        if self.decompose:
+            self.M = self.A.T @ self.A
+        else:
+            self.M = self.A
+
     def _compute_C(self):
         if self.a_mode == 'WX':
-            self.C = self.A
+            self.C = self.M
         elif self.a_mode == 'MX':
-            self.C = self.B.T @ self.A @ self.B
+            self.C = self.B.T @ self.M @ self.B
         elif self.a_mode == 'MXX':
-            self.C = self.A @ self.B.T
+            self.C = self.M @ self.B.T
         elif self.a_mode == 'MG':
-            self.C = self.A @ self.B.T
+            self.C = self.M @ self.B.T
 
     def _compute_R(self):
         self.R = self.r * .5 * np.dot(self.C.T.ravel(), self.C.ravel())
@@ -449,42 +492,54 @@ class MLNN:
     def _compute_V(self):
         self.V = self.l * self.outer.grad(self.O).reshape(-1, 1) * self.inner.grad(self.I) * self.T
 
-    def _compute_dRdA(self):
+    def _compute_dRdM(self):
         if self.a_mode == 'WX':
-            self.dRdA = self.r * self.A
+            self.dRdM = self.r * self.M
         elif self.a_mode == 'MX':
-            self.dRdA = self.r * self.A
+            self.dRdM = self.r * self.M
         elif self.a_mode == 'MXX':
-            self.dRdA = self.r * self.A
+            self.dRdM = self.r * self.M
         elif self.a_mode == 'MG':
-            self.dRdA = self.r * self.P
+            self.dRdM = self.r * self.P
 
-    def _compute_dLdA(self):
+    def _compute_dLdM(self):
         Z = self.V + self.V.T
         U = np.diag(np.sum(Z, axis=0)) - Z
 
         if self.a_mode == 'WX':
-            self.dLdA = self.B.T @ U @ self.B
+            self.dLdM = self.B.T @ U @ self.B
         elif self.a_mode == 'MX':
-            self.dLdA = U
+            self.dLdM = U
         elif self.a_mode == 'MXX':
-            self.dLdA = U
+            self.dLdM = U
         elif self.a_mode == 'MG':
-            self.dLdA = self.B.T @ U @ self.B
+            self.dLdM = self.B.T @ U @ self.B
+
+    def _compute_dFdM(self):
+        self.dFdM = self.dRdM + self.dLdM
+
+    def _compute_gFgM(self):
+        if self.a_mode == 'WX':
+            self.gFgM = self.dFdM
+        elif self.a_mode == 'MX':
+            self.gFgM = self.B @ self.B.T @ self.dFdM @ self.B @ self.B.T
+        elif self.a_mode == 'MXX':
+            self.gFgM = self.B.T @ self.dFdM @ self.B
+        elif self.a_mode == 'MG':
+            self.gFgM = self.dFdM
 
     def _compute_dFdA(self):
-        self.dFdA = self.dRdA + self.dLdA
+        if self.decompose:
+            self.dFdA = 2 * self.A @ self.dFdM
+        else:
+            self.dFdA = self.dFdM
         self.dFdA_count += 1
 
     def _compute_gFgA(self):
-        if self.a_mode == 'WX':
-            self.gFgA = self.dFdA
-        elif self.a_mode == 'MX':
-            self.gFgA = self.B @ self.B.T @ self.dFdA @ self.B @ self.B.T
-        elif self.a_mode == 'MXX':
-            self.gFgA = self.B.T @ self.dFdA @ self.B
-        elif self.a_mode == 'MG':
-            self.gFgA = self.dFdA
+        if self.decompose:
+            self.gFgA = 2 * self.A @ self.gFgM
+        else:
+            self.gFgA = self.gFgM
 
     def _compute_phiA(self):
         self.phiA = -np.dot(self.dFdA.ravel(), self.gFgA.ravel())
