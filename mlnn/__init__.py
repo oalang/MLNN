@@ -480,7 +480,7 @@ class MLNN:
         if self.a_mode == 'WX':
             self.gFgA = self.dFdA
         elif self.a_mode == 'MX':
-            self.gFgA = self.B.T @ self.dFdA @ self.B
+            self.gFgA = self.B @ self.B.T @ self.dFdA @ self.B @ self.B.T
         elif self.a_mode == 'MXX':
             self.gFgA = self.B.T @ self.dFdA @ self.B
         elif self.a_mode == 'MG':
