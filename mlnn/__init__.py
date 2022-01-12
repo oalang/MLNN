@@ -10,9 +10,11 @@ class MLNN:
         self.l = 1
         self.inner = ReLU(1)
         self.outer = ReLU(1)
-        self.decompose = False
         self.a_mode = 'WX'
         self.e_mode = 'single'
+        self.m_mode = 'full'
+        self.i_mode = 'random'
+        self.m = 2
 
         self.alpha_0 = 1e-6
         self.armijo = 1e-6
@@ -44,10 +46,18 @@ class MLNN:
 
         if A_0 is not None:
             self.A_0 = A_0
-        elif 'W' in self.a_mode:
-            self.A_0 = np.zeros((self.d, self.d))
-        else:
-            self.A_0 = np.zeros((self.n, self.n))
+        elif self.m_mode == 'decomposed':
+            rng = np.random.Generator(np.random.PCG64())
+
+            if 'W' in self.a_mode:
+                self.A_0 = rng.standard_normal(self.m * self.d).reshape(self.m, self.d)
+            else:
+                self.A_0 = rng.standard_normal(self.m * self.n).reshape(self.m, self.n)
+        elif self.m_mode == 'full':
+            if 'W' in self.a_mode:
+                self.A_0 = np.zeros((self.d, self.d))
+            else:
+                self.A_0 = np.zeros((self.n, self.n))
 
         ### self.a_mode logic ###
 
@@ -224,7 +234,7 @@ class MLNN:
 
         self.D = None
         if self.r and self.a_mode == 'MG':
-            self.dRdA = None
+            self.dRdM = None
 
     @property
     def D(self):
@@ -442,9 +452,9 @@ class MLNN:
         self._phiE = phiE
 
     def _compute_M(self):
-        if self.decompose:
+        if self.m_mode == 'decomposed':
             self.M = self.A.T @ self.A
-        else:
+        elif self.m_mode == 'full':
             self.M = self.A
 
     def _compute_C(self):
@@ -529,16 +539,17 @@ class MLNN:
             self.gFgM = self.dFdM
 
     def _compute_dFdA(self):
-        if self.decompose:
+        if self.m_mode == 'decomposed':
             self.dFdA = 2 * self.A @ self.dFdM
-        else:
+        elif self.m_mode == 'full':
             self.dFdA = self.dFdM
+
         self.dFdA_count += 1
 
     def _compute_gFgA(self):
-        if self.decompose:
+        if self.m_mode == 'decomposed':
             self.gFgA = 2 * self.A @ self.gFgM
-        else:
+        elif self.m_mode == 'full':
             self.gFgA = self.gFgM
 
     def _compute_phiA(self):
@@ -680,12 +691,16 @@ class MLNN:
                   (alpha_old ** 2 * alpha ** 2 * (alpha - alpha_old)))
             a = ab[0].item()
             b = ab[1].item()
+            c = b ** 2 - 3 * a * phi
             alpha_old = alpha
-            alpha = (- b + (b ** 2 - 3 * a * phi) ** .5) / (3 * a)
+            if c < 0:
+                alpha = .5 * alpha_old
+            else:
+                alpha = (-b + c ** .5) / (3 * a)
 
             # Safeguard the interpolation by making sure alpha is not too small or too close to alpha_old.
             rho = alpha / alpha_old
-            if rho < self.rho_lo or rho > self.rho_hi:
+            if not (self.rho_lo <= rho <= self.rho_hi):
                 rho = .5
                 alpha = rho * alpha_old
 
