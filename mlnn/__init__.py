@@ -35,6 +35,8 @@ class MLNN:
         if optimize_params:
             self.apply_params(optimize_params)
 
+        assert self.r >= 0
+        assert self.s >= 0
         assert self.l > 0
 
         self.B = B

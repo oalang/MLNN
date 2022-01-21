@@ -46,7 +46,7 @@ def main():
     config = 1
     e_mode = 'single'    # single/multiple
     m_mode = 'full'      # full/decomposed/diagonal
-    i_mode = 'random'  # zero/random/centered/identity/pca
+    i_mode = 'zero'      # zero/random/centered/identity/pca
     m = 2
 
     r = 1
@@ -60,7 +60,7 @@ def main():
     max_backtracks = 50
 
     min_delta_F = 1e-6
-    max_steps = 10
+    max_steps = 100
     max_time = 1
 
     X = X_train_scaled
