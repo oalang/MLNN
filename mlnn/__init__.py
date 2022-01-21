@@ -4,15 +4,15 @@ from loss import ReLU
 
 
 class MLNN:
-    def __init__(self, B, T, N, A_0=None, E_0=None, mlnn_params=None, line_search_params=None, optimize_params=None):
+    def __init__(self, B, T, N, C=None, A_0=None, E_0=None, mlnn_params=None, line_search_params=None, optimize_params=None):
         self.r = 0
         self.s = 0
         self.l = 1
         self.inner = ReLU(1)
         self.outer = ReLU(1)
-        self.a_mode = 'WX'
+        self.k_mode = 'linear'
+        self.a_mode = 'full'
         self.e_mode = 'single'
-        self.m_mode = 'full'
         self.i_mode = 'random'
         self.m = 2
 

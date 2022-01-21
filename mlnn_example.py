@@ -42,12 +42,27 @@ def main():
     Y_test_pred = knn.predict(X_test_scaled)
     accuracy = accuracy_score(Y_test, Y_test_pred)
     print(f"accuracy = {accuracy: .3f}")
+    
+    kernel = 'linear'
+#    kernel = 'rbf'
 
-    config = 1
-    e_mode = 'single'    # single/multiple
-    m_mode = 'full'      # full/decomposed/diagonal
-    i_mode = 'zero'      # zero/random/centered/identity/pca
-    m = 2
+    k_mode = 'linear'
+#    k_mode = 'nonlinear'
+
+    a_mode = 'full'
+#    a_mode = 'diagonal'
+#    a_mode = 'decomposed'
+
+    e_mode = 'single'
+#    e_mode = 'multiple'
+
+    i_mode = 'zero'
+#    i_mode = 'random'
+#    i_mode = 'centered'
+#    i_mode = 'identity'
+#    i_mode = 'pca'
+
+    d = 2
 
     r = 1
     s = 0
@@ -73,125 +88,67 @@ def main():
     D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
     G = np.exp(D / (-2 * sigma2))
 
-    n, d = X.shape
-
-    if config == 1:
-        a_mode = 'WX'
+    if k_mode == 'linear':
         B = X
-    elif config == 2:
-        a_mode = 'MX'
-        B = X
-    elif config == 3:
-        a_mode = 'MXX'
-        B = P
-    elif config == 4:
-        a_mode = 'MG'
-        B = P
-    elif config == 5:
-        a_mode = 'MXX'
-        B = G
-    elif config == 6:
-        a_mode = 'MG'
-        B = G
+    elif k_mode == 'nonlinear':
+        if kernel == 'linear':
+            B = P
+        elif kernel == 'rbf':
+            B = G
 
-    if m_mode == 'decomposed':
-        if i_mode == 'random':
-            if a_mode == 'WX':
-                A = rng.standard_normal(m * d).reshape(m, d) / m ** .5
-                C = A.T @ A
-            elif a_mode == 'MX':
-                A = rng.standard_normal(m * n).reshape(m, n) / m ** .5
-                C = B.T @ A.T @ A @ B
-            elif a_mode == 'MXX' or a_mode == 'MG':
-                A = rng.standard_normal(m * n).reshape(m, n) / m ** .5
-                C = A.T @ A @ B
+    C = B
+    n, m = B.shape
 
-            A /= np.dot(C.T.ravel(), C.ravel()) ** .25
-        elif i_mode == 'pca':
-            if a_mode == 'WX':
-                pca = PCA(n_components=m)
-                pca.fit(B)
-                A = pca.components_[0:m] / m ** .5
-                C = A.T @ A
-            elif a_mode == 'MX':
-                kpca = KernelPCA(n_components=m, kernel='precomputed')
-                kpca.fit(B @ B.T)
-                A = kpca.eigenvectors_.T[0:m] / m ** .5
-                C = B.T @ A.T @ A @ B
-            elif a_mode == 'MXX' or a_mode == 'MG':
-                kpca = KernelPCA(n_components=m, kernel='precomputed')
-                kpca.fit(B)
-                A = kpca.eigenvectors_.T[0:m] / m ** .5
-                C = A.T @ A @ B
-
-            A /= np.dot(C.T.ravel(), C.ravel()) ** .25
-    elif m_mode == 'full':
+    if a_mode == 'full':
         if i_mode == 'zero':
-            if a_mode == 'WX':
-                A = np.zeros((d, d))
-            elif a_mode == 'MX' or a_mode == 'MXX' or a_mode == 'MG':
-                A = np.zeros((n, n))
-        elif i_mode == 'random':
-            if a_mode == 'WX':
-                A = rng.standard_normal(d * d).reshape(d, d) / d ** .5
+            A = np.zeros((m, m))
+        else:
+            if i_mode == 'random':
+                A = rng.standard_normal(m * m).reshape(m, m) / m ** .5
                 A = A.T @ A
-                C = A
-            elif a_mode == 'MX':
-                A = rng.standard_normal(n * n).reshape(n, n) / n ** .5
-                A = A.T @ A
-                C = B.T @ A @ B
-            elif a_mode == 'MXX' or a_mode == 'MG':
-                A = rng.standard_normal(n * n).reshape(n, n) / n ** .5
-                A = A.T @ A
-                C = A @ B
-
-            A /= np.dot(C.T.ravel(), C.ravel()) ** .5
-        elif i_mode == 'identity':
-            if a_mode == 'WX':
-                A = np.diag(np.ones(d) / d ** .5)
-            elif a_mode == 'MX':
-                A = np.diag(np.ones(n) / np.dot((B.T @ B).T.ravel(), (B.T @ B).ravel()) ** .5)
-            elif a_mode == 'MXX' or a_mode == 'MG':
-                A = np.diag(np.ones(n) / np.dot(B.T.ravel(), B.ravel()) ** .5)
-        elif i_mode == 'centered':
-            U = np.identity(n) - 1 / n
-
-            if a_mode == 'WX':
+            elif i_mode == 'identity':
+                A = np.diag(np.ones(m) / m ** .5)
+            elif i_mode == 'centered':
+                U = np.identity(n) - 1 / n
                 A = B.T @ U @ B
-                C = A
-            elif a_mode == 'MX':
-                A = U
-                C = B.T @ A @ B
-            elif a_mode == 'MXX' or a_mode == 'MG':
-                A = U
-                C = A @ B
 
-            A /= np.dot(C.T.ravel(), C.ravel()) ** .5
-    elif m_mode == 'diagonal':
+            if k_mode == 'linear':
+                K = A
+            elif k_mode == 'nonlinear':
+                K = A @ C
+            A /= np.dot(K.T.ravel(), K.ravel()) ** .5
+    elif a_mode == 'diagonal':
         if i_mode == 'zero':
-            if a_mode == 'WX':
-                A = np.zeros(d)
-            elif a_mode == 'MX' or a_mode == 'MXX' or a_mode == 'MG':
-                A = np.zeros(n)
-        elif i_mode == 'random':
-            if a_mode == 'WX':
-                A = rng.standard_normal(d) ** 2
-                C = A
-            elif a_mode == 'MX':
-                A = rng.standard_normal(n) ** 2
-                C = B.T @ (A.reshape(-1, 1) * B)
-            elif a_mode == 'MXX' or a_mode == 'MG':
-                A = rng.standard_normal(n) ** 2
-                C = A.reshape(-1, 1) * B
+            A = np.zeros(m).reshape(m, 1)
+        else:
+            if i_mode == 'random':
+                A = rng.standard_normal(m).reshape(m, 1) ** 2
+            elif i_mode == 'identity':
+                A = np.ones(m).reshape(m, 1) / m ** .5
 
-            A /= np.dot(C.T.ravel(), C.ravel()) ** .5
-        elif i_mode == 'identity':
-            if a_mode == 'WX':
-                A = np.ones(d) / d ** .5
-            elif a_mode == 'MX':
-                A = np.ones(n) / np.dot((B.T @ B).T.ravel(), (B.T @ B).ravel()) ** .5
-            elif a_mode == 'MXX' or a_mode == 'MG':
-                A = np.ones(n) / np.dot(B.T.ravel(), B.ravel()) ** .5
+            if k_mode == 'linear':
+                K = A
+            elif k_mode == 'nonlinear':
+                K = A * C
+            A /= np.dot(K.T.ravel(), K.ravel()) ** .5
+    elif a_mode == 'decomposed':
+        if i_mode == 'random':
+            A = rng.standard_normal(d * m).reshape(d, m) / d ** .5
+        elif i_mode == 'pca':
+            if k_mode == 'linear':
+                pca = PCA(n_components=d)
+                pca.fit(B)
+                A = pca.components_ / d ** .5
+            elif k_mode == 'nonlinear':
+                kpca = KernelPCA(n_components=d, kernel='precomputed')
+                kpca.fit(C)
+                A = kpca.eigenvectors_.T / d ** .5
+
+        if k_mode == 'linear':
+            K = A.T @ A
+        elif k_mode == 'nonlinear':
+            K = A @ C @ A.T
+        A /= np.dot(K.T.ravel(), K.ravel()) ** .25
 
     if e_mode == 'single':
         if i_mode == 'zero':
@@ -214,9 +171,10 @@ def main():
         'l': l,
         'inner': inner,
         'outer': outer,
+        'k_mode': k_mode,
         'a_mode': a_mode,
         'e_mode': e_mode,
-        'm_mode': m_mode,
+        'i_mode': i_mode,
     }
 
     line_search_params = {
@@ -231,7 +189,7 @@ def main():
         'max_time': max_time,
     }
 
-    mlnn = MLNN(B, T, N, A, E, mlnn_params, line_search_params, optimize_params)
+    mlnn = MLNN(B, T, N, C, A, E, mlnn_params, line_search_params, optimize_params)
     mlnn.optimize(verbose=True)
     mlnn.minimize(verbose=True)
 
