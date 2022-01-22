@@ -43,11 +43,11 @@ def main():
     accuracy = accuracy_score(Y_test, Y_test_pred)
     print(f"accuracy = {accuracy: .3f}")
     
-    kernel = 'linear'
-#    kernel = 'rbf'
+#    kernel = 'linear'
+    kernel = 'rbf'
 
-    k_mode = 'linear'
-#    k_mode = 'nonlinear'
+#    k_mode = 'linear'
+    k_mode = 'nonlinear'
 
     a_mode = 'full'
 #    a_mode = 'diagonal'
@@ -81,7 +81,7 @@ def main():
     X = X_train_scaled
     Y = Y_train
     T = np.where(np.equal(Y.reshape(-1, 1), Y.reshape(1, -1)), 1, -1)
-    N = np.sum(T == 1, axis=1) - 1
+    N = np.sum(T == 1, axis=1, keepdims=True) - 1
 
     sigma2 = 10 ** 1.12
     P = X @ X.T
@@ -96,7 +96,12 @@ def main():
         elif kernel == 'rbf':
             B = G
 
-    C = B
+    if k_mode == 'linear':
+        C = None
+    elif k_mode == 'nonlinear':
+        # C = B
+        C = None
+
     n, m = B.shape
 
     if a_mode == 'full':
@@ -152,18 +157,18 @@ def main():
 
     if e_mode == 'single':
         if i_mode == 'zero':
-            E = np.zeros(1)
+            E = np.zeros(1).item()
         elif i_mode == 'random':
-            E = rng.standard_normal(1) ** 2
+            E = rng.standard_normal(1).item() ** 2
         elif i_mode == 'centered' or i_mode == 'identity' or i_mode == 'pca':
-            E = np.ones(1)
+            E = np.ones(1).item()
     elif e_mode == 'multiple':
         if i_mode == 'zero':
-            E = np.zeros(n)
+            E = np.zeros(n).reshape(n, 1)
         elif i_mode == 'random':
-            E = rng.standard_normal(n) ** 2
+            E = rng.standard_normal(n).reshape(n, 1) ** 2
         elif i_mode == 'centered' or i_mode == 'identity' or i_mode == 'pca':
-            E = np.ones(n)
+            E = np.ones(n).reshape(n, 1)
 
     mlnn_params = {
         'r': r,

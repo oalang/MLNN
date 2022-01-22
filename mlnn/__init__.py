@@ -1,5 +1,7 @@
 import time
 import numpy as np
+from sklearn.decomposition import PCA, KernelPCA
+
 from loss import ReLU
 
 
@@ -14,7 +16,7 @@ class MLNN:
         self.a_mode = 'full'
         self.e_mode = 'single'
         self.i_mode = 'random'
-        self.m = 2
+        self.d = 2
 
         self.alpha_0 = 1e-6
         self.armijo = 1e-6
@@ -43,37 +45,47 @@ class MLNN:
         self.T = T
         self.N = N
 
-        self.n = self.B.shape[0]
-        self.d = self.B.shape[1]
+        assert self.T.shape[0] == self.n
+        assert self.T.shape[1] == self.n
+        assert self.N.shape[0] == self.n
+        assert self.N.shape[1] == 1
+
+        if self.k_mode == 'linear':
+            assert C is None
+        elif self.k_mode == 'nonlinear':
+            if C is None:
+                self.C = self.B
+            else:
+                self.C = C
+
+            assert self.C.shape[0] == self.m
+            assert self.C.shape[1] == self.m
+            assert np.array_equal(self.C, self.C.T)
 
         if A_0 is not None:
             self.A_0 = A_0
-        elif self.m_mode == 'decomposed':
-            rng = np.random.Generator(np.random.PCG64())
+            if self.a_mode == 'decompose':
+                self.d = self.A_0.shape[0]
 
-            if 'W' in self.a_mode:
-                self.A_0 = rng.standard_normal(self.m * self.d).reshape(self.m, self.d)
-            else:
-                self.A_0 = rng.standard_normal(self.m * self.n).reshape(self.m, self.n)
-        elif self.m_mode == 'full':
-            if 'W' in self.a_mode:
-                self.A_0 = np.zeros((self.d, self.d))
-            else:
-                self.A_0 = np.zeros((self.n, self.n))
-
-        ### self.a_mode logic ###
+        if self.a_mode == 'full':
+            assert self.A_0.shape[0] == self.m
+            assert self.A_0.shape[1] == self.m
+            assert np.array_equal(self.A_0, self.A_0.T)
+        elif self.a_mode == 'diagonal':
+            assert self.A_0.shape[0] == self.m
+            assert self.A_0.shape[1] == 1
+        elif self.a_mode == 'decomposed':
+            assert self.A_0.shape[0] == self.d
+            assert self.A_0.shape[1] == self.m
 
         if E_0 is not None:
             self.E_0 = E_0
-        elif self.e_mode == 'single':
-            self.E_0 = np.zeros(1)
-        elif self.e_mode == 'multiple':
-            self.E_0 = np.zeros(self.n)
 
-        if self.E_0.size == 1:
-            self.e_mode = 'single'
-        else:
-            self.e_mode = 'multiple'
+        if self.e_mode == 'single':
+            assert np.isscalar(self.E_0)
+        elif self.e_mode == 'multiple':
+            assert self.E_0.shape[0] == self.n
+            assert self.E_0.shape[1] == 1
 
     def apply_params(self, params):
         for attr in params:
@@ -102,7 +114,7 @@ class MLNN:
 
         if not self.r:
             self.R = 0
-            self.dRdM = 0
+            self.dRdA = 0
         if not self.s:
             self.S = 0
             self.dSdE = 0
@@ -119,13 +131,10 @@ class MLNN:
     def B(self, B):
         self._B = B
 
-        if self.a_mode == 'MX' or self.a_mode == 'MXX' or self.a_mode == 'MG':
-            self.C = None
-        self.P = None
-        if self.a_mode == 'WX' or self.a_mode == 'MG':
-            self.dLdA = None
-        if self.a_mode == 'MX' or self.a_mode == 'MXX':
-            self.gFgA = None
+        self.n = None
+        self.m = None
+        self.D = None
+        self.dLdA = None
 
     @property
     def T(self):
@@ -149,6 +158,21 @@ class MLNN:
         self.O = None
 
     @property
+    def C(self):
+        return self._C
+
+    @C.setter
+    def C(self, C):
+        self._C = C
+
+        if self.k_mode == 'nonlinear':
+            self.J = None
+            if self.a_mode == 'full' or self.a_mode == 'diagonal':
+                self.K = None
+                if self.r:
+                    self.dRdA = None
+
+    @property
     def A(self):
         return self._A
 
@@ -156,7 +180,11 @@ class MLNN:
     def A(self, A):
         self._A = A
 
-        self.M = None
+        self.J = None
+        self.K = None
+        self.D = None
+        if self.a_mode == 'decomposed':
+            self.dLdA = None
 
     @property
     def E(self):
@@ -168,37 +196,81 @@ class MLNN:
 
         if self.s:
             self.S = None
-        self.I = None
-        if self.s:
             self.dSdE = None
+        self.I = None
 
     @property
-    def M(self):
-        if self._M is None:
-            self._compute_M()
-        return self._M
+    def n(self):
+        if self._n is None:
+            self._compute_n()
+        return self._n
 
-    @M.setter
-    def M(self, M):
-        self._M = M
+    @n.setter
+    def n(self, n):
+        self._n = n
 
-        self.C = None
-        if self.r and (self.a_mode == 'WX' or self.a_mode == 'MX' or self.a_mode == 'MXX'):
-            self.dRdM = None
+        self.E_0 = None
 
     @property
-    def C(self):
-        if self._C is None:
-            self._compute_C()
-        return self._C
+    def m(self):
+        if self._m is None:
+            self._compute_m()
+        return self._m
 
-    @C.setter
-    def C(self, C):
-        self._C = C
+    @m.setter
+    def m(self, m):
+        self._m = m
+
+        self.A_0 = None
+
+    @property
+    def A_0(self):
+        if self._A_0 is None:
+            self._compute_A_0()
+        return self._A_0
+
+    @A_0.setter
+    def A_0(self, A_0):
+        self._A_0 = A_0
+
+    @property
+    def E_0(self):
+        if self._E_0 is None:
+            self._compute_E_0()
+        return self._E_0
+
+    @E_0.setter
+    def E_0(self, E_0):
+        self._E_0 = E_0
+
+    @property
+    def J(self):
+        if self._J is None:
+            self._compute_J()
+        return self._J
+
+    @J.setter
+    def J(self, J):
+        self._J = J
+
+        if self.a_mode == 'decomposed':
+            self.K = None
+            if self.r:
+                self.dRdA = None
+
+    @property
+    def K(self):
+        if self._K is None:
+            self._compute_K()
+        return self._K
+
+    @K.setter
+    def K(self, K):
+        self._K = K
 
         if self.r:
             self.R = None
-        self.P = None
+            self.dRdA = None
 
     @property
     def R(self):
@@ -223,20 +295,6 @@ class MLNN:
         self._S = S
 
         self.F = None
-
-    @property
-    def P(self):
-        if self._P is None:
-            self._compute_P()
-        return self._P
-
-    @P.setter
-    def P(self, P):
-        self._P = P
-
-        self.D = None
-        if self.r and self.a_mode == 'MG':
-            self.dRdM = None
 
     @property
     def D(self):
@@ -308,57 +366,32 @@ class MLNN:
     def V(self, V):
         self._V = V
 
-        self.dLdM = None
+        self.dLdA = None
         self.dLdE = None
 
     @property
-    def dRdM(self):
-        if self._dRdM is None:
-            self._compute_dRdM()
-        return self._dRdM
+    def dRdA(self):
+        if self._dRdA is None:
+            self._compute_dRdA()
+        return self._dRdA
 
-    @dRdM.setter
-    def dRdM(self, dRdM):
-        self._dRdM = dRdM
+    @dRdA.setter
+    def dRdA(self, dRdA):
+        self._dRdA = dRdA
 
-        self.dFdM = None
-
-    @property
-    def dLdM(self):
-        if self._dLdM is None:
-            self._compute_dLdM()
-        return self._dLdM
-
-    @dLdM.setter
-    def dLdM(self, dLdM):
-        self._dLdM = dLdM
-
-        self.dFdM = None
-
-    @property
-    def dFdM(self):
-        if self._dFdM is None:
-            self._compute_dFdM()
-        return self._dFdM
-
-    @dFdM.setter
-    def dFdM(self, dFdM):
-        self._dFdM = dFdM
-
-        self.gFgM = None
         self.dFdA = None
 
     @property
-    def gFgM(self):
-        if self._gFgM is None:
-            self._compute_gFgM()
-        return self._gFgM
+    def dLdA(self):
+        if self._dLdA is None:
+            self._compute_dLdA()
+        return self._dLdA
 
-    @gFgM.setter
-    def gFgM(self, gFgM):
-        self._gFgM = gFgM
+    @dLdA.setter
+    def dLdA(self, dLdA):
+        self._dLdA = dLdA
 
-        self.gFgA = None
+        self.dFdA = None
 
     @property
     def dFdA(self):
@@ -369,18 +402,6 @@ class MLNN:
     @dFdA.setter
     def dFdA(self, dFdA):
         self._dFdA = dFdA
-
-        self.phiA = None
-
-    @property
-    def gFgA(self):
-        if self._gFgA is None:
-            self._compute_gFgA()
-        return self._gFgA
-
-    @gFgA.setter
-    def gFgA(self, gFgA):
-        self._gFgA = gFgA
 
         self.phiA = None
 
@@ -428,19 +449,6 @@ class MLNN:
     def dFdE(self, dFdE):
         self._dFdE = dFdE
 
-        self.gFgE = None
-        self.phiE = None
-
-    @property
-    def gFgE(self):
-        if self._gFgE is None:
-            self._compute_gFgE()
-        return self._gFgE
-
-    @gFgE.setter
-    def gFgE(self, gFgE):
-        self._gFgE = gFgE
-
         self.phiE = None
 
     @property
@@ -453,46 +461,132 @@ class MLNN:
     def phiE(self, phiE):
         self._phiE = phiE
 
-    def _compute_M(self):
-        if self.m_mode == 'decomposed':
-            self.M = self.A.T @ self.A
-        elif self.m_mode == 'full':
-            self.M = self.A
+    def _compute_n(self):
+        self.n = self.B.shape[0]
 
-    def _compute_C(self):
-        if self.a_mode == 'WX':
-            self.C = self.M
-        elif self.a_mode == 'MX':
-            self.C = self.B.T @ self.M @ self.B
-        elif self.a_mode == 'MXX':
-            self.C = self.M @ self.B.T
-        elif self.a_mode == 'MG':
-            self.C = self.M @ self.B.T
+    def _compute_m(self):
+        self.m = self.B.shape[1]
+
+    def _compute_A_0(self):
+        if self.i_mode == 'random':
+            rng = np.random.Generator(np.random.PCG64(12345))
+
+        if self.a_mode == 'full':
+            if self.i_mode == 'zero':
+                A = np.zeros((self.m, self.m))
+            else:
+                if self.i_mode == 'random':
+                    A = rng.standard_normal(self.m * self.m).reshape(self.m, self.m) / self.m ** .5
+                    A = A.T @ A
+                elif self.i_mode == 'identity':
+                    A = np.diag(np.ones(self.m) / self.m ** .5)
+                elif self.i_mode == 'centered':
+                    U = np.identity(self.n) - 1 / self.n
+                    A = self.B.T @ U @ self.B
+
+                if self.k_mode == 'linear':
+                    K = A
+                elif self.k_mode == 'nonlinear':
+                    K = A @ self.C
+                A /= np.dot(K.T.ravel(), K.ravel()) ** .5
+        elif self.a_mode == 'diagonal':
+            if self.i_mode == 'zero':
+                A = np.zeros(self.m).reshape(self.m, 1)
+            else:
+                if self.i_mode == 'random':
+                    A = rng.standard_normal(self.m).reshape(self.m, 1) ** 2
+                elif self.i_mode == 'identity':
+                    A = np.ones(self.m).reshape(self.m, 1) / self.m ** .5
+
+                if self.k_mode == 'linear':
+                    K = A
+                elif self.k_mode == 'nonlinear':
+                    K = A * self.C
+                A /= np.dot(K.T.ravel(), K.ravel()) ** .5
+        elif self.a_mode == 'decomposed':
+            if self.i_mode == 'random':
+                A = rng.standard_normal(self.d * self.m).reshape(self.d, self.m) / self.d ** .5
+            elif self.i_mode == 'pca':
+                if self.k_mode == 'linear':
+                    pca = PCA(n_components=self.d)
+                    pca.fit(self.B)
+                    A = pca.components_ / self.d ** .5
+                elif self.k_mode == 'nonlinear':
+                    kpca = KernelPCA(n_components=self.d, kernel='precomputed')
+                    kpca.fit(self.C)
+                    A = kpca.eigenvectors_.T / self.d ** .5
+
+            if self.k_mode == 'linear':
+                K = A.T @ A
+            elif self.k_mode == 'nonlinear':
+                K = A @ self.C @ A.T
+            A /= np.dot(K.T.ravel(), K.ravel()) ** .25
+
+        self.A_0 = A
+
+    def _compute_E_0(self):
+        if self.i_mode == 'random':
+            rng = np.random.Generator(np.random.PCG64(12345))
+
+        if self.e_mode == 'single':
+            if self.i_mode == 'zero':
+                E = np.zeros(1).item()
+            elif self.i_mode == 'random':
+                E = rng.standard_normal(1).item() ** 2
+            elif self.i_mode == 'centered' or self.i_mode == 'identity' or self.i_mode == 'pca':
+                E = np.ones(1).item()
+        elif self.e_mode == 'multiple':
+            if self.i_mode == 'zero':
+                E = np.zeros(self.n).reshape(self.n, 1)
+            elif self.i_mode == 'random':
+                E = rng.standard_normal(self.n).reshape(self.n, 1) ** 2
+            elif self.i_mode == 'centered' or self.i_mode == 'identity' or self.i_mode == 'pca':
+                E = np.ones(self.n).reshape(self.n, 1)
+
+        self.E_0 = E
+
+    def _compute_J(self):
+        if self.k_mode == 'linear':
+            self.J = self.A
+        elif self.k_mode == 'nonlinear':
+            self.J = self.A @ self.C
+
+    def _compute_K(self):
+        if self.a_mode == 'full':
+            if self.k_mode == 'linear':
+                self.K = self.A
+            elif self.k_mode == 'nonlinear':
+                self.K = self.A @ self.C
+        elif self.a_mode == 'diagonal':
+            if self.k_mode == 'linear':
+                self.K = self.A
+            elif self.k_mode == 'nonlinear':
+                self.K = self.A * self.C
+        elif self.a_mode == 'decomposed':
+            self.K = self.A @ self.J.T
 
     def _compute_R(self):
-        self.R = self.r * .5 * np.dot(self.C.T.ravel(), self.C.ravel())
+        self.R = self.r * .5 * np.dot(self.K.T.ravel(), self.K.ravel())
 
     def _compute_S(self):
         self.S = self.s * .5 * np.sum(np.square(self.E - 1))
 
-    def _compute_P(self):
-        if self.a_mode == 'WX':
-            self.P = self.B @ self.C @ self.B.T
-        elif self.a_mode == 'MX':
-            self.P = self.B @ self.C @ self.B.T
-        elif self.a_mode == 'MXX':
-            self.P = self.B @ self.C
-        elif self.a_mode == 'MG':
-            self.P = self.B @ self.C
-
     def _compute_D(self):
-        self.D = self.P.diagonal().reshape(-1, 1) + self.P.diagonal().reshape(1, -1) - 2 * self.P
+        if self.a_mode == 'full':
+            P = self.B @ self.A @ self.B.T
+        elif self.a_mode == 'diagonal':
+            P = self.B @ (self.A * self.B.T)
+        elif self.a_mode == 'decomposed':
+            Z = self.A @ self.B.T
+            P = Z.T @ Z
+
+        self.D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
 
     def _compute_I(self):
-        self.I = self.T * (self.D - self.E.reshape(-1, 1))
+        self.I = self.T * (self.D - self.E)
 
     def _compute_O(self):
-        self.O = np.sum(self.inner.func(self.I), axis=1) - self.N
+        self.O = np.sum(self.inner.func(self.I), axis=1, keepdims=True) - self.N
 
     def _compute_L(self):
         self.L = self.l * np.sum(self.outer.func(self.O))
@@ -504,58 +598,37 @@ class MLNN:
     def _compute_V(self):
         self.V = self.l * self.outer.grad(self.O).reshape(-1, 1) * self.inner.grad(self.I) * self.T
 
-    def _compute_dRdM(self):
-        if self.a_mode == 'WX':
-            self.dRdM = self.r * self.M
-        elif self.a_mode == 'MX':
-            self.dRdM = self.r * self.M
-        elif self.a_mode == 'MXX':
-            self.dRdM = self.r * self.M
-        elif self.a_mode == 'MG':
-            self.dRdM = self.r * self.P
+    def _compute_dRdA(self):
+        if self.a_mode == 'full':
+            if self.k_mode == 'linear':
+                self.dRdA = self.r * self.K
+            elif self.k_mode == 'nonlinear':
+                self.dRdA = self.r * self.C @ self.K
+        elif self.a_mode == 'diagonal':
+            if self.k_mode == 'linear':
+                self.dRdA = self.r * self.K
+            elif self.k_mode == 'nonlinear':
+                self.dRdA = self.r * np.sum(self.C * self.K, axis=1, keepdims=True)
+        elif self.a_mode == 'decomposed':
+            self.dRdA = self.r * 2 * self.K @ self.J
 
-    def _compute_dLdM(self):
+    def _compute_dLdA(self):
         Z = self.V + self.V.T
         U = np.diag(np.sum(Z, axis=0)) - Z
 
-        if self.a_mode == 'WX':
-            self.dLdM = self.B.T @ U @ self.B
-        elif self.a_mode == 'MX':
-            self.dLdM = U
-        elif self.a_mode == 'MXX':
-            self.dLdM = U
-        elif self.a_mode == 'MG':
-            self.dLdM = self.B.T @ U @ self.B
-
-    def _compute_dFdM(self):
-        self.dFdM = self.dRdM + self.dLdM
-
-    def _compute_gFgM(self):
-        if self.a_mode == 'WX':
-            self.gFgM = self.dFdM
-        elif self.a_mode == 'MX':
-            self.gFgM = self.B @ self.B.T @ self.dFdM @ self.B @ self.B.T
-        elif self.a_mode == 'MXX':
-            self.gFgM = self.B.T @ self.dFdM @ self.B
-        elif self.a_mode == 'MG':
-            self.gFgM = self.dFdM
+        if self.a_mode == 'full':
+            self.dLdA = self.B.T @ U @ self.B
+        elif self.a_mode == 'diagonal':
+            self.dLdA = np.sum(self.B.T * (U @ self.B).T, axis=1, keepdims=True)
+        elif self.a_mode == 'decomposed':
+            self.dLdA = 2 * ((self.A @ self.B.T) @ U @ self.B)
 
     def _compute_dFdA(self):
-        if self.m_mode == 'decomposed':
-            self.dFdA = 2 * self.A @ self.dFdM
-        elif self.m_mode == 'full':
-            self.dFdA = self.dFdM
-
+        self.dFdA = self.dRdA + self.dLdA
         self.dFdA_count += 1
 
-    def _compute_gFgA(self):
-        if self.m_mode == 'decomposed':
-            self.gFgA = 2 * self.A @ self.gFgM
-        elif self.m_mode == 'full':
-            self.gFgA = self.gFgM
-
     def _compute_phiA(self):
-        self.phiA = -np.dot(self.dFdA.ravel(), self.gFgA.ravel())
+        self.phiA = -np.dot(self.dFdA.ravel(), self.dFdA.ravel())
 
     def _compute_dSdE(self):
         self.dSdE = self.s * (self.E - 1)
@@ -564,17 +637,14 @@ class MLNN:
         if self.e_mode == 'single':
             self.dLdE = -np.sum(self.V)
         elif self.e_mode == 'multiple':
-            self.dLdE = -np.sum(self.V, axis=1)
+            self.dLdE = -np.sum(self.V, axis=1, keepdims=True)
 
     def _compute_dFdE(self):
         self.dFdE = self.dSdE + self.dLdE
         self.dFdE_count += 1
 
-    def _compute_gFgE(self):
-        self.gFgE = self.dFdE
-
     def _compute_phiE(self):
-        self.phiE = -np.dot(self.dFdE, self.gFgE)
+        self.phiE = -np.dot(self.dFdE, self.dFdE)
 
     def take_step(self, arguments='AE', alpha_0=None, verbose=None):
         if alpha_0 is None:
