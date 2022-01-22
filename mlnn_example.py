@@ -43,11 +43,11 @@ def main():
     accuracy = accuracy_score(Y_test, Y_test_pred)
     print(f"accuracy = {accuracy: .3f}")
     
-#    kernel = 'linear'
-    kernel = 'rbf'
+    kernel = 'linear'
+#    kernel = 'rbf'
 
-#    k_mode = 'linear'
-    k_mode = 'nonlinear'
+    k_mode = 'linear'
+#    k_mode = 'nonlinear'
 
     a_mode = 'full'
 #    a_mode = 'diagonal'
