@@ -99,8 +99,8 @@ def main():
     if k_mode == 'linear':
         C = None
     elif k_mode == 'nonlinear':
-        # C = B
-        C = None
+        C = B
+        #C = None
 
     n, m = B.shape
 
@@ -116,6 +116,7 @@ def main():
             elif i_mode == 'centered':
                 U = np.identity(n) - 1 / n
                 A = B.T @ U @ B
+                A = (A + A.T) / 2
 
             if k_mode == 'linear':
                 K = A
@@ -150,7 +151,7 @@ def main():
                 A = kpca.eigenvectors_.T / d ** .5
 
         if k_mode == 'linear':
-            K = A.T @ A
+            K = A @ A.T
         elif k_mode == 'nonlinear':
             K = A @ C @ A.T
         A /= np.dot(K.T.ravel(), K.ravel()) ** .25

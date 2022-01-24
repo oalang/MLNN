@@ -45,6 +45,9 @@ class MLNN:
         self.T = T
         self.N = N
 
+        assert self.n > 1
+        assert self.m > 0
+
         assert self.T.shape[0] == self.n
         assert self.T.shape[1] == self.n
         assert self.N.shape[0] == self.n
@@ -59,7 +62,6 @@ class MLNN:
                 self.C = C
 
             assert self.C.shape[0] == self.m
-            assert self.C.shape[1] == self.m
             assert np.array_equal(self.C, self.C.T)
 
         if A_0 is not None:
@@ -69,7 +71,6 @@ class MLNN:
 
         if self.a_mode == 'full':
             assert self.A_0.shape[0] == self.m
-            assert self.A_0.shape[1] == self.m
             assert np.array_equal(self.A_0, self.A_0.T)
         elif self.a_mode == 'diagonal':
             assert self.A_0.shape[0] == self.m
@@ -130,11 +131,9 @@ class MLNN:
     @B.setter
     def B(self, B):
         self._B = B
-
         self.n = None
         self.m = None
-        self.D = None
-        self.dLdA = None
+        self.I = None
 
     @property
     def T(self):
@@ -143,9 +142,7 @@ class MLNN:
     @T.setter
     def T(self, T):
         self._T = T
-
         self.I = None
-        self.V = None
 
     @property
     def N(self):
@@ -154,8 +151,7 @@ class MLNN:
     @N.setter
     def N(self, N):
         self._N = N
-
-        self.O = None
+        self.I = None
 
     @property
     def C(self):
@@ -164,13 +160,7 @@ class MLNN:
     @C.setter
     def C(self, C):
         self._C = C
-
-        if self.k_mode == 'nonlinear':
-            self.J = None
-            if self.a_mode == 'full' or self.a_mode == 'diagonal':
-                self.K = None
-                if self.r:
-                    self.dRdA = None
+        self.J = None
 
     @property
     def A(self):
@@ -179,12 +169,8 @@ class MLNN:
     @A.setter
     def A(self, A):
         self._A = A
-
+        self.I = None
         self.J = None
-        self.K = None
-        self.D = None
-        if self.a_mode == 'decomposed':
-            self.dLdA = None
 
     @property
     def E(self):
@@ -193,11 +179,10 @@ class MLNN:
     @E.setter
     def E(self, E):
         self._E = E
-
+        self.I = None
         if self.s:
             self.S = None
             self.dSdE = None
-        self.I = None
 
     @property
     def n(self):
@@ -208,7 +193,6 @@ class MLNN:
     @n.setter
     def n(self, n):
         self._n = n
-
         self.E_0 = None
 
     @property
@@ -220,7 +204,6 @@ class MLNN:
     @m.setter
     def m(self, m):
         self._m = m
-
         self.A_0 = None
 
     @property
@@ -252,11 +235,7 @@ class MLNN:
     @J.setter
     def J(self, J):
         self._J = J
-
-        if self.a_mode == 'decomposed':
-            self.K = None
-            if self.r:
-                self.dRdA = None
+        self.K = None
 
     @property
     def K(self):
@@ -267,7 +246,6 @@ class MLNN:
     @K.setter
     def K(self, K):
         self._K = K
-
         if self.r:
             self.R = None
             self.dRdA = None
@@ -281,7 +259,6 @@ class MLNN:
     @R.setter
     def R(self, R):
         self._R = R
-
         self.F = None
 
     @property
@@ -293,20 +270,7 @@ class MLNN:
     @S.setter
     def S(self, S):
         self._S = S
-
         self.F = None
-
-    @property
-    def D(self):
-        if self._D is None:
-            self._compute_D()
-        return self._D
-
-    @D.setter
-    def D(self, D):
-        self._D = D
-
-        self.I = None
 
     @property
     def I(self):
@@ -317,9 +281,7 @@ class MLNN:
     @I.setter
     def I(self, I):
         self._I = I
-
         self.O = None
-        self.V = None
 
     @property
     def O(self):
@@ -330,7 +292,6 @@ class MLNN:
     @O.setter
     def O(self, O):
         self._O = O
-
         self.L = None
         self.V = None
 
@@ -343,7 +304,6 @@ class MLNN:
     @L.setter
     def L(self, L):
         self._L = L
-
         self.F = None
 
     @property
@@ -365,7 +325,6 @@ class MLNN:
     @V.setter
     def V(self, V):
         self._V = V
-
         self.dLdA = None
         self.dLdE = None
 
@@ -378,7 +337,6 @@ class MLNN:
     @dRdA.setter
     def dRdA(self, dRdA):
         self._dRdA = dRdA
-
         self.dFdA = None
 
     @property
@@ -390,7 +348,6 @@ class MLNN:
     @dLdA.setter
     def dLdA(self, dLdA):
         self._dLdA = dLdA
-
         self.dFdA = None
 
     @property
@@ -402,7 +359,6 @@ class MLNN:
     @dFdA.setter
     def dFdA(self, dFdA):
         self._dFdA = dFdA
-
         self.phiA = None
 
     @property
@@ -424,7 +380,6 @@ class MLNN:
     @dSdE.setter
     def dSdE(self, dSdE):
         self._dSdE = dSdE
-
         self.dFdE = None
 
     @property
@@ -436,7 +391,6 @@ class MLNN:
     @dLdE.setter
     def dLdE(self, dLdE):
         self._dLdE = dLdE
-
         self.dFdE = None
 
     @property
@@ -448,7 +402,6 @@ class MLNN:
     @dFdE.setter
     def dFdE(self, dFdE):
         self._dFdE = dFdE
-
         self.phiE = None
 
     @property
@@ -483,6 +436,7 @@ class MLNN:
                 elif self.i_mode == 'centered':
                     U = np.identity(self.n) - 1 / self.n
                     A = self.B.T @ U @ self.B
+                    A = (A + A.T) / 2
 
                 if self.k_mode == 'linear':
                     K = A
@@ -517,7 +471,7 @@ class MLNN:
                     A = kpca.eigenvectors_.T / self.d ** .5
 
             if self.k_mode == 'linear':
-                K = A.T @ A
+                K = A @ A.T
             elif self.k_mode == 'nonlinear':
                 K = A @ self.C @ A.T
             A /= np.dot(K.T.ravel(), K.ravel()) ** .25
@@ -530,11 +484,11 @@ class MLNN:
 
         if self.e_mode == 'single':
             if self.i_mode == 'zero':
-                E = np.zeros(1).item()
+                E = 0
             elif self.i_mode == 'random':
                 E = rng.standard_normal(1).item() ** 2
             elif self.i_mode == 'centered' or self.i_mode == 'identity' or self.i_mode == 'pca':
-                E = np.ones(1).item()
+                E = 1
         elif self.e_mode == 'multiple':
             if self.i_mode == 'zero':
                 E = np.zeros(self.n).reshape(self.n, 1)
@@ -549,19 +503,14 @@ class MLNN:
         if self.k_mode == 'linear':
             self.J = self.A
         elif self.k_mode == 'nonlinear':
-            self.J = self.A @ self.C
+            if self.a_mode == 'full' or self.a_mode == 'decomposed':
+                self.J = self.A @ self.C
+            elif self.a_mode == 'diagonal':
+                self.J = self.A * self.C
 
     def _compute_K(self):
-        if self.a_mode == 'full':
-            if self.k_mode == 'linear':
-                self.K = self.A
-            elif self.k_mode == 'nonlinear':
-                self.K = self.A @ self.C
-        elif self.a_mode == 'diagonal':
-            if self.k_mode == 'linear':
-                self.K = self.A
-            elif self.k_mode == 'nonlinear':
-                self.K = self.A * self.C
+        if self.a_mode == 'full' or self.a_mode == 'diagonal':
+            self.K = self.J
         elif self.a_mode == 'decomposed':
             self.K = self.A @ self.J.T
 
@@ -571,7 +520,7 @@ class MLNN:
     def _compute_S(self):
         self.S = self.s * .5 * np.sum(np.square(self.E - 1))
 
-    def _compute_D(self):
+    def _compute_I(self):
         if self.a_mode == 'full':
             P = self.B @ self.A @ self.B.T
         elif self.a_mode == 'diagonal':
@@ -580,10 +529,7 @@ class MLNN:
             Z = self.A @ self.B.T
             P = Z.T @ Z
 
-        self.D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
-
-    def _compute_I(self):
-        self.I = self.T * (self.D - self.E)
+        self.I = self.T * ((P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P) - self.E)
 
     def _compute_O(self):
         self.O = np.sum(self.inner.func(self.I), axis=1, keepdims=True) - self.N
@@ -635,7 +581,7 @@ class MLNN:
 
     def _compute_dLdE(self):
         if self.e_mode == 'single':
-            self.dLdE = -np.sum(self.V)
+            self.dLdE = -np.sum(self.V, keepdims=True)
         elif self.e_mode == 'multiple':
             self.dLdE = -np.sum(self.V, axis=1, keepdims=True)
 
@@ -644,7 +590,7 @@ class MLNN:
         self.dFdE_count += 1
 
     def _compute_phiE(self):
-        self.phiE = -np.dot(self.dFdE, self.dFdE)
+        self.phiE = -np.dot(self.dFdE.ravel(), self.dFdE.ravel())
 
     def take_step(self, arguments='AE', alpha_0=None, verbose=None):
         if alpha_0 is None:
