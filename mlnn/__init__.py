@@ -16,6 +16,9 @@ class MLNN:
         self.a_mode = 'full'
         self.e_mode = 'single'
         self.i_mode = 'random'
+        self.keep_a_psd = True
+        self.keep_a_centered = True
+        self.keep_e_positive = True
         self.d = 2
 
         self.alpha_0 = 1e-6
@@ -93,8 +96,17 @@ class MLNN:
             setattr(self, attr, params[attr])
 
     def initialize(self):
-        self.A = self.A_0
-        self.E = self.E_0
+        self.time_0 = time.perf_counter()
+        self.run_time = None
+
+        self.steps = 0
+        self.F_count = 0
+        self.dFdA_count = 0
+        self.dFdE_count = 0
+        self.eigh_count = 0
+
+        self.F_0 = None
+        self.delta_F = None
 
         self.arguments = None
         self.phi = None
@@ -102,16 +114,8 @@ class MLNN:
         self.backtracks = None
         self.termination = None
 
-        self.F_0 = None
-        self.delta_F = None
-
-        self.steps = 0
-        self.F_count = 0
-        self.dFdA_count = 0
-        self.dFdE_count = 0
-
-        self.time_0 = time.perf_counter()
-        self.run_time = None
+        self.A = self.A_0
+        self.E = self.E_0
 
         if not self.r:
             self.R = 0
@@ -171,6 +175,15 @@ class MLNN:
         self._A = A
         self.I = None
         self.J = None
+        self.is_psd = None
+        self.eigenvalues = None
+        self.eigenvectors = None
+
+        if self.keep_a_psd and not self.is_psd:
+            self._A = self.project_psd(self._A)
+
+        if self.keep_a_centered:
+            self._A = self.project_centered(self._A)
 
     @property
     def E(self):
@@ -183,6 +196,9 @@ class MLNN:
         if self.s:
             self.S = None
             self.dSdE = None
+
+        if self.keep_e_positive:
+            self._E = self.project_positive(self._E)
 
     @property
     def n(self):
@@ -414,6 +430,36 @@ class MLNN:
     def phiE(self, phiE):
         self._phiE = phiE
 
+    @property
+    def is_psd(self):
+        if self._is_psd is None:
+            self._compute_is_psd()
+        return self._is_psd
+
+    @is_psd.setter
+    def is_psd(self, is_psd):
+        self._is_psd = is_psd
+
+    @property
+    def eigenvalues(self):
+        if self._eigenvalues is None:
+            self._compute_eigh()
+        return self._eigenvalues
+
+    @eigenvalues.setter
+    def eigenvalues(self, eigenvalues):
+        self._eigenvalues = eigenvalues
+
+    @property
+    def eigenvectors(self):
+        if self._eigenvectors is None:
+            self._compute_eigh()
+        return self._eigenvectors
+
+    @eigenvectors.setter
+    def eigenvectors(self, eigenvectors):
+        self._eigenvectors = eigenvectors
+
     def _compute_n(self):
         self.n = self.B.shape[0]
 
@@ -591,6 +637,50 @@ class MLNN:
 
     def _compute_phiE(self):
         self.phiE = -np.dot(self.dFdE.ravel(), self.dFdE.ravel())
+
+    def _compute_is_psd(self):
+        if self.a_mode == 'full':
+            try:
+                np.linalg.cholesky(self.A)
+                self.is_psd = True
+            except np.linalg.LinAlgError:
+                self.is_psd = False
+        elif self.a_mode == 'diagonal':
+            if np.all(self.A >= 0):
+                self.is_psd = True
+            else:
+                self.is_psd = False
+        elif self.a_mode == 'decomposed':
+            self.is_psd = True
+
+    def _compute_eigh(self):
+        self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.A)
+        self.eigh_count += 1
+
+    def project_psd(self, A, tol=1e-10):
+        if self.a_mode == 'full':
+            if self.eigenvalues[-1] > tol:
+                i = np.argmax(self.eigenvalues > tol)
+                A = (self.eigenvectors[:, i:] * self.eigenvalues[i:]) @ self.eigenvectors[:, i:].T
+            else:
+                A = np.zeros(A.shape)
+        elif self.a_mode == 'diagonal':
+            A = np.maximum(A, 0)
+
+        self.is_psd = True
+        return A
+
+    def project_centered(self, A):
+        if self.a_mode == 'full':
+            A -= np.sum(self.A, axis=0, keepdims=True) / self.m
+            A -= np.sum(self.A, axis=1, keepdims=True) / self.m
+        elif self.a_mode == 'decomposed':
+            A -= np.sum(self.A, axis=1, keepdims=True) / self.m
+
+        return A
+
+    def project_positive(self, E):
+        return np.maximum(E, 0)
 
     def take_step(self, arguments='AE', alpha_0=None, verbose=None):
         if alpha_0 is None:
@@ -874,7 +964,8 @@ class MLNN:
             self._print_optimize_header()
             self.print_result()
 
-    def _print_optimize_header(self):
+    @staticmethod
+    def _print_optimize_header():
         steps = f"{'step':^4s}"
         arguments = f"{'args':^4s}"
         backtracks = f"{'bktr':^4s}"
@@ -924,7 +1015,8 @@ class MLNN:
         print(f"     steps = {self.steps:d}")
         print(f"  run_time = {self.run_time:f} seconds")
         print("")
-        print(f" F function calls: {self.F_count:d}")
-        print(f"dA function calls: {self.dFdA_count:d}")
-        print(f"dE function calls: {self.dFdE_count:d}")
+        print(f"   F function calls: {self.F_count:d}")
+        print(f"  dA function calls: {self.dFdA_count:d}")
+        print(f"  dE function calls: {self.dFdE_count:d}")
+        print(f"eigh function calls: {self.eigh_count:d}")
         print("")
