@@ -12,13 +12,13 @@ class MLNN:
         self.l = 1
         self.inner = ReLU(1)
         self.outer = ReLU(1)
-        self.k_mode = 'linear'
+        self.k_mode = None
         self.a_mode = 'full'
         self.e_mode = 'single'
-        self.i_mode = 'random'
-        self.A_keep_psd = True
-        self.A_keep_centered = True
-        self.E_keep_positive = True
+        self.i_mode = None
+        self.keep_a_psd = None
+        self.keep_a_centered = None
+        self.keep_e_positive = None
         self.d = 2
 
         self.alpha_0 = 1e-6
@@ -39,6 +39,34 @@ class MLNN:
             self.apply_params(line_search_params)
         if optimize_params:
             self.apply_params(optimize_params)
+
+        if self.k_mode is None:
+            if C is None:
+                self.k_mode = 'linear'
+            else:
+                self.k_mode = 'nonlinear'
+        if self.i_mode is None:
+            if self.a_mode == 'full' or self.a_mode == 'diagonal':
+                self.i_mode = 'zero'
+            elif self.a_mode == 'decomposed':
+                self.i_mode = 'pca'
+
+        if self.a_mode == 'full':
+            assert self.i_mode == 'zero' or self.i_mode == 'random' or self.i_mode == 'identity' or self.i_mode == 'centered'
+        elif self.a_mode == 'diagonal':
+            assert self.i_mode == 'zero' or self.i_mode == 'random' or self.i_mode == 'identity'
+        elif self.a_mode == 'decomposed':
+            assert self.i_mode == 'random' or self.i_mode == 'pca'
+
+        if self.keep_a_psd is None:
+            self.keep_a_psd = True
+        if self.keep_a_centered is None:
+            if self.k_mode == 'nonlinear' and self.a_mode == 'full' and self.keep_a_psd:
+                self.keep_a_centered = True
+            else:
+                self.keep_a_centered = False
+        if self.keep_e_positive is None:
+            self.keep_e_positive = self.keep_a_psd
 
         assert self.r >= 0
         assert self.s >= 0
@@ -179,11 +207,11 @@ class MLNN:
         self.eigenvalues = None
         self.eigenvectors = None
 
-        if self.A_keep_psd and not self.A_is_psd:
+        if self.keep_a_psd and not self.A_is_psd:
             self._A = self.A_psd_projection()
             self.A_is_psd = True
 
-        if self.A_keep_centered:
+        if self.keep_a_centered:
             self._A = self.A_center_projection()
 
     @property
@@ -198,7 +226,7 @@ class MLNN:
             self.S = None
             self.dSdE = None
 
-        if self.E_keep_positive:
+        if self.keep_e_positive:
             self._E = self.E_positive_projection()
 
     @property

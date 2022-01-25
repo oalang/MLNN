@@ -62,6 +62,10 @@ def main():
 #    i_mode = 'identity'
 #    i_mode = 'pca'
 
+    keep_a_psd = False
+    keep_a_centered = False
+    keep_e_positive = False
+
     d = 2
 
     r = 1
@@ -99,77 +103,8 @@ def main():
     if k_mode == 'linear':
         C = None
     elif k_mode == 'nonlinear':
-        C = B
-        #C = None
-
-    n, m = B.shape
-
-    if a_mode == 'full':
-        if i_mode == 'zero':
-            A = np.zeros((m, m))
-        else:
-            if i_mode == 'random':
-                A = rng.standard_normal(m * m).reshape(m, m) / m ** .5
-                A = A.T @ A
-            elif i_mode == 'identity':
-                A = np.diag(np.ones(m) / m ** .5)
-            elif i_mode == 'centered':
-                U = np.identity(n) - 1 / n
-                A = B.T @ U @ B
-                A = (A + A.T) / 2
-
-            if k_mode == 'linear':
-                K = A
-            elif k_mode == 'nonlinear':
-                K = A @ C
-            A /= np.dot(K.T.ravel(), K.ravel()) ** .5
-    elif a_mode == 'diagonal':
-        if i_mode == 'zero':
-            A = np.zeros(m).reshape(m, 1)
-        else:
-            if i_mode == 'random':
-                A = rng.standard_normal(m).reshape(m, 1) ** 2
-            elif i_mode == 'identity':
-                A = np.ones(m).reshape(m, 1) / m ** .5
-
-            if k_mode == 'linear':
-                K = A
-            elif k_mode == 'nonlinear':
-                K = A * C
-            A /= np.dot(K.T.ravel(), K.ravel()) ** .5
-    elif a_mode == 'decomposed':
-        if i_mode == 'random':
-            A = rng.standard_normal(d * m).reshape(d, m) / d ** .5
-        elif i_mode == 'pca':
-            if k_mode == 'linear':
-                pca = PCA(n_components=d)
-                pca.fit(B)
-                A = pca.components_ / d ** .5
-            elif k_mode == 'nonlinear':
-                kpca = KernelPCA(n_components=d, kernel='precomputed')
-                kpca.fit(C)
-                A = kpca.eigenvectors_.T / d ** .5
-
-        if k_mode == 'linear':
-            K = A @ A.T
-        elif k_mode == 'nonlinear':
-            K = A @ C @ A.T
-        A /= np.dot(K.T.ravel(), K.ravel()) ** .25
-
-    if e_mode == 'single':
-        if i_mode == 'zero':
-            E = np.zeros(1).item()
-        elif i_mode == 'random':
-            E = rng.standard_normal(1).item() ** 2
-        elif i_mode == 'centered' or i_mode == 'identity' or i_mode == 'pca':
-            E = np.ones(1).item()
-    elif e_mode == 'multiple':
-        if i_mode == 'zero':
-            E = np.zeros(n).reshape(n, 1)
-        elif i_mode == 'random':
-            E = rng.standard_normal(n).reshape(n, 1) ** 2
-        elif i_mode == 'centered' or i_mode == 'identity' or i_mode == 'pca':
-            E = np.ones(n).reshape(n, 1)
+        #C = B
+        C = None
 
     mlnn_params = {
         'r': r,
@@ -181,6 +116,10 @@ def main():
         'a_mode': a_mode,
         'e_mode': e_mode,
         'i_mode': i_mode,
+        'keep_a_psd': keep_a_psd,
+        'keep_a_centered': keep_a_centered,
+        'keep_e_positive': keep_e_positive,
+        'd': d,
     }
 
     line_search_params = {
@@ -195,7 +134,7 @@ def main():
         'max_time': max_time,
     }
 
-    mlnn = MLNN(B, T, N, C, A, E, mlnn_params, line_search_params, optimize_params)
+    mlnn = MLNN(B, T, N, C, mlnn_params=mlnn_params, line_search_params=line_search_params, optimize_params=optimize_params)
     mlnn.optimize(verbose=True)
     mlnn.minimize(verbose=True)
 
