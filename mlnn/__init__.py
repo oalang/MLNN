@@ -16,9 +16,9 @@ class MLNN:
         self.a_mode = 'full'
         self.e_mode = 'single'
         self.i_mode = 'random'
-        self.keep_a_psd = True
-        self.keep_a_centered = True
-        self.keep_e_positive = True
+        self.A_keep_psd = True
+        self.A_keep_centered = True
+        self.E_keep_positive = True
         self.d = 2
 
         self.alpha_0 = 1e-6
@@ -175,15 +175,16 @@ class MLNN:
         self._A = A
         self.I = None
         self.J = None
-        self.is_psd = None
+        self.A_is_psd = None
         self.eigenvalues = None
         self.eigenvectors = None
 
-        if self.keep_a_psd and not self.is_psd:
-            self._A = self.project_psd(self._A)
+        if self.A_keep_psd and not self.A_is_psd:
+            self._A = self.A_psd_projection()
+            self.A_is_psd = True
 
-        if self.keep_a_centered:
-            self._A = self.project_centered(self._A)
+        if self.A_keep_centered:
+            self._A = self.A_center_projection()
 
     @property
     def E(self):
@@ -197,8 +198,8 @@ class MLNN:
             self.S = None
             self.dSdE = None
 
-        if self.keep_e_positive:
-            self._E = self.project_positive(self._E)
+        if self.E_keep_positive:
+            self._E = self.E_positive_projection()
 
     @property
     def n(self):
@@ -431,14 +432,14 @@ class MLNN:
         self._phiE = phiE
 
     @property
-    def is_psd(self):
-        if self._is_psd is None:
-            self._compute_is_psd()
-        return self._is_psd
+    def A_is_psd(self):
+        if self._A_is_psd is None:
+            self._compute_A_is_psd()
+        return self._A_is_psd
 
-    @is_psd.setter
-    def is_psd(self, is_psd):
-        self._is_psd = is_psd
+    @A_is_psd.setter
+    def A_is_psd(self, A_is_psd):
+        self._A_is_psd = A_is_psd
 
     @property
     def eigenvalues(self):
@@ -638,49 +639,49 @@ class MLNN:
     def _compute_phiE(self):
         self.phiE = -np.dot(self.dFdE.ravel(), self.dFdE.ravel())
 
-    def _compute_is_psd(self):
+    def _compute_A_is_psd(self):
         if self.a_mode == 'full':
             try:
                 np.linalg.cholesky(self.A)
-                self.is_psd = True
+                self.A_is_psd = True
             except np.linalg.LinAlgError:
-                self.is_psd = False
+                self.A_is_psd = False
         elif self.a_mode == 'diagonal':
             if np.all(self.A >= 0):
-                self.is_psd = True
+                self.A_is_psd = True
             else:
-                self.is_psd = False
+                self.A_is_psd = False
         elif self.a_mode == 'decomposed':
-            self.is_psd = True
+            self.A_is_psd = True
 
     def _compute_eigh(self):
         self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.A)
         self.eigh_count += 1
 
-    def project_psd(self, A, tol=1e-10):
+    def A_psd_projection(self, tol=1e-10):
         if self.a_mode == 'full':
             if self.eigenvalues[-1] > tol:
                 i = np.argmax(self.eigenvalues > tol)
-                A = (self.eigenvectors[:, i:] * self.eigenvalues[i:]) @ self.eigenvectors[:, i:].T
+                return (self.eigenvectors[:, i:] * self.eigenvalues[i:]) @ self.eigenvectors[:, i:].T
             else:
-                A = np.zeros(A.shape)
+                return np.zeros(self.A.shape)
         elif self.a_mode == 'diagonal':
-            A = np.maximum(A, 0)
-
-        self.is_psd = True
-        return A
-
-    def project_centered(self, A):
-        if self.a_mode == 'full':
-            A -= np.sum(self.A, axis=0, keepdims=True) / self.m
-            A -= np.sum(self.A, axis=1, keepdims=True) / self.m
+            return np.maximum(self.A, 0)
         elif self.a_mode == 'decomposed':
-            A -= np.sum(self.A, axis=1, keepdims=True) / self.m
+            return self.A
+
+    def A_center_projection(self):
+        A = self.A
+        if self.a_mode == 'full':
+            A -= np.sum(A, axis=0, keepdims=True) / self.m
+            A -= np.sum(A, axis=1, keepdims=True) / self.m
+        elif self.a_mode == 'decomposed':
+            A -= np.sum(A, axis=1, keepdims=True) / self.m
 
         return A
 
-    def project_positive(self, E):
-        return np.maximum(E, 0)
+    def E_positive_projection(self):
+        return np.maximum(self.E, 0)
 
     def take_step(self, arguments='AE', alpha_0=None, verbose=None):
         if alpha_0 is None:
