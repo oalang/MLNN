@@ -777,12 +777,12 @@ class MLNN:
 
         # Compute phi, the gradient of F with respect to the step size, alpha.
         phi = 0
-        if 'A' in arguments:
+        if 'A' in arguments and self.phiA:
             dA = self.dFdA
             phi += self.phiA
         else:
             dA = None
-        if 'E' in arguments:
+        if 'E' in arguments and self.phiE:
             dE = self.dFdE
             phi += self.phiE
         else:
@@ -811,9 +811,9 @@ class MLNN:
             alpha = alpha_0
 
         # Take a step in the direction of steepest descent.
-        if (dA is not None) and (not np.all(dA == 0)):
+        if dA is not None:
             self.A = A_prev - alpha * dA
-        if (dE is not None) and (not np.all(dE == 0)):
+        if dE is not None:
             self.E = E_prev - alpha * dE
 
         # If Armijo's condition for sufficient decrease has been satisfied, the search is complete.
@@ -846,9 +846,9 @@ class MLNN:
 
         # Take a step in the direction of steepest descent.
         F_old = self.F
-        if (dA is not None) and (not np.all(dA == 0)):
+        if dA is not None:
             self.A = A_prev - alpha * dA
-        if (dE is not None) and (not np.all(dE == 0)):
+        if dE is not None:
             self.E = E_prev - alpha * dE
 
         backtracks += 1
@@ -893,9 +893,9 @@ class MLNN:
 
             # Take a step in the direction of steepest descent.
             F_old = self.F
-            if (dA is not None) and (not np.all(dA == 0)):
+            if dA is not None:
                 self.A = A_prev - alpha * dA
-            if (dE is not None) and (not np.all(dE == 0)):
+            if dE is not None:
                 self.E = E_prev - alpha * dE
 
             backtracks += 1
