@@ -339,6 +339,9 @@ class MLNN:
         self._O = O
         self.L = None
         self.V = None
+        self.subset_active_rows = None
+        self.subset_active_cols = None
+        self.subset_active_data = None
 
     @property
     def L(self):
@@ -372,6 +375,38 @@ class MLNN:
         self._V = V
         self.dLdA = None
         self.dLdE = None
+
+    @property
+    def subset_active_data(self):
+        if self._subset_active_data is None:
+            self._compute_V()
+        return self._subset_active_data
+
+    @subset_active_data.setter
+    def subset_active_data(self, subset_active_data):
+        self._subset_active_data = subset_active_data
+        self.dLdA = None
+        self.dLdE = None
+
+    @property
+    def subset_active_rows(self):
+        if self._subset_active_rows is None:
+            self._compute_V()
+        return self._subset_active_rows
+
+    @subset_active_rows.setter
+    def subset_active_rows(self, subset_active_rows):
+        self._subset_active_rows = subset_active_rows
+
+    @property
+    def subset_active_cols(self):
+        if self._subset_active_cols is None:
+            self._compute_V()
+        return self._subset_active_cols
+
+    @subset_active_cols.setter
+    def subset_active_cols(self, subset_active_cols):
+        self._subset_active_cols = subset_active_cols
 
     @property
     def dRdA(self):
@@ -617,7 +652,14 @@ class MLNN:
         self.F_count += 1
 
     def _compute_V(self):
-        self.V = self.l * self.outer.grad(self.O).reshape(-1, 1) * self.inner.grad(self.I) * self.T
+        V = self.l * self.outer.grad(self.O).reshape(-1, 1) * self.inner.grad(self.I) * self.T
+        is_active_row = np.any(V, axis=1)
+        is_active_col = np.any(V, axis=0)
+        is_active = np.logical_or(is_active_row, is_active_col)
+        self.subset_active_rows = np.argwhere(is_active_row).flatten()
+        self.subset_active_cols = np.argwhere(is_active_col).flatten()
+        self.subset_active_data = np.argwhere(is_active).flatten()
+        self.V = V.take(self.subset_active_data, axis=0).take(self.subset_active_data, axis=1)
 
     def _compute_dRdA(self):
         if self.a_mode == 'full':
@@ -634,15 +676,19 @@ class MLNN:
             self.dRdA = self.r * 2 * self.K @ self.J
 
     def _compute_dLdA(self):
-        Z = self.V + self.V.T
-        U = np.diag(np.sum(Z, axis=0)) - Z
+        if self.subset_active_data.size:
+            Z = self.V + self.V.T
+            U = np.diag(np.sum(Z, axis=0)) - Z
+            B = self.B.take(self.subset_active_data, axis=0)
 
-        if self.a_mode == 'full':
-            self.dLdA = self.B.T @ U @ self.B
-        elif self.a_mode == 'diagonal':
-            self.dLdA = np.sum(self.B.T * (U @ self.B).T, axis=1, keepdims=True)
-        elif self.a_mode == 'decomposed':
-            self.dLdA = 2 * ((self.A @ self.B.T) @ U @ self.B)
+            if self.a_mode == 'full':
+                self.dLdA = B.T @ U @ B
+            elif self.a_mode == 'diagonal':
+                self.dLdA = np.sum(B.T * (U @ B).T, axis=1, keepdims=True)
+            elif self.a_mode == 'decomposed':
+                self.dLdA = 2 * ((self.A @ B.T) @ U @ B)
+        else:
+            self.dLdA = np.zeros(1)
 
     def _compute_dFdA(self):
         self.dFdA = self.dRdA + self.dLdA
@@ -655,10 +701,14 @@ class MLNN:
         self.dSdE = self.s * (self.E - 1)
 
     def _compute_dLdE(self):
-        if self.e_mode == 'single':
-            self.dLdE = -np.sum(self.V, keepdims=True)
-        elif self.e_mode == 'multiple':
-            self.dLdE = -np.sum(self.V, axis=1, keepdims=True)
+        if self.subset_active_data.size:
+            if self.e_mode == 'single':
+                self.dLdE = -np.sum(self.V, keepdims=True)
+            elif self.e_mode == 'multiple':
+                self.dLdE = np.zeros(self.n).reshape(self.n, 1)
+                self.dLdE[self.subset_active_data] = -np.sum(self.V, axis=1, keepdims=True)
+        else:
+            self.dLdE = np.zeros(1)
 
     def _compute_dFdE(self):
         self.dFdE = self.dSdE + self.dLdE
