@@ -10,6 +10,7 @@ class MLNN:
         self.r = 0
         self.s = 0
         self.l = 1
+        self.q = 1
         self.inner = ReLU(1)
         self.outer = ReLU(1)
         self.k_mode = None
@@ -71,10 +72,11 @@ class MLNN:
         assert self.r >= 0
         assert self.s >= 0
         assert self.l > 0
+        assert self.q > 0
 
         self.B = B
         self.T = T
-        self.N = N
+        self.N = self.q * N
 
         assert self.n > 1
         assert self.m > 0
@@ -174,6 +176,7 @@ class MLNN:
     @T.setter
     def T(self, T):
         self._T = T
+        self.Q = None
         self.I = None
 
     @property
@@ -250,6 +253,17 @@ class MLNN:
     def m(self, m):
         self._m = m
         self.A_0 = None
+
+    @property
+    def Q(self):
+        if self._Q is None:
+            self._compute_Q()
+        return self._Q
+
+    @Q.setter
+    def Q(self, Q):
+        self._Q = Q
+        self.O = None
 
     @property
     def A_0(self):
@@ -530,6 +544,9 @@ class MLNN:
     def _compute_m(self):
         self.m = self.B.shape[1]
 
+    def _compute_Q(self):
+        self.Q = np.where(self.T == 1, self.q, 1)
+
     def _compute_A_0(self):
         if self.i_mode == 'random':
             rng = np.random.Generator(np.random.PCG64(12345))
@@ -642,7 +659,10 @@ class MLNN:
         self.I = self.T * ((P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P) - self.E)
 
     def _compute_O(self):
-        self.O = np.sum(self.inner.func(self.I), axis=1, keepdims=True) - self.N
+        if self.q == 1:
+            self.O = np.sum(self.inner.func(self.I), axis=1, keepdims=True) - self.N
+        else:
+            self.O = np.sum(self.Q * self.inner.func(self.I), axis=1, keepdims=True) - self.N
 
     def _compute_L(self):
         self.L = self.l * np.sum(self.outer.func(self.O))
@@ -652,7 +672,10 @@ class MLNN:
         self.F_count += 1
 
     def _compute_V(self):
-        V = self.l * self.outer.grad(self.O).reshape(-1, 1) * self.inner.grad(self.I) * self.T
+        if self.q == 1:
+            V = self.l * self.outer.grad(self.O) * self.inner.grad(self.I) * self.T
+        else:
+            V = self.l * self.outer.grad(self.O) * self.inner.grad(self.I) * self.Q * self.T
         is_active_row = np.any(V, axis=1)
         is_active_col = np.any(V, axis=0)
         is_active = np.logical_or(is_active_row, is_active_col)

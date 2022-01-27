@@ -70,6 +70,7 @@ def main():
     r = 1
     s = 0
     l = 1
+    q = 1
     inner = loss.SmoothReLU(.5)
     outer = loss.SmoothReLU(.5)
 
@@ -109,6 +110,7 @@ def main():
         'r': r,
         's': s,
         'l': l,
+        'q': q,
         'inner': inner,
         'outer': outer,
         'k_mode': k_mode,
