@@ -1051,7 +1051,7 @@ class MLNN:
 
     @staticmethod
     def _print_optimize_header():
-        steps = f"{'step':^4s}"
+        steps = f"{'step':^5s}"
         arguments = f"{'args':^4s}"
         backtracks = f"{'bktr':^4s}"
         alpha = f"{'alpha':^10s}"
@@ -1062,11 +1062,14 @@ class MLNN:
         S = f"{'S':^10s}"
         L = f"{'L':^10s}"
         mean_E = f"{'mean_E':^10s}"
+        actv_rows = f"{'actv_rows':^9s}"
+        actv_cols = f"{'actv_cols':^9s}"
+        actv_data = f"{'actv_data':^9s}"
 
-        print(" ".join((steps, arguments, backtracks, alpha, phi, delta_F, F, R, S, L, mean_E)))
+        print(" ".join((steps, arguments, backtracks, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
 
     def _print_optimize_row(self):
-        steps = f"{self.steps:4d}" if self.steps is not None else f"{'-':^4s}"
+        steps = f"{self.steps:5d}" if self.steps is not None else f"{'-':^5s}"
         arguments = f"{self.arguments:^4s}" if self.arguments is not None else f"{'-':^4s}"
         backtracks = f"{self.backtracks:4d}" if self.backtracks is not None else f"{'-':^4s}"
         alpha = f"{self.alpha:10.3e}" if self.alpha is not None else f"{'-':^10s}"
@@ -1077,8 +1080,11 @@ class MLNN:
         S = f"{self.S:10.3e}" if self.S is not None else f"{'-':^10s}"
         L = f"{self.L:10.3e}" if self.L is not None else f"{'-':^10s}"
         mean_E = f"{np.mean(self.E):10.3e}" if self.E is not None else f"{'-':^10s}"
+        actv_rows = f"{self.subset_active_rows.size:9d}" if self.subset_active_rows.size is not None else f"{'-':^9s}"
+        actv_cols = f"{self.subset_active_cols.size:9d}" if self.subset_active_cols.size is not None else f"{'-':^9s}"
+        actv_data = f"{self.subset_active_data.size:9d}" if self.subset_active_data.size is not None else f"{'-':^9s}"
 
-        print(" ".join((steps, arguments, backtracks, alpha, phi, delta_F, F, R, S, L, mean_E)))
+        print(" ".join((steps, arguments, backtracks, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
 
     def print_result(self):
         if self.termination == 'max_backtracks':

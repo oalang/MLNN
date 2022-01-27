@@ -13,7 +13,6 @@ from sklearn.metrics import accuracy_score
 
 
 def main():
-    rng = np.random.Generator(np.random.PCG64(12345))
     data = load_wine()
 
     X_original = np.array(data['data'])
