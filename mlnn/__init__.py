@@ -761,6 +761,12 @@ class MLNN:
     def E_positive_projection(self):
         return np.maximum(self.E, 0)
 
+    def update_A(self, A_prev, alpha, dA):
+        self.A = A_prev - alpha * dA
+
+    def update_E(self, E_prev, alpha, dE):
+        self.E = E_prev - alpha * dE
+
     def take_step(self, arguments='AE', alpha_0=None, verbose=None):
         if alpha_0 is None:
             alpha_0 = self.alpha_0
@@ -812,9 +818,9 @@ class MLNN:
 
         # Take a step in the direction of steepest descent.
         if dA is not None:
-            self.A = A_prev - alpha * dA
+            self.update_A(A_prev, alpha, dA)
         if dE is not None:
-            self.E = E_prev - alpha * dE
+            self.update_E(E_prev, alpha, dE)
 
         # If Armijo's condition for sufficient decrease has been satisfied, the search is complete.
         if self.F <= F_prev + self.armijo * alpha * phi:
@@ -847,9 +853,9 @@ class MLNN:
         # Take a step in the direction of steepest descent.
         F_old = self.F
         if dA is not None:
-            self.A = A_prev - alpha * dA
+            self.update_A(A_prev, alpha, dA)
         if dE is not None:
-            self.E = E_prev - alpha * dE
+            self.update_E(E_prev, alpha, dE)
 
         backtracks += 1
 
@@ -894,9 +900,9 @@ class MLNN:
             # Take a step in the direction of steepest descent.
             F_old = self.F
             if dA is not None:
-                self.A = A_prev - alpha * dA
+                self.update_A(A_prev, alpha, dA)
             if dE is not None:
-                self.E = E_prev - alpha * dE
+                self.update_E(E_prev, alpha, dE)
 
             backtracks += 1
 
