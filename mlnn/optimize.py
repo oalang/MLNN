@@ -5,7 +5,7 @@ from sklearn.decomposition import PCA, KernelPCA
 from loss import ReLU
 
 
-class MLNN:
+class MLNNSteepestDescent:
     def __init__(self, B, T, N, C=None, A_0=None, E_0=None, mlnn_params=None, line_search_params=None, optimize_params=None):
         self.r = 0
         self.s = 0
