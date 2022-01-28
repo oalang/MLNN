@@ -71,8 +71,9 @@ def main():
     s = 0
     l = 1
     q = 1
-    inner = loss.SmoothReLU(.5)
-    outer = loss.SmoothReLU(.5)
+    inner_loss = loss.SmoothReLU(.5)
+    outer_loss = loss.SmoothReLU(.5)
+#    outer_loss = None
 
     alpha_0 = 1e-3
     armijo = 1e-6
@@ -111,8 +112,8 @@ def main():
         's': s,
         'l': l,
         'q': q,
-        'inner': inner,
-        'outer': outer,
+        'inner_loss': inner_loss,
+        'outer_loss': outer_loss,
         'k_mode': k_mode,
         'a_mode': a_mode,
         'e_mode': e_mode,

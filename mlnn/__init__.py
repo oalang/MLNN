@@ -11,8 +11,8 @@ class MLNN:
         self.s = 0
         self.l = 1
         self.q = 1
-        self.inner = ReLU(1)
-        self.outer = ReLU(1)
+        self.inner_loss = ReLU(1)
+        self.outer_loss = ReLU(1)
         self.k_mode = None
         self.a_mode = 'full'
         self.e_mode = 'single'
@@ -660,22 +660,29 @@ class MLNN:
 
     def _compute_O(self):
         if self.q == 1:
-            self.O = np.sum(self.inner.func(self.I), axis=1, keepdims=True) - self.N
+            self.O = np.sum(self.inner_loss.func(self.I), axis=1, keepdims=True)
         else:
-            self.O = np.sum(self.Q * self.inner.func(self.I), axis=1, keepdims=True) - self.N
+            self.O = np.sum(self.Q * self.inner_loss.func(self.I), axis=1, keepdims=True)
+
+        if self.outer_loss is not None:
+            self.O -= self.N
 
     def _compute_L(self):
-        self.L = self.l * np.sum(self.outer.func(self.O))
+        if self.outer_loss is not None:
+            self.L = self.l * np.sum(self.outer_loss.func(self.O))
+        else:
+            self.L = self.l * np.sum(self.O)
 
     def _compute_F(self):
         self.F = self.R + self.S + self.L
         self.F_count += 1
 
     def _compute_V(self):
-        if self.q == 1:
-            V = self.l * self.outer.grad(self.O) * self.inner.grad(self.I) * self.T
-        else:
-            V = self.l * self.outer.grad(self.O) * self.inner.grad(self.I) * self.Q * self.T
+        V = self.l * self.inner_loss.grad(self.I) * self.T
+        if self.outer_loss is not None:
+            V *= self.outer_loss.grad(self.O)
+        if self.q != 1:
+            V *= self.Q
         is_active_row = np.any(V, axis=1)
         is_active_col = np.any(V, axis=0)
         is_active = np.logical_or(is_active_row, is_active_col)
