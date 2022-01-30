@@ -1,6 +1,6 @@
 import numpy as np
 
-from optimize import MLNNSteepestDescent
+from mlnn.optimizers import MLNNSteepestDescent
 
 
 class MLNN:

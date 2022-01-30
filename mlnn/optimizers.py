@@ -2,25 +2,14 @@ import time
 import numpy as np
 from sklearn.decomposition import PCA, KernelPCA
 
-from loss import ReLU
-
 
 class MLNNSteepestDescent:
-    def __init__(self, B, T, N, C=None, A_0=None, E_0=None, mlnn_params=None, line_search_params=None, optimize_params=None):
-        self.r = 0
-        self.s = 0
-        self.l = 1
-        self.q = 1
-        self.inner_loss = ReLU(1)
-        self.outer_loss = ReLU(1)
-        self.k_mode = None
-        self.a_mode = 'full'
-        self.e_mode = 'single'
-        self.i_mode = None
-        self.keep_a_psd = None
-        self.keep_a_centered = None
-        self.keep_e_positive = None
-        self.d = 2
+    def __init__(self, engine, A_0=None, E_0=None, d = 2, optimize_params=None, line_search_params=None):
+        self.max_steps = 1000
+        self.max_time = 10
+        self.min_delta_F = 1e-6
+        self.verbose_optimize = False
+        self.d = d
 
         self.alpha_0 = 1e-6
         self.armijo = 1e-6
@@ -29,17 +18,11 @@ class MLNNSteepestDescent:
         self.max_backtracks = 20
         self.verbose_line_search = False
 
-        self.max_steps = 1000
-        self.max_time = 10
-        self.min_delta_F = 1e-6
-        self.verbose_optimize = False
 
-        if mlnn_params:
-            self.apply_params(mlnn_params)
-        if line_search_params:
-            self.apply_params(line_search_params)
         if optimize_params:
             self.apply_params(optimize_params)
+        if line_search_params:
+            self.apply_params(line_search_params)
 
         if self.k_mode is None:
             if C is None:
