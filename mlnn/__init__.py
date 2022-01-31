@@ -24,4 +24,5 @@ class MLNN:
             optimize_params=self.optimize_params,
         )
         optimizer.optimize()
+        optimizer.minimize()
         optimizer.print_result()

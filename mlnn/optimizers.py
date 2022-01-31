@@ -77,6 +77,11 @@ class MLNNSteepestDescent:
         self.run_time = None
 
         self.steps = 0
+        self.mlnn.F_count = 0
+        self.mlnn.dFdA_count = 0
+        self.mlnn.dFdE_count = 0
+        self.mlnn.eigh_count = 0
+
 
         self.F_0 = None
         self.delta_F = None
@@ -331,7 +336,7 @@ class MLNNSteepestDescent:
                 arg_steps += 1
 
                 self.delta_F = F_prev - self.mlnn.F
-                F_prev = self.F
+                F_prev = self.mlnn.F
 
                 if verbose:
                     self._print_optimize_row()
