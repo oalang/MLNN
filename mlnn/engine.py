@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.decomposition import PCA, KernelPCA
 
 from loss import ReLU
 
@@ -579,3 +580,91 @@ class MLNNEngine:
 
     def E_positive_projection(self):
         return np.maximum(self.E, 0)
+
+    def update_A(self, A, alpha, dA):
+        self.A = A - alpha * dA
+
+    def update_E(self, E, alpha, dE):
+        self.E = E - alpha * dE
+
+    def compute_A_0(self, i_mode='random', d=None):
+        if i_mode == 'random':
+            rng = np.random.Generator(np.random.PCG64(12345))
+            
+        if self.a_mode == 'full':
+            if i_mode == 'zero':
+                A = np.zeros((self.m, self.m))
+            else:
+                if i_mode == 'random':
+                    A = rng.standard_normal(self.m * self.m).reshape(self.m, self.m) / self.m ** .5
+                    A = A.T @ A
+                elif i_mode == 'identity':
+                    A = np.diag(np.ones(self.m) / self.m ** .5)
+                elif i_mode == 'centered':
+                    U = np.identity(self.n) - 1 / self.n
+                    A = self.B.T @ U @ self.B
+                    A = (A + A.T) / 2
+
+                if self.k_mode == 'linear':
+                    K = A
+                elif self.k_mode == 'nonlinear':
+                    K = A @ self.C
+                A /= np.dot(K.T.ravel(), K.ravel()) ** .5
+        elif self.a_mode == 'diagonal':
+            if i_mode == 'zero':
+                A = np.zeros(self.m).reshape(self.m, 1)
+            else:
+                if i_mode == 'random':
+                    A = rng.standard_normal(self.m).reshape(self.m, 1) ** 2
+                elif i_mode == 'identity':
+                    A = np.ones(self.m).reshape(self.m, 1) / self.m ** .5
+
+                if self.k_mode == 'linear':
+                    K = A
+                elif self.k_mode == 'nonlinear':
+                    K = A * self.C
+                A /= np.dot(K.T.ravel(), K.ravel()) ** .5
+        elif self.a_mode == 'decomposed':
+            if d is None:
+                d = self.m
+            
+            if i_mode == 'random':
+                A = rng.standard_normal(d * self.m).reshape(d, self.m) / d ** .5
+            elif i_mode == 'pca':
+                if self.k_mode == 'linear':
+                    pca = PCA(n_components=d)
+                    pca.fit(self.B)
+                    A = pca.components_ / d ** .5
+                elif self.k_mode == 'nonlinear':
+                    kpca = KernelPCA(n_components=d, kernel='precomputed')
+                    kpca.fit(self.C)
+                    A = kpca.eigenvectors_.T / d ** .5
+
+            if self.k_mode == 'linear':
+                K = A @ A.T
+            elif self.k_mode == 'nonlinear':
+                K = A @ self.C @ A.T
+            A /= np.dot(K.T.ravel(), K.ravel()) ** .25
+
+        return A
+
+    def compute_E_0(self, i_mode='random'):
+        if i_mode == 'random':
+            rng = np.random.Generator(np.random.PCG64(12345))
+
+        if self.e_mode == 'single':
+            if i_mode == 'zero':
+                E = 0
+            elif i_mode == 'random':
+                E = rng.standard_normal(1).item() ** 2
+            elif i_mode == 'centered' or i_mode == 'identity' or i_mode == 'pca':
+                E = 1
+        elif self.e_mode == 'multiple':
+            if i_mode == 'zero':
+                E = np.zeros(self.n).reshape(self.n, 1)
+            elif i_mode == 'random':
+                E = rng.standard_normal(self.n).reshape(self.n, 1) ** 2
+            elif i_mode == 'centered' or i_mode == 'identity' or i_mode == 'pca':
+                E = np.ones(self.n).reshape(self.n, 1)
+
+        return E
