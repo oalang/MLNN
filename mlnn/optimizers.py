@@ -20,9 +20,9 @@ class MLNNSteepestDescent:
         self.verbose_line_search = False
 
         if optimize_params:
-            self.apply_params(optimize_params)
+            apply_params(self, optimize_params)
         if line_search_params:
-            self.apply_params(line_search_params)
+            apply_params(self, line_search_params)
 
         if self.i_mode is None:
             if self.mlnn.a_mode == 'full' or self.mlnn.a_mode == 'diagonal':
@@ -66,7 +66,8 @@ class MLNNSteepestDescent:
 
     def apply_params(self, params):
         for attr in params:
-            setattr(self, attr, params[attr])
+            if hasattr(self, attr):
+                setattr(self, attr, params[attr])
 
     @property
     def time(self):
@@ -439,3 +440,9 @@ class MLNNSteepestDescent:
         print(f"  dE function calls: {self.mlnn.dFdE_count:d}")
         print(f"eigh function calls: {self.mlnn.eigh_count:d}")
         print("")
+
+
+def apply_params(obj, params):
+    for attr in params:
+        if hasattr(obj, attr):
+            setattr(obj, attr, params[attr])

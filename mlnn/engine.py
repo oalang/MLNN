@@ -20,7 +20,7 @@ class MLNNEngine:
         self.keep_e_positive = None
 
         if mlnn_params:
-            self.apply_params(mlnn_params)
+            apply_params(self, mlnn_params)
 
         if self.k_mode is None:
             if C is None:
@@ -72,10 +72,6 @@ class MLNNEngine:
         self.dFdA_count = 0
         self.dFdE_count = 0
         self.eigh_count = 0
-
-    def apply_params(self, params):
-        for attr in params:
-            setattr(self, attr, params[attr])
 
     @property
     def B(self):
@@ -668,3 +664,10 @@ class MLNNEngine:
                 E = np.ones(self.n).reshape(self.n, 1)
 
         return E
+
+
+def apply_params(obj, params):
+    for attr in params:
+        if hasattr(obj, attr):
+            setattr(obj, attr, params[attr])
+
