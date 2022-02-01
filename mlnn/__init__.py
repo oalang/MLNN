@@ -23,6 +23,7 @@ class MLNN:
             line_search_params=self.line_search_params,
             optimize_params=self.optimize_params,
         )
-        optimizer.optimize()
         optimizer.minimize()
+        optimizer.print_result()
+        optimizer.minimize(method='alternating')
         optimizer.print_result()

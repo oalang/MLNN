@@ -253,7 +253,29 @@ class MLNNSteepestDescent:
                 self.termination = 'max_backtracks'
                 return False
 
-    def optimize(self, arguments='AE', alpha_0=None, min_delta_F=None, max_steps=None, max_time=None, verbose=None):
+    def minimize(self, method='fixed', **kwargs):
+        alpha_0 = kwargs['alpha_0'] if 'alpha_0' in kwargs else None
+        min_delta_F = kwargs['min_delta_F'] if 'min_delta_F' in kwargs else None
+        max_steps = kwargs['max_steps'] if 'max_steps' in kwargs else None
+        max_time = kwargs['max_time'] if 'max_time' in kwargs else None
+        verbose = kwargs['verbose'] if 'verbose' in kwargs else None
+
+        if method == 'fixed':
+            arguments = kwargs['arguments'] if 'arguments' in kwargs else 'AE'
+
+            self.minimize_fixed(
+                arguments=arguments, alpha_0=alpha_0, min_delta_F=min_delta_F,
+                max_steps=max_steps, max_time=max_time, verbose=verbose
+            )
+        elif method == 'alternating':
+            max_arg_steps = kwargs['max_arg_steps'] if 'max_arg_steps' in kwargs else 5
+
+            self.minimize_alternating(
+                max_arg_steps=max_arg_steps, alpha_0=alpha_0, min_delta_F=min_delta_F,
+                max_steps=max_steps, max_time=max_time, verbose=verbose
+            )
+
+    def minimize_fixed(self, arguments='AE', alpha_0=None, min_delta_F=None, max_steps=None, max_time=None, verbose=None):
         if alpha_0 is None:
             alpha_0 = self.alpha_0
 
@@ -302,7 +324,7 @@ class MLNNSteepestDescent:
             self._print_optimize_header()
             self.print_result()
 
-    def minimize(self, max_arg_steps=5, alpha_0=None, min_delta_F=None, max_steps=None, max_time=None, verbose=None):
+    def minimize_alternating(self, max_arg_steps=5, alpha_0=None, min_delta_F=None, max_steps=None, max_time=None, verbose=None):
         if alpha_0 is None:
             alpha_0 = self.alpha_0
 
@@ -404,11 +426,11 @@ class MLNNSteepestDescent:
         alpha = f"{self.alpha:10.3e}" if self.alpha is not None else f"{'-':^10s}"
         phi = f"{self.phi:10.3e}" if self.phi is not None else f"{'-':^10s}"
         delta_F = f"{self.delta_F:10.3e}" if self.delta_F is not None else f"{'-':^10s}"
-        F = f"{self.F:10.3e}" if self.mlnn.F is not None else f"{'-':^10s}"
-        R = f"{self.R:10.3e}" if self.mlnn.R is not None else f"{'-':^10s}"
-        S = f"{self.S:10.3e}" if self.mlnn.S is not None else f"{'-':^10s}"
-        L = f"{self.L:10.3e}" if self.mlnn.L is not None else f"{'-':^10s}"
-        mean_E = f"{np.mean(self.mlnn.E):10.3e}" if self.E is not None else f"{'-':^10s}"
+        F = f"{self.mlnn.F:10.3e}" if self.mlnn.F is not None else f"{'-':^10s}"
+        R = f"{self.mlnn.R:10.3e}" if self.mlnn.R is not None else f"{'-':^10s}"
+        S = f"{self.mlnn.S:10.3e}" if self.mlnn.S is not None else f"{'-':^10s}"
+        L = f"{self.mlnn.L:10.3e}" if self.mlnn.L is not None else f"{'-':^10s}"
+        mean_E = f"{np.mean(self.mlnn.E):10.3e}" if self.mlnn.E is not None else f"{'-':^10s}"
         actv_rows = f"{self.mlnn.subset_active_rows.size:9d}" if self.mlnn.subset_active_rows.size is not None else f"{'-':^9s}"
         actv_cols = f"{self.mlnn.subset_active_cols.size:9d}" if self.mlnn.subset_active_cols.size is not None else f"{'-':^9s}"
         actv_data = f"{self.mlnn.subset_active_data.size:9d}" if self.mlnn.subset_active_data.size is not None else f"{'-':^9s}"

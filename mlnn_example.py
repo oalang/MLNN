@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import loss
-from mlnn import MLNN
+from mlnn.engine import MLNNEngine
+from mlnn.optimizers import MLNNSteepestDescent
 
 from sklearn.datasets import load_wine
 from sklearn.model_selection import StratifiedShuffleSplit
@@ -82,6 +83,7 @@ def main():
     min_delta_F = 1e-6
     max_steps = 100
     max_time = 1
+    method = 'fixed'
 
     X = X_train_scaled
     Y = Y_train
@@ -121,7 +123,6 @@ def main():
         'keep_a_psd': keep_a_psd,
         'keep_a_centered': keep_a_centered,
         'keep_e_positive': keep_e_positive,
-        'd': d,
     }
 
     line_search_params = {
@@ -134,11 +135,13 @@ def main():
         'min_delta_F': min_delta_F,
         'max_steps': max_steps,
         'max_time': max_time,
+        'method': method,
     }
 
-    mlnn = MLNN(B, T, N, C, mlnn_params=mlnn_params, line_search_params=line_search_params, optimize_params=optimize_params)
-    mlnn.optimize(verbose=True)
-    mlnn.minimize(verbose=True)
+    mlnn = MLNNEngine(B, T, N, C, mlnn_params)
+    optimizer = MLNNSteepestDescent(mlnn, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer.minimize(method='fixed', verbose=True)
+    optimizer.minimize(method='alternating', verbose=True)
 
     #plt.show()
 
