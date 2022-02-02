@@ -82,7 +82,7 @@ def main():
 
     min_delta_F = 1e-6
     max_steps = 100
-    max_time = 1
+    max_time = 100000
     method = 'fixed'
 
     X = X_train_scaled
@@ -140,7 +140,7 @@ def main():
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
     callback = MLNNCallback(print_stats=True)
-    optimizer = MLNNSteepestDescent(mlnn, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer = MLNNSteepestDescent(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
     optimizer.minimize(verbose=False)
     optimizer.print_result()
 

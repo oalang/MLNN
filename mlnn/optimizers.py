@@ -4,8 +4,9 @@ from scipy.optimize import minimize, Bounds
 
 
 class MLNNSteepestDescent:
-    def __init__(self, mlnn, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
+    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
         self.mlnn = mlnn
+        self.callback = callback
 
         self.i_mode = None
         self.max_steps = 1000
@@ -308,6 +309,9 @@ class MLNNSteepestDescent:
             self._print_optimize_header()
             self._print_optimize_row()
 
+        if self.callback is not None:
+            self.callback.start(self)
+
         self.F_0 = F_prev = self.mlnn.F
 
         while self.take_step(arguments, alpha_0):
@@ -316,6 +320,9 @@ class MLNNSteepestDescent:
 
             if verbose:
                 self._print_optimize_row()
+
+            if self.callback is not None:
+                self.callback.iterate()
 
             if self.delta_F <= min_delta_F:
                 self.termination = 'min_delta_F'
@@ -334,6 +341,9 @@ class MLNNSteepestDescent:
         if verbose:
             self._print_optimize_header()
             self.print_result()
+
+        if self.callback is not None:
+            self.callback.end()
 
     def minimize_alternating(self, max_arg_steps=5, alpha_0=None, min_delta_F=None, max_steps=None, max_time=None, verbose=None):
         if alpha_0 is None:
@@ -710,10 +720,13 @@ class MLNNCallback:
 
         self.optimizer = None
         self.iter = None
+        self.F_prev = None
+        self.delta_F = None
 
     def start(self, optimizer):
         self.optimizer = optimizer
         self.iter = 0
+        self.F_prev = self.optimizer.mlnn.F
 
         if self.print_stats:
             self._print_stats_start()
@@ -726,6 +739,8 @@ class MLNNCallback:
 
     def iterate(self, xk=None):
         self.iter += 1
+        self.delta_F = self.F_prev - self.optimizer.mlnn.F
+        self.F_prev = self.optimizer.mlnn.F
 
         if self.print_stats:
             self._print_stats_iterate()
@@ -747,10 +762,11 @@ class MLNNCallback:
             self._show_figures_end()
 
     def _print_stats_start(self):
-        pass
+        self._print_optimize_header()
+        self._print_optimize_row()
 
     def _print_stats_iterate(self):
-        pass
+        self._print_optimize_row()
 
     def _print_stats_end(self):
         pass
@@ -772,6 +788,49 @@ class MLNNCallback:
 
     def _show_figures_end(self):
         pass
+
+    def _print_optimize_header(self):
+        steps = f"{'step':^5s}"
+        arguments = f"{'args':^4s}" if hasattr(self.optimizer, 'arguments') else ""
+        backtracks = f"{'bktr':^4s}" if hasattr(self.optimizer, 'backtracks') else ""
+        alpha = f"{'alpha':^10s}" if hasattr(self.optimizer, 'alpha') else ""
+        phi = f"{'phi':^10s}" if hasattr(self.optimizer, 'phi') else ""
+        delta_F = f"{'delta_F':^10s}"
+        F = f"{'F':^10s}"
+        R = f"{'R':^10s}"
+        S = f"{'S':^10s}"
+        L = f"{'L':^10s}"
+        mean_E = f"{'mean_E':^10s}"
+        actv_rows = f"{'actv_rows':^9s}"
+        actv_cols = f"{'actv_cols':^9s}"
+        actv_data = f"{'actv_data':^9s}"
+
+        print(" ".join((steps, arguments, backtracks, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
+
+    def _print_optimize_row(self):
+        steps = f"{self.iter:5d}" if self.iter is not None else f"{'-':^5s}"
+        arguments = ((f"{self.optimizer.arguments:^4s}" if self.optimizer.arguments is not None else f"{'-':^4s}")
+                     if hasattr(self.optimizer, 'arguments') else "")
+        backtracks = ((f"{self.optimizer.backtracks:4d}" if self.optimizer.backtracks is not None else f"{'-':^4s}")
+                      if hasattr(self.optimizer, 'backtracks') else "")
+        alpha = ((f"{self.optimizer.alpha:10.3e}" if self.optimizer.alpha is not None else f"{'-':^10s}")
+                 if hasattr(self.optimizer, 'alpha') else "" if hasattr(self.optimizer, 'alpha') else "")
+        phi = ((f"{self.optimizer.phi:10.3e}" if self.optimizer.phi is not None else f"{'-':^10s}")
+               if hasattr(self.optimizer, 'phi') else "")
+        delta_F = f"{self.delta_F:10.3e}" if self.delta_F is not None else f"{'-':^10s}"
+        F = f"{self.optimizer.mlnn.F:10.3e}" if self.optimizer.mlnn.F is not None else f"{'-':^10s}"
+        R = f"{self.optimizer.mlnn.R:10.3e}" if self.optimizer.mlnn.R is not None else f"{'-':^10s}"
+        S = f"{self.optimizer.mlnn.S:10.3e}" if self.optimizer.mlnn.S is not None else f"{'-':^10s}"
+        L = f"{self.optimizer.mlnn.L:10.3e}" if self.optimizer.mlnn.L is not None else f"{'-':^10s}"
+        mean_E = f"{np.mean(self.optimizer.mlnn.E):10.3e}" if self.optimizer.mlnn.E is not None else f"{'-':^10s}"
+        actv_rows = (f"{self.optimizer.mlnn.subset_active_rows.size:9d}"
+                     if self.optimizer.mlnn.subset_active_rows.size is not None else f"{'-':^9s}")
+        actv_cols = (f"{self.optimizer.mlnn.subset_active_cols.size:9d}"
+                     if self.optimizer.mlnn.subset_active_cols.size is not None else f"{'-':^9s}")
+        actv_data = (f"{self.optimizer.mlnn.subset_active_data.size:9d}"
+                     if self.optimizer.mlnn.subset_active_data.size is not None else f"{'-':^9s}")
+
+        print(" ".join((steps, arguments, backtracks, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
 
 
 def apply_params(obj, params):
