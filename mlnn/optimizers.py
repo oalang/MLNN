@@ -1,6 +1,6 @@
 import time
 import numpy as np
-
+from scipy.optimize import minimize, Bounds
 
 class MLNNSteepestDescent:
     def __init__(self, mlnn, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
@@ -82,7 +82,6 @@ class MLNNSteepestDescent:
         self.mlnn.dFdA_count = 0
         self.mlnn.dFdE_count = 0
         self.mlnn.eigh_count = 0
-
 
         self.F_0 = None
         self.delta_F = None
@@ -461,6 +460,232 @@ class MLNNSteepestDescent:
         print(f"  dA function calls: {self.mlnn.dFdA_count:d}")
         print(f"  dE function calls: {self.mlnn.dFdE_count:d}")
         print(f"eigh function calls: {self.mlnn.eigh_count:d}")
+        print("")
+
+
+class MLNNBFGS:
+    def __init__(self, mlnn, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
+        self.mlnn = mlnn
+
+        self.i_mode = None
+        self.max_steps = 1000
+        self.min_delta_F = 1e-6
+        self.verbose_optimize = False
+
+        self.maxcor = None
+        self.gtol = None
+        self.eps = None
+        self.maxfun = None
+        self.iprint = None
+        self.finite_diff_rel_step = None
+
+        self.max_backtracks = 20
+
+        if optimize_params:
+            apply_params(self, optimize_params)
+        if line_search_params:
+            apply_params(self, line_search_params)
+
+        if self.i_mode is None:
+            if self.mlnn.a_mode == 'full' or self.mlnn.a_mode == 'diagonal':
+                self.i_mode = 'zero'
+            elif self.mlnn.a_mode == 'decomposed':
+                self.i_mode = 'pca'
+
+        if self.mlnn.a_mode == 'full':
+            assert (self.i_mode == 'random' or self.i_mode == 'zero' or
+                    self.i_mode == 'identity' or self.i_mode == 'centered')
+        elif self.mlnn.a_mode == 'diagonal':
+            assert (self.i_mode == 'random' or self.i_mode == 'zero' or
+                    self.i_mode == 'identity')
+        elif self.mlnn.a_mode == 'decomposed':
+            assert (self.i_mode == 'random' or self.i_mode == 'pca')
+
+        if A_0 is None:
+            self.A_0 = mlnn.compute_A_0(self.i_mode, d)
+        else:
+            self.A_0 = A_0
+
+        if self.mlnn.a_mode == 'full':
+            assert self.A_0.shape[0] == self.mlnn.m
+            assert np.array_equal(self.A_0, self.A_0.T)
+        elif self.mlnn.a_mode == 'diagonal':
+            assert self.A_0.shape[0] == self.mlnn.m
+            assert self.A_0.shape[1] == 1
+        elif self.mlnn.a_mode == 'decomposed':
+            assert self.A_0.shape[1] == self.mlnn.m
+
+        if E_0 is None:
+            self.E_0 = mlnn.compute_E_0(self.i_mode)
+        else:
+            self.E_0 = E_0
+
+        if self.mlnn.e_mode == 'single':
+            assert np.isscalar(self.E_0)
+        elif self.mlnn.e_mode == 'multiple':
+            assert self.E_0.shape[0] == self.mlnn.n
+            assert self.E_0.shape[1] == 1
+
+        self.options = None
+        self.bounds = None
+        self.x0 = None
+        self.result = None
+
+    def apply_params(self, params):
+        for attr in params:
+            if hasattr(self, attr):
+                setattr(self, attr, params[attr])
+
+    @property
+    def time(self):
+        return time.perf_counter() - self.time_0
+
+    def set_options(self):
+        self.options = {}
+
+        if self.max_steps is not None:
+            self.options['maxiter'] = self.max_steps
+
+        if self.min_delta_F is not None:
+            self.options['ftol'] = self.min_delta_F
+
+        if self.verbose_optimize is not None:
+            if self.verbose_optimize:
+                self.options['disp'] = 1
+            else:
+                self.options['disp'] = 0
+
+        if self.maxcor is not None:
+            self.options['maxcor'] = self.maxcor
+
+        if self.gtol is not None:
+            self.options['gtol'] = self.gtol
+
+        if self.eps is not None:
+            self.options['eps'] = self.eps
+
+        if self.maxfun is not None:
+            self.options['maxfun'] = self.maxfun
+
+        if self.iprint is not None:
+            self.options['iprint'] = self.iprint
+
+        if self.finite_diff_rel_step is not None:
+            self.options['finite_diff_rel_step'] = self.finite_diff_rel_step
+
+        if self.max_backtracks is not None:
+            self.options['maxls'] = self.max_backtracks
+
+    def set_bounds(self, arguments):
+        lb = np.empty(0)
+
+        if 'A' in arguments:
+            if self.mlnn.keep_a_psd:
+                if self.mlnn.a_mode == 'full':
+                    raise RuntimeError('L-BFGS-B cannot impose a PSD constraint on a full matrix')
+                elif self.mlnn.a_mode == 'diagonal':
+                    lb = np.append(lb, np.zeros(self.A_0.size))
+                elif self.mlnn.a_mode == 'decomposed':
+                    lb = np.append(lb, np.full(self.A_0.size, -np.inf))
+            else:
+                lb = np.append(lb, np.full(self.A_0.size, -np.inf))
+
+            if self.mlnn.keep_a_centered:
+                if self.mlnn.a_mode == 'full' or self.mlnn.a_mode == 'decomposed':
+                    raise RuntimeError('L-BFGS-B cannot impose centering constraint')
+
+        if 'E' in arguments:
+            if self.mlnn.keep_e_positive:
+                if self.mlnn.e_mode == 'single':
+                    lb = np.append(lb, 0)
+                elif self.mlnn.e_mode == 'multiple':
+                    lb = np.append(lb, np.zeros(self.E_0.size))
+            else:
+                if self.mlnn.e_mode == 'single':
+                    lb = np.append(lb, -np.inf)
+                elif self.mlnn.e_mode == 'multiple':
+                    lb = np.append(lb, np.full(self.E_0.size, -np.inf))
+
+        self.bounds = Bounds(lb, np.inf)
+        self.mlnn.keep_a_psd = False
+        self.mlnn.keep_a_centered = False
+        self.mlnn.keep_e_positive = False
+
+    def initialize(self):
+        self.time_0 = time.perf_counter()
+        self.run_time = None
+
+        self.mlnn.A = self.A_0
+        self.mlnn.E = self.E_0
+        self.F_0 = self.mlnn.F
+
+        self.steps = 0
+        self.mlnn.F_count = 0
+        self.mlnn.dFdA_count = 0
+        self.mlnn.dFdE_count = 0
+
+        self.termination = None
+
+    def read_result(self, arguments):
+        if self.result.success:
+            i = 0
+            if 'A' in arguments:
+                self.mlnn.A = self.result.x[0:self.A_0.size].reshape(self.A_0.shape)
+                i = self.A_0.size
+            if 'E' in arguments:
+                if self.mlnn.e_mode == 'single':
+                    self.mlnn.E = self.result.x[-1]
+                elif self.mlnn.e_mode == 'multiple':
+                    self.mlnn.E = self.result.x[i:].reshape(self.E_0.shape)
+
+            self.steps = self.result.nit
+            self.termination = self.result.message
+
+        else:
+            raise RuntimeError('L-BFGS-B failed to find a solution')
+
+    def minimize(self, arguments='AE', min_delta_F=None, max_steps=None, verbose=None):
+        if min_delta_F is not None:
+            self.min_delta_F = min_delta_F
+
+        if max_steps is not None:
+            self.max_steps = max_steps
+
+        if verbose is not None:
+            self.verbose_optimize = verbose
+
+        self.set_options()
+        self.set_bounds(arguments)
+        self.initialize()
+
+        x0 = np.empty(0)
+
+        if 'A' in arguments:
+            x0 = np.append(x0, self.mlnn.A)
+
+        if 'E' in arguments:
+            x0 = np.append(x0, self.mlnn.E)
+
+        self.result = minimize(self.mlnn.fun, x0, (arguments,), 'L-BFGS-B', self.mlnn.jac, bounds=self.bounds, options=self.options)
+
+        self.run_time = self.time
+
+        self.read_result(arguments)
+
+        if verbose:
+            self.print_result()
+
+    def print_result(self):
+        print("")
+        print(f"Termination: {self.termination}")
+        print(f"       F_0 = {self.F_0:f}")
+        print(f"         F = {self.mlnn.F:f}")
+        print(f"     steps = {self.steps:d}")
+        print(f"  run_time = {self.run_time:f} seconds")
+        print("")
+        print(f"   F function calls: {self.mlnn.F_count:d}")
+        print(f"  dA function calls: {self.mlnn.dFdA_count:d}")
+        print(f"  dE function calls: {self.mlnn.dFdE_count:d}")
         print("")
 
 

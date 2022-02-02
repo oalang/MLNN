@@ -665,6 +665,40 @@ class MLNNEngine:
 
         return E
 
+    def fun(self, x, arguments='AE'):
+        i = 0
+        if 'A' in arguments:
+            self.A = x[0:self.A.size].reshape(self.A.shape)
+            i = self.A.size
+        if 'E' in arguments:
+            if self.e_mode == 'single':
+                self.E = x[-1]
+            elif self.e_mode == 'multiple':
+                self.E = x[i:].reshape(self.E.shape)
+
+        return self.F
+
+    def jac(self, x, arguments='AE'):
+        i = 0
+        if 'A' in arguments:
+            self.A = x[0:self.A.size].reshape(self.A.shape)
+            i = self.A.size
+        if 'E' in arguments:
+            if self.e_mode == 'single':
+                self.E = x[-1]
+            elif self.e_mode == 'multiple':
+                self.E = x[i:].reshape(self.E.shape)
+
+        jac = np.empty(0)
+
+        if 'A' in arguments:
+            jac = np.append(jac, self.dFdA)
+
+        if 'E' in arguments:
+            jac = np.append(jac, self.dFdE)
+
+        return jac
+
 
 def apply_params(obj, params):
     for attr in params:

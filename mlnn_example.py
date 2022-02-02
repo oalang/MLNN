@@ -2,13 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import loss
 from mlnn.engine import MLNNEngine
-from mlnn.optimizers import MLNNSteepestDescent
+from mlnn.optimizers import MLNNSteepestDescent, MLNNBFGS
 
 from sklearn.datasets import load_wine
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA, KernelPCA
+from sklearn.decomposition import PCA
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 
@@ -50,7 +50,7 @@ def main():
 #    k_mode = 'nonlinear'
 
     a_mode = 'full'
-#    a_mode = 'diagonal'
+    a_mode = 'diagonal'
 #    a_mode = 'decomposed'
 
     e_mode = 'single'
@@ -139,9 +139,14 @@ def main():
     }
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    optimizer = MLNNSteepestDescent(mlnn, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(method='fixed', verbose=True)
-    optimizer.minimize(method='alternating', verbose=True)
+    optimizer = MLNNSteepestDescent(mlnn, E_0=1, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer.minimize(method='fixed', arguments='A', verbose=False)
+    optimizer.print_result()
+
+    mlnn = MLNNEngine(B, T, N, C, mlnn_params)
+    optimizer = MLNNBFGS(mlnn, E_0=1, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer.minimize(arguments='A', verbose=False)
+    optimizer.print_result()
 
     #plt.show()
 
