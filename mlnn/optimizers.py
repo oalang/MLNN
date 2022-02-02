@@ -703,8 +703,75 @@ class MLNNBFGS:
 
 
 class MLNNCallback:
-    def __init__(self):
-        print("hello")
+    def __init__(self, print_stats=False, collect_stats=False, show_figures=False):
+        self.print_stats = print_stats
+        self.collect_stats = collect_stats
+        self.show_figures = show_figures
+
+        self.optimizer = None
+        self.iter = None
+
+    def start(self, optimizer):
+        self.optimizer = optimizer
+        self.iter = 0
+
+        if self.print_stats:
+            self._print_stats_start()
+
+        if self.collect_stats:
+            self._collect_stats_start()
+
+        if self.show_figures:
+            self._show_figures_start()
+
+    def iterate(self, xk=None):
+        self.iter += 1
+
+        if self.print_stats:
+            self._print_stats_iterate()
+
+        if self.collect_stats:
+            self._collect_stats_iterate()
+
+        if self.show_figures:
+            self._show_figures_iterate()
+
+    def end(self):
+        if self.print_stats:
+            self._print_stats_end()
+
+        if self.collect_stats:
+            self._collect_stats_end()
+
+        if self.show_figures:
+            self._show_figures_end()
+
+    def _print_stats_start(self):
+        pass
+
+    def _print_stats_iterate(self):
+        pass
+
+    def _print_stats_end(self):
+        pass
+
+    def _collect_stats_start(self):
+        pass
+
+    def _collect_stats_iterate(self):
+        pass
+
+    def _collect_stats_end(self):
+        pass
+
+    def _show_figures_start(self):
+        pass
+
+    def _show_figures_iterate(self):
+        pass
+
+    def _show_figures_end(self):
+        pass
 
 
 def apply_params(obj, params):
