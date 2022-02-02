@@ -3,29 +3,15 @@ import numpy as np
 from scipy.optimize import minimize, Bounds
 
 
-class MLNNSteepestDescent:
-    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
+class MLNNOptimizer:
+    def __init__(self, mlnn, callback, A_0, E_0, d, optimize_params, line_search_params):
         self.mlnn = mlnn
         self.callback = callback
 
-        self.i_mode = None
-        self.max_steps = 1000
-        self.max_time = 10
-        self.min_delta_F = 1e-6
-        self.method = 'fixed'
-        self.verbose_optimize = False
-
-        self.alpha_0 = 1e-6
-        self.armijo = 1e-6
-        self.rho_lo = .1
-        self.rho_hi = .9
-        self.max_backtracks = 20
-        self.verbose_line_search = False
-
         if optimize_params:
-            apply_params(self, optimize_params)
+            self.apply_params(optimize_params)
         if line_search_params:
-            apply_params(self, line_search_params)
+            self.apply_params(line_search_params)
 
         if self.i_mode is None:
             if self.mlnn.a_mode == 'full' or self.mlnn.a_mode == 'diagonal':
@@ -69,23 +55,70 @@ class MLNNSteepestDescent:
 
         self.time_0 = None
         self.run_time = None
-        self.steps = 0
+        self.steps = None
         self.F_0 = None
-        self.delta_F = None
-        self.arguments = None
-        self.phi = None
-        self.alpha = None
-        self.backtracks = None
         self.termination = None
+
+    @property
+    def time(self):
+        return time.perf_counter() - self.time_0
 
     def apply_params(self, params):
         for attr in params:
             if hasattr(self, attr):
                 setattr(self, attr, params[attr])
+    
+    def print_result(self):
+        if self.termination == 'max_backtracks':
+            threshold = f" (max_backtracks = {self.max_backtracks:d})"
+        elif self.termination == 'min_delta_F':
+            threshold = f" (min_delta_F = {self.min_delta_F:e})"
+        elif self.termination == 'max_steps':
+            threshold = f" (max_steps = {self.max_steps:d})"
+        elif self.termination == 'max_time':
+            threshold = f" (max_time = {self.max_time:f})"
+        else:
+            threshold = ""
+    
+        print("")
+        print(f"Termination: {self.termination}{threshold}")
+        print(f"       F_0 = {self.F_0:f}")
+        print(f"         F = {self.mlnn.F:f}")
+        if hasattr(self, 'delta_F'):
+            print(f"   delta_F = {self.delta_F:e}")
+        print(f"     steps = {self.steps:d}")
+        print(f"  run_time = {self.run_time:f} seconds")
+        print("")
+        print(f"   F function calls: {self.mlnn.F_count:d}")
+        print(f"  dA function calls: {self.mlnn.dFdA_count:d}")
+        print(f"  dE function calls: {self.mlnn.dFdE_count:d}")
+        print(f"eigh function calls: {self.mlnn.eigh_count:d}")
+        print("")
 
-    @property
-    def time(self):
-        return time.perf_counter() - self.time_0
+
+class MLNNSteepestDescent(MLNNOptimizer):
+    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
+        self.i_mode = None
+        self.max_steps = 1000
+        self.min_delta_F = 1e-6
+        self.verbose_optimize = False
+        self.max_time = 10
+        self.method = 'fixed'
+
+        self.max_backtracks = 20
+        self.alpha_0 = 1e-6
+        self.armijo = 1e-6
+        self.rho_lo = .1
+        self.rho_hi = .9
+        self.verbose_line_search = False
+
+        super().__init__(mlnn, callback, A_0, E_0, d, optimize_params, line_search_params)
+
+        self.delta_F = None
+        self.arguments = None
+        self.phi = None
+        self.alpha = None
+        self.backtracks = None
 
     def initialize(self):
         self.time_0 = time.perf_counter()
@@ -430,42 +463,13 @@ class MLNNSteepestDescent:
         if self.callback is not None:
             self.callback.end()
 
-    def print_result(self):
-        if self.termination == 'max_backtracks':
-            threshold = f" (max_backtracks = {self.max_backtracks:d})"
-        elif self.termination == 'min_delta_F':
-            threshold = f" (min_delta_F = {self.min_delta_F:e})"
-        elif self.termination == 'max_steps':
-            threshold = f" (max_steps = {self.max_steps:d})"
-        elif self.termination == 'max_time':
-            threshold = f" (max_time = {self.max_time:f})"
-        else:
-            threshold = ""
 
-        print("")
-        print(f"Termination: {self.termination}{threshold}")
-        print(f"       F_0 = {self.F_0:f}")
-        print(f"         F = {self.mlnn.F:f}")
-        print(f"   delta_F = {self.delta_F:e}")
-        print(f"     steps = {self.steps:d}")
-        print(f"  run_time = {self.run_time:f} seconds")
-        print("")
-        print(f"   F function calls: {self.mlnn.F_count:d}")
-        print(f"  dA function calls: {self.mlnn.dFdA_count:d}")
-        print(f"  dE function calls: {self.mlnn.dFdE_count:d}")
-        print(f"eigh function calls: {self.mlnn.eigh_count:d}")
-        print("")
-
-
-class MLNNBFGS:
-    def __init__(self, mlnn, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
-        self.mlnn = mlnn
-
+class MLNNBFGS(MLNNOptimizer):
+    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
         self.i_mode = None
         self.max_steps = 1000
         self.min_delta_F = 1e-6
         self.verbose_optimize = False
-
         self.maxcor = None
         self.gtol = None
         self.eps = None
@@ -475,69 +479,11 @@ class MLNNBFGS:
 
         self.max_backtracks = 20
 
-        if optimize_params:
-            apply_params(self, optimize_params)
-        if line_search_params:
-            apply_params(self, line_search_params)
-
-        if self.i_mode is None:
-            if self.mlnn.a_mode == 'full' or self.mlnn.a_mode == 'diagonal':
-                self.i_mode = 'zero'
-            elif self.mlnn.a_mode == 'decomposed':
-                self.i_mode = 'pca'
-
-        if self.mlnn.a_mode == 'full':
-            assert (self.i_mode == 'random' or self.i_mode == 'zero' or
-                    self.i_mode == 'identity' or self.i_mode == 'centered')
-        elif self.mlnn.a_mode == 'diagonal':
-            assert (self.i_mode == 'random' or self.i_mode == 'zero' or
-                    self.i_mode == 'identity')
-        elif self.mlnn.a_mode == 'decomposed':
-            assert (self.i_mode == 'random' or self.i_mode == 'pca')
-
-        if A_0 is None:
-            self.A_0 = mlnn.compute_A_0(self.i_mode, d)
-        else:
-            self.A_0 = A_0
-
-        if self.mlnn.a_mode == 'full':
-            assert self.A_0.shape[0] == self.mlnn.m
-            assert np.array_equal(self.A_0, self.A_0.T)
-        elif self.mlnn.a_mode == 'diagonal':
-            assert self.A_0.shape[0] == self.mlnn.m
-            assert self.A_0.shape[1] == 1
-        elif self.mlnn.a_mode == 'decomposed':
-            assert self.A_0.shape[1] == self.mlnn.m
-
-        if E_0 is None:
-            self.E_0 = mlnn.compute_E_0(self.i_mode)
-        else:
-            self.E_0 = E_0
-
-        if self.mlnn.e_mode == 'single':
-            assert np.isscalar(self.E_0)
-        elif self.mlnn.e_mode == 'multiple':
-            assert self.E_0.shape[0] == self.mlnn.n
-            assert self.E_0.shape[1] == 1
+        super().__init__(mlnn, callback, A_0, E_0, d, optimize_params, line_search_params)
 
         self.options = None
         self.bounds = None
         self.result = None
-
-        self.time_0 = None
-        self.run_time = None
-        self.F_0 = None
-        self.steps = None
-        self.termination = None
-
-    def apply_params(self, params):
-        for attr in params:
-            if hasattr(self, attr):
-                setattr(self, attr, params[attr])
-
-    @property
-    def time(self):
-        return time.perf_counter() - self.time_0
 
     def set_options(self):
         self.options = {}
@@ -670,19 +616,6 @@ class MLNNBFGS:
         if verbose:
             self.print_result()
 
-    def print_result(self):
-        print("")
-        print(f"Termination: {self.termination}")
-        print(f"       F_0 = {self.F_0:f}")
-        print(f"         F = {self.mlnn.F:f}")
-        print(f"     steps = {self.steps:d}")
-        print(f"  run_time = {self.run_time:f} seconds")
-        print("")
-        print(f"   F function calls: {self.mlnn.F_count:d}")
-        print(f"  dA function calls: {self.mlnn.dFdA_count:d}")
-        print(f"  dE function calls: {self.mlnn.dFdE_count:d}")
-        print("")
-
 
 class MLNNCallback:
     def __init__(self, print_stats=False, collect_stats=False, show_figures=False):
@@ -803,9 +736,3 @@ class MLNNCallback:
                      if self.optimizer.mlnn.subset_active_data.size is not None else f"{'-':^9s}")
 
         print(" ".join((steps, arguments, backtracks, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
-
-
-def apply_params(obj, params):
-    for attr in params:
-        if hasattr(obj, attr):
-            setattr(obj, attr, params[attr])
