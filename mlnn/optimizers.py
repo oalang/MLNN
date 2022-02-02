@@ -12,6 +12,7 @@ class MLNNSteepestDescent:
         self.max_steps = 1000
         self.max_time = 10
         self.min_delta_F = 1e-6
+        self.method = 'fixed'
         self.verbose_optimize = False
 
         self.alpha_0 = 1e-6
@@ -265,7 +266,10 @@ class MLNNSteepestDescent:
                 self.termination = 'max_backtracks'
                 return False
 
-    def minimize(self, method='fixed', **kwargs):
+    def minimize(self, method=None, **kwargs):
+        if method is None:
+            method = self.method
+
         alpha_0 = kwargs['alpha_0'] if 'alpha_0' in kwargs else None
         min_delta_F = kwargs['min_delta_F'] if 'min_delta_F' in kwargs else None
         max_steps = kwargs['max_steps'] if 'max_steps' in kwargs else None
@@ -359,11 +363,16 @@ class MLNNSteepestDescent:
         if verbose is None:
             verbose = self.verbose_optimize
 
+        if verbose:
+            if self.callback is None:
+                self.callback = MLNNCallback(print_stats=True)
+            else:
+                self.callback.print_stats = True
+
         self.initialize()
 
-        if verbose:
-            self._print_optimize_header()
-            self._print_optimize_row()
+        if self.callback is not None:
+            self.callback.start(self)
 
         arguments = 'AE'
         arg_alpha_0 = {'AE': alpha_0, 'A': alpha_0, 'E': alpha_0}
@@ -380,8 +389,8 @@ class MLNNSteepestDescent:
                 self.delta_F = F_prev - self.mlnn.F
                 F_prev = self.mlnn.F
 
-                if verbose:
-                    self._print_optimize_row()
+                if self.callback is not None:
+                    self.callback.iterate()
 
                 if self.delta_F <= min_delta_F:
                     self.termination = 'min_delta_F'
@@ -416,8 +425,10 @@ class MLNNSteepestDescent:
         self.run_time = self.time
 
         if verbose:
-            self._print_optimize_header()
             self.print_result()
+
+        if self.callback is not None:
+            self.callback.end()
 
     def print_result(self):
         if self.termination == 'max_backtracks':

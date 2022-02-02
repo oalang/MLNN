@@ -83,7 +83,7 @@ def main():
     min_delta_F = 1e-6
     max_steps = 100
     max_time = 100000
-    method = 'fixed'
+    method = 'alternating'
 
     X = X_train_scaled
     Y = Y_train
@@ -139,9 +139,9 @@ def main():
     }
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallback(print_stats=True)
+    callback = MLNNCallback(print_stats=False)
     optimizer = MLNNSteepestDescent(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(verbose=False)
+    optimizer.minimize(verbose=True)
     optimizer.print_result()
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
