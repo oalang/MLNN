@@ -303,11 +303,13 @@ class MLNNSteepestDescent:
         if verbose is None:
             verbose = self.verbose_optimize
 
-        self.initialize()
-
         if verbose:
-            self._print_optimize_header()
-            self._print_optimize_row()
+            if self.callback is None:
+                self.callback = MLNNCallback(print_stats=True)
+            else:
+                self.callback.print_stats = True
+
+        self.initialize()
 
         if self.callback is not None:
             self.callback.start(self)
@@ -317,9 +319,6 @@ class MLNNSteepestDescent:
         while self.take_step(arguments, alpha_0):
             self.delta_F = F_prev - self.mlnn.F
             F_prev = self.mlnn.F
-
-            if verbose:
-                self._print_optimize_row()
 
             if self.callback is not None:
                 self.callback.iterate()
@@ -339,7 +338,6 @@ class MLNNSteepestDescent:
         self.run_time = self.time
 
         if verbose:
-            self._print_optimize_header()
             self.print_result()
 
         if self.callback is not None:
@@ -420,43 +418,6 @@ class MLNNSteepestDescent:
         if verbose:
             self._print_optimize_header()
             self.print_result()
-
-    @staticmethod
-    def _print_optimize_header():
-        steps = f"{'step':^5s}"
-        arguments = f"{'args':^4s}"
-        backtracks = f"{'bktr':^4s}"
-        alpha = f"{'alpha':^10s}"
-        phi = f"{'phi':^10s}"
-        delta_F = f"{'delta_F':^10s}"
-        F = f"{'F':^10s}"
-        R = f"{'R':^10s}"
-        S = f"{'S':^10s}"
-        L = f"{'L':^10s}"
-        mean_E = f"{'mean_E':^10s}"
-        actv_rows = f"{'actv_rows':^9s}"
-        actv_cols = f"{'actv_cols':^9s}"
-        actv_data = f"{'actv_data':^9s}"
-
-        print(" ".join((steps, arguments, backtracks, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
-
-    def _print_optimize_row(self):
-        steps = f"{self.steps:5d}" if self.steps is not None else f"{'-':^5s}"
-        arguments = f"{self.arguments:^4s}" if self.arguments is not None else f"{'-':^4s}"
-        backtracks = f"{self.backtracks:4d}" if self.backtracks is not None else f"{'-':^4s}"
-        alpha = f"{self.alpha:10.3e}" if self.alpha is not None else f"{'-':^10s}"
-        phi = f"{self.phi:10.3e}" if self.phi is not None else f"{'-':^10s}"
-        delta_F = f"{self.delta_F:10.3e}" if self.delta_F is not None else f"{'-':^10s}"
-        F = f"{self.mlnn.F:10.3e}" if self.mlnn.F is not None else f"{'-':^10s}"
-        R = f"{self.mlnn.R:10.3e}" if self.mlnn.R is not None else f"{'-':^10s}"
-        S = f"{self.mlnn.S:10.3e}" if self.mlnn.S is not None else f"{'-':^10s}"
-        L = f"{self.mlnn.L:10.3e}" if self.mlnn.L is not None else f"{'-':^10s}"
-        mean_E = f"{np.mean(self.mlnn.E):10.3e}" if self.mlnn.E is not None else f"{'-':^10s}"
-        actv_rows = f"{self.mlnn.subset_active_rows.size:9d}" if self.mlnn.subset_active_rows.size is not None else f"{'-':^9s}"
-        actv_cols = f"{self.mlnn.subset_active_cols.size:9d}" if self.mlnn.subset_active_cols.size is not None else f"{'-':^9s}"
-        actv_data = f"{self.mlnn.subset_active_data.size:9d}" if self.mlnn.subset_active_data.size is not None else f"{'-':^9s}"
-
-        print(" ".join((steps, arguments, backtracks, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
 
     def print_result(self):
         if self.termination == 'max_backtracks':
