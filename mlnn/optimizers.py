@@ -2,6 +2,7 @@ import time
 import numpy as np
 from scipy.optimize import minimize, Bounds
 
+
 class MLNNSteepestDescent:
     def __init__(self, mlnn, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
         self.mlnn = mlnn
@@ -63,6 +64,17 @@ class MLNNSteepestDescent:
         elif self.mlnn.e_mode == 'multiple':
             assert self.E_0.shape[0] == self.mlnn.n
             assert self.E_0.shape[1] == 1
+
+        self.time_0 = None
+        self.run_time = None
+        self.steps = 0
+        self.F_0 = None
+        self.delta_F = None
+        self.arguments = None
+        self.phi = None
+        self.alpha = None
+        self.backtracks = None
+        self.termination = None
 
     def apply_params(self, params):
         for attr in params:
@@ -528,8 +540,13 @@ class MLNNBFGS:
 
         self.options = None
         self.bounds = None
-        self.x0 = None
         self.result = None
+
+        self.time_0 = None
+        self.run_time = None
+        self.F_0 = None
+        self.steps = None
+        self.termination = None
 
     def apply_params(self, params):
         for attr in params:
@@ -683,6 +700,11 @@ class MLNNBFGS:
         print(f"  dA function calls: {self.mlnn.dFdA_count:d}")
         print(f"  dE function calls: {self.mlnn.dFdE_count:d}")
         print("")
+
+
+class MLNNCallback:
+    def __init__(self):
+        print("hello")
 
 
 def apply_params(obj, params):
