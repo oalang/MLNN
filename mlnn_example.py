@@ -50,7 +50,7 @@ def main():
 #    k_mode = 'nonlinear'
 
     a_mode = 'full'
-    a_mode = 'diagonal'
+#    a_mode = 'diagonal'
 #    a_mode = 'decomposed'
 
     e_mode = 'single'
@@ -139,13 +139,13 @@ def main():
     }
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    optimizer = MLNNSteepestDescent(mlnn, E_0=1, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(method='fixed', arguments='A', verbose=False)
+    optimizer = MLNNSteepestDescent(mlnn, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer.minimize(verbose=False)
     optimizer.print_result()
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    optimizer = MLNNBFGS(mlnn, E_0=1, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(arguments='A', verbose=False)
+    optimizer = MLNNBFGS(mlnn, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer.minimize(verbose=False)
     optimizer.print_result()
 
     #plt.show()

@@ -627,22 +627,18 @@ class MLNNBFGS:
         self.termination = None
 
     def read_result(self, arguments):
-        if self.result.success:
-            i = 0
-            if 'A' in arguments:
-                self.mlnn.A = self.result.x[0:self.A_0.size].reshape(self.A_0.shape)
-                i = self.A_0.size
-            if 'E' in arguments:
-                if self.mlnn.e_mode == 'single':
-                    self.mlnn.E = self.result.x[-1]
-                elif self.mlnn.e_mode == 'multiple':
-                    self.mlnn.E = self.result.x[i:].reshape(self.E_0.shape)
+        i = 0
+        if 'A' in arguments:
+            self.mlnn.A = self.result.x[0:self.A_0.size].reshape(self.A_0.shape)
+            i = self.A_0.size
+        if 'E' in arguments:
+            if self.mlnn.e_mode == 'single':
+                self.mlnn.E = self.result.x[-1]
+            elif self.mlnn.e_mode == 'multiple':
+                self.mlnn.E = self.result.x[i:].reshape(self.E_0.shape)
 
-            self.steps = self.result.nit
-            self.termination = self.result.message
-
-        else:
-            raise RuntimeError('L-BFGS-B failed to find a solution')
+        self.steps = self.result.nit
+        self.termination = self.result.message
 
     def minimize(self, arguments='AE', min_delta_F=None, max_steps=None, verbose=None):
         if min_delta_F is not None:
