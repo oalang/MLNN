@@ -668,26 +668,34 @@ class MLNNEngine:
     def fun(self, x, arguments='AE'):
         i = 0
         if 'A' in arguments:
-            self.A = x[0:self.A.size].reshape(self.A.shape)
+            A = x[0:self.A.size].reshape(self.A.shape)
             i = self.A.size
+            if not np.array_equal(A, self.A):
+                self.A = A
         if 'E' in arguments:
             if self.e_mode == 'single':
-                self.E = x[-1]
+                E = x[-1]
             elif self.e_mode == 'multiple':
-                self.E = x[i:].reshape(self.E.shape)
+                E = x[i:].reshape(self.E.shape)
+            if not np.array_equal(E, self.E):
+                self.E = E
 
         return self.F
 
     def jac(self, x, arguments='AE'):
         i = 0
         if 'A' in arguments:
-            self.A = x[0:self.A.size].reshape(self.A.shape)
+            A = x[0:self.A.size].reshape(self.A.shape)
             i = self.A.size
+            if not np.array_equal(A, self.A):
+                self.A = A
         if 'E' in arguments:
             if self.e_mode == 'single':
-                self.E = x[-1]
+                E = x[-1]
             elif self.e_mode == 'multiple':
-                self.E = x[i:].reshape(self.E.shape)
+                E = x[i:].reshape(self.E.shape)
+            if not np.array_equal(E, self.E):
+                self.E = E
 
         jac = np.empty(0)
 
