@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import loss
 from mlnn.engine import MLNNEngine
-from mlnn.optimizers import MLNNSteepestDescent, MLNNBFGS, MLNNCallback
+from mlnn.optimizers import MLNNBacktracking, MLNNStrongWolfe, MLNNBFGS, MLNNCallback
 
 from sklearn.datasets import load_wine
 from sklearn.model_selection import StratifiedShuffleSplit
@@ -82,7 +82,7 @@ def main():
 
     min_delta_F = 1e-6
     max_steps = 100
-    max_time = 100000
+    max_time = 10
     method = 'fixed'
 
     X = X_train_scaled
@@ -138,9 +138,15 @@ def main():
         'method': method,
     }
 
+    #mlnn = MLNNEngine(B, T, N, C, mlnn_params)
+    #callback = MLNNCallback(print_stats=True)
+    #optimizer = MLNNBacktracking(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    #optimizer.minimize(verbose=False)
+    #optimizer.print_result()
+
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
     callback = MLNNCallback(print_stats=True)
-    optimizer = MLNNSteepestDescent(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer = MLNNStrongWolfe(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
     optimizer.minimize(verbose=False)
     optimizer.print_result()
 

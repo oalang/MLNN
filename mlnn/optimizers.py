@@ -1,6 +1,7 @@
 import time
+import warnings
 import numpy as np
-from scipy.optimize import minimize, Bounds
+from scipy.optimize import line_search, minimize, Bounds
 
 
 class MLNNOptimizer:
@@ -84,7 +85,7 @@ class MLNNOptimizer:
         print(f"Termination: {self.termination}{threshold}")
         print(f"       F_0 = {self.F_0:f}")
         print(f"         F = {self.mlnn.F:f}")
-        if hasattr(self, 'delta_F'):
+        if hasattr(self, 'delta_F') and self.delta_F is not None:
             print(f"   delta_F = {self.delta_F:e}")
         print(f"     steps = {self.steps:d}")
         print(f"  run_time = {self.run_time:f} seconds")
@@ -96,7 +97,7 @@ class MLNNOptimizer:
         print("")
 
 
-class MLNNSteepestDescent(MLNNOptimizer):
+class MLNNBacktracking(MLNNOptimizer):
     def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
         self.i_mode = None
         self.max_steps = 1000
@@ -462,6 +463,316 @@ class MLNNSteepestDescent(MLNNOptimizer):
             self.callback.end()
 
 
+
+
+
+
+
+class MLNNStrongWolfe(MLNNOptimizer):
+    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
+        self.i_mode = None
+        self.max_steps = 1000
+        self.min_delta_F = 1e-6
+        self.verbose_optimize = False
+        self.max_time = 10
+        self.method = 'fixed'
+
+        self.max_backtracks = 20
+        self.alpha_0 = 1e-6
+        self.armijo = 1e-6
+        self.wolfe = .9
+        self.verbose_line_search = False
+
+        super().__init__(mlnn, callback, A_0, E_0, d, optimize_params, line_search_params)
+
+        self.delta_F = None
+        self.arguments = None
+        self.phi = None
+        self.alpha = None
+        self.backtracks = None
+
+    def initialize(self):
+        self.time_0 = time.perf_counter()
+        self.run_time = None
+
+        self.steps = 0
+        self.mlnn.F_count = 0
+        self.mlnn.dFdA_count = 0
+        self.mlnn.dFdE_count = 0
+        self.mlnn.eigh_count = 0
+
+        self.F_0 = None
+        self.delta_F = None
+
+        self.arguments = None
+        self.phi = None
+        self.alpha = None
+        self.backtracks = None
+        self.termination = None
+
+        self.mlnn.A = self.A_0
+        self.mlnn.E = self.E_0
+
+    def take_step(self, arguments='AE', alpha_0=None, verbose=None):
+        if alpha_0 is None:
+            alpha_0 = self.alpha_0
+
+        if verbose is None:
+            verbose = self.verbose_line_search
+
+        A_prev = self.mlnn.A
+        E_prev = self.mlnn.E
+        F_prev = self.mlnn.F
+        arguments_prev = self.arguments
+        phi_prev = self.phi
+        alpha_prev = self.alpha
+
+        # Compute phi, the gradient of F with respect to the step size, alpha.
+        phi = 0
+        xk = np.empty(0)
+        gfk = np.empty(0)
+        if 'A' in arguments:
+            dA = self.mlnn.dFdA
+            phi += self.mlnn.phiA
+            xk = np.append(xk, A_prev)
+            gfk = np.append(gfk, dA)
+        if 'E' in arguments:
+            dE = self.mlnn.dFdE
+            phi += self.mlnn.phiE
+            xk = np.append(xk, E_prev)
+            gfk = np.append(gfk, dE)
+
+        # If phi == 0, F is at a minimum or a saddle point. Return without taking a step.
+        if phi == 0:
+            self.termination = 'zero_phi'
+            return False
+
+        # Commence line search.
+        # If a previous step was taken with the same arguments, assume that this step's first-order change in
+        # F will be the same (i.e. alpha * phi = alpha_prev * phi_prev). Otherwise, set alpha to alpha_0.
+        if arguments == arguments_prev:
+            pi = phi_prev / phi
+
+            # Safeguard the initialization by ensuring alpha is larger than alpha_prev.
+            if pi <= 1:
+                pi = 1.1
+
+            alpha = pi * alpha_prev
+        else:
+            pi = None
+            alpha = alpha_0
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            alpha, fc, gc, new_fval, old_fval, new_slope = line_search(
+                self.mlnn.fun, self.mlnn.jac, xk, -gfk, gfk, F_prev, None,
+                (arguments,), self.armijo, self.wolfe, alpha, None, self.max_backtracks)
+
+        # If the strong Wolfe conditions are satisfied, the search is complete.
+        # Otherwise, the maximum number of backtracks have been performed. Return without taking a step.
+        if alpha is not None:
+            # Take a step in the direction of steepest descent.
+            if 'A' in arguments:
+                self.mlnn.update_A(A_prev, alpha, dA)
+            if 'E' in arguments:
+                self.mlnn.update_E(E_prev, alpha, dE)
+
+            self.mlnn.F = new_fval
+
+            i = 0
+            if 'A' in arguments:
+                self.mlnn.dFdA = new_slope[0:self.mlnn.dFdA.size].reshape(self.mlnn.dFdA.shape)
+                i = self.mlnn.dFdA.size
+            if 'E' in arguments:
+                if self.mlnn.e_mode == 'single':
+                    self.mlnn.dFdE = new_slope[-1]
+                elif self.mlnn.e_mode == 'multiple':
+                    self.mlnn.dFdE = new_slope[i:].reshape(self.mlnn.dFdE.shape)
+
+            self.arguments = arguments
+            self.phi = phi
+            self.alpha = alpha
+            self.backtracks = fc - 1
+            self.termination = None
+            self.steps += 1
+            return True
+        else:
+            self.mlnn.A = A_prev
+            self.mlnn.E = E_prev
+            self.mlnn.F = F_prev
+            self.backtracks = fc - 1
+            self.termination = 'max_backtracks'
+            return False
+
+    def minimize(self, method=None, **kwargs):
+        if method is None:
+            method = self.method
+
+        alpha_0 = kwargs['alpha_0'] if 'alpha_0' in kwargs else None
+        min_delta_F = kwargs['min_delta_F'] if 'min_delta_F' in kwargs else None
+        max_steps = kwargs['max_steps'] if 'max_steps' in kwargs else None
+        max_time = kwargs['max_time'] if 'max_time' in kwargs else None
+        verbose = kwargs['verbose'] if 'verbose' in kwargs else None
+
+        if method == 'fixed':
+            arguments = kwargs['arguments'] if 'arguments' in kwargs else 'AE'
+
+            self.minimize_fixed(
+                arguments=arguments, alpha_0=alpha_0, min_delta_F=min_delta_F,
+                max_steps=max_steps, max_time=max_time, verbose=verbose
+            )
+        elif method == 'alternating':
+            max_arg_steps = kwargs['max_arg_steps'] if 'max_arg_steps' in kwargs else 5
+
+            self.minimize_alternating(
+                max_arg_steps=max_arg_steps, alpha_0=alpha_0, min_delta_F=min_delta_F,
+                max_steps=max_steps, max_time=max_time, verbose=verbose
+            )
+
+    def minimize_fixed(self, arguments='AE', alpha_0=None, min_delta_F=None, max_steps=None, max_time=None, verbose=None):
+        if alpha_0 is None:
+            alpha_0 = self.alpha_0
+
+        if min_delta_F is None:
+            min_delta_F = self.min_delta_F
+
+        if max_steps is None:
+            max_steps = self.max_steps
+
+        if max_time is None:
+            max_time = self.max_time
+
+        if verbose is None:
+            verbose = self.verbose_optimize
+
+        if verbose:
+            if self.callback is None:
+                self.callback = MLNNCallback()
+            self.callback.print_stats = True
+
+        self.initialize()
+
+        if self.callback is not None:
+            self.callback.start(self)
+
+        self.F_0 = F_prev = self.mlnn.F
+
+        while self.take_step(arguments, alpha_0):
+            self.delta_F = F_prev - self.mlnn.F
+            F_prev = self.mlnn.F
+
+            if self.callback is not None:
+                self.callback.iterate()
+
+            if self.delta_F <= min_delta_F:
+                self.termination = 'min_delta_F'
+                break
+
+            if self.steps == max_steps:
+                self.termination = 'max_steps'
+                break
+
+            if self.time >= max_time:
+                self.termination = 'max_time'
+                break
+
+        self.run_time = self.time
+
+        if verbose:
+            self.print_result()
+
+        if self.callback is not None:
+            self.callback.end()
+
+    def minimize_alternating(self, max_arg_steps=5, alpha_0=None, min_delta_F=None, max_steps=None, max_time=None, verbose=None):
+        if alpha_0 is None:
+            alpha_0 = self.alpha_0
+
+        if min_delta_F is None:
+            min_delta_F = self.min_delta_F
+
+        if max_steps is None:
+            max_steps = self.max_steps
+
+        if max_time is None:
+            max_time = self.max_time
+
+        if verbose is None:
+            verbose = self.verbose_optimize
+
+        if verbose:
+            if self.callback is None:
+                self.callback = MLNNCallback()
+            self.callback.print_stats = True
+
+        self.initialize()
+
+        if self.callback is not None:
+            self.callback.start(self)
+
+        arguments = 'AE'
+        arg_alpha_0 = {'AE': alpha_0, 'A': alpha_0, 'E': alpha_0}
+        arg_terminated = {'AE': False, 'A': False, 'E': False}
+        arg_steps = 0
+
+        self.F_0 = F_prev = self.mlnn.F
+
+        while True:
+            if self.take_step(arguments, arg_alpha_0[arguments]):
+                arg_alpha_0[arguments] = self.alpha
+                arg_steps += 1
+
+                self.delta_F = F_prev - self.mlnn.F
+                F_prev = self.mlnn.F
+
+                if self.callback is not None:
+                    self.callback.iterate()
+
+                if self.delta_F <= min_delta_F:
+                    self.termination = 'min_delta_F'
+
+            if self.termination is None:
+                arg_terminated[arguments] = False
+            else:
+                arg_terminated[arguments] = True
+
+                if all(arg_terminated.values()):
+                    self.termination = 'convergence'
+                    break
+
+            if self.steps == max_steps:
+                self.termination = 'max_steps'
+                break
+
+            if self.time >= max_time:
+                self.termination = 'max_time'
+                break
+
+            if arg_terminated[arguments] or (arg_steps == max_arg_steps):
+                if arguments == 'AE':
+                    arguments = 'A'
+                elif arguments == 'A':
+                    arguments = 'E'
+                else:
+                    arguments = 'AE'
+
+                arg_steps = 0
+
+        self.run_time = self.time
+
+        if verbose:
+            self.print_result()
+
+        if self.callback is not None:
+            self.callback.end()
+
+
+
+
+
+
+
+
 class MLNNBFGS(MLNNOptimizer):
     def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
         self.i_mode = None
@@ -603,10 +914,8 @@ class MLNNBFGS(MLNNOptimizer):
             iterate = self.callback.iterate
 
         x0 = np.empty(0)
-
         if 'A' in arguments:
             x0 = np.append(x0, self.mlnn.A)
-
         if 'E' in arguments:
             x0 = np.append(x0, self.mlnn.E)
 
