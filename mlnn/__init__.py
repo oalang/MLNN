@@ -24,6 +24,6 @@ class MLNN:
             optimize_params=self.optimize_params,
         )
         optimizer.minimize()
-        optimizer.print_result()
+        optimizer.report()
         optimizer.minimize(method='alternating')
-        optimizer.print_result()
+        optimizer.report()

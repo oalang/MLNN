@@ -78,7 +78,7 @@ def main():
 
     alpha_0 = 1e-3
     armijo = 1e-6
-    max_backtracks = 50
+    max_ls_iterations = 50
 
     min_delta_F = 1e-6
     max_steps = 100
@@ -128,7 +128,7 @@ def main():
     line_search_params = {
         'alpha_0': alpha_0,
         'armijo': armijo,
-        'max_backtracks': max_backtracks,
+        'max_ls_iterations': max_ls_iterations,
     }
 
     optimize_params = {
@@ -146,15 +146,15 @@ def main():
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
     callback = MLNNCallback(print_stats=True)
-    optimizer = MLNNStrongWolfe(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(verbose=False)
-    optimizer.print_result()
+    optimizer = MLNNStrongWolfe(mlnn, callback=None, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer.minimize(verbose=True)
+    optimizer.report()
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
     callback = MLNNCallback(print_stats=True)
-    optimizer = MLNNBFGS(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(verbose=False)
-    optimizer.print_result()
+    optimizer = MLNNBFGS(mlnn, callback=None, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer.minimize(verbose=True)
+    optimizer.report()
 
     #plt.show()
 

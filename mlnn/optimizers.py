@@ -69,9 +69,9 @@ class MLNNOptimizer:
             if hasattr(self, attr):
                 setattr(self, attr, params[attr])
     
-    def print_result(self):
-        if self.termination == 'max_backtracks':
-            threshold = f" (max_backtracks = {self.max_backtracks:d})"
+    def report(self):
+        if self.termination == 'max_ls_iterations':
+            threshold = f" (max_ls_iterations = {self.max_ls_iterations:d})"
         elif self.termination == 'min_delta_F':
             threshold = f" (min_delta_F = {self.min_delta_F:e})"
         elif self.termination == 'max_steps':
@@ -106,7 +106,7 @@ class MLNNBacktracking(MLNNOptimizer):
         self.max_time = 10
         self.method = 'fixed'
 
-        self.max_backtracks = 20
+        self.max_ls_iterations = 20
         self.alpha_0 = 1e-6
         self.armijo = 1e-6
         self.rho_lo = .1
@@ -119,7 +119,7 @@ class MLNNBacktracking(MLNNOptimizer):
         self.arguments = None
         self.phi = None
         self.alpha = None
-        self.backtracks = None
+        self.ls_iterations = None
 
     def initialize(self):
         self.time_0 = time.perf_counter()
@@ -137,7 +137,7 @@ class MLNNBacktracking(MLNNOptimizer):
         self.arguments = None
         self.phi = None
         self.alpha = None
-        self.backtracks = None
+        self.ls_iterations = None
         self.termination = None
 
         self.mlnn.A = self.A_0
@@ -176,7 +176,7 @@ class MLNNBacktracking(MLNNOptimizer):
             return False
 
         # Commence line search.
-        backtracks = 0
+        ls_iterations = 0
 
         # If a previous step was taken with the same arguments, assume that this step's first-order change in
         # F will be the same (i.e. alpha * phi = alpha_prev * phi_prev). Otherwise, set alpha to alpha_0.
@@ -203,17 +203,17 @@ class MLNNBacktracking(MLNNOptimizer):
             self.arguments = arguments
             self.phi = phi
             self.alpha = alpha
-            self.backtracks = backtracks
+            self.ls_iterations = ls_iterations
             self.termination = None
             self.steps += 1
             return True
 
-        # If the maximum number of backtracks have been performed, return without taking a step.
-        if backtracks == self.max_backtracks:
+        # If the maximum number of ls_iterations have been performed, return without taking a step.
+        if ls_iterations == self.max_ls_iterations:
             self.mlnn.A = A_prev
             self.mlnn.E = E_prev
             self.mlnn.F = F_prev
-            self.termination = 'max_backtracks'
+            self.termination = 'max_ls_iterations'
             return False
 
         # Decrease alpha with a quadratic approximation of the minimizer, by interpolating F_prev, phi, and self.F.
@@ -233,24 +233,24 @@ class MLNNBacktracking(MLNNOptimizer):
         if dE is not None:
             self.mlnn.update_E(E_prev, alpha, dE)
 
-        backtracks += 1
+        ls_iterations += 1
 
         # If Armijo's condition for sufficient decrease has been satisfied, the search is complete.
         if self.mlnn.F <= F_prev + self.armijo * alpha * phi:
             self.arguments = arguments
             self.phi = phi
             self.alpha = alpha
-            self.backtracks = backtracks
+            self.ls_iterations = ls_iterations
             self.termination = None
             self.steps += 1
             return True
 
-        # If the maximum number of backtracks have been performed, return without taking a step.
-        if backtracks == self.max_backtracks:
+        # If the maximum number of ls_iterations have been performed, return without taking a step.
+        if ls_iterations == self.max_ls_iterations:
             self.mlnn.A = A_prev
             self.mlnn.E = E_prev
             self.mlnn.F = F_prev
-            self.termination = 'max_backtracks'
+            self.termination = 'max_ls_iterations'
             return False
 
         while True:
@@ -280,24 +280,24 @@ class MLNNBacktracking(MLNNOptimizer):
             if dE is not None:
                 self.mlnn.update_E(E_prev, alpha, dE)
 
-            backtracks += 1
+            ls_iterations += 1
 
             # If Armijo's condition for sufficient decrease has been satisfied, the search is complete.
             if self.mlnn.F <= F_prev + self.armijo * alpha * phi:
                 self.arguments = arguments
                 self.phi = phi
                 self.alpha = alpha
-                self.backtracks = backtracks
+                self.ls_iterations = ls_iterations
                 self.termination = None
                 self.steps += 1
                 return True
 
-            # If the maximum number of backtracks have been performed, return without taking a step.
-            if backtracks == self.max_backtracks:
+            # If the maximum number of ls_iterations have been performed, return without taking a step.
+            if ls_iterations == self.max_ls_iterations:
                 self.mlnn.A = A_prev
                 self.mlnn.E = E_prev
                 self.mlnn.F = F_prev
-                self.termination = 'max_backtracks'
+                self.termination = 'max_ls_iterations'
                 return False
 
     def minimize(self, method=None, **kwargs):
@@ -374,9 +374,6 @@ class MLNNBacktracking(MLNNOptimizer):
 
         self.run_time = self.time
 
-        if verbose:
-            self.print_result()
-
         if self.callback is not None:
             self.callback.end()
 
@@ -456,9 +453,6 @@ class MLNNBacktracking(MLNNOptimizer):
 
         self.run_time = self.time
 
-        if verbose:
-            self.print_result()
-
         if self.callback is not None:
             self.callback.end()
 
@@ -477,7 +471,7 @@ class MLNNStrongWolfe(MLNNOptimizer):
         self.max_time = 10
         self.method = 'fixed'
 
-        self.max_backtracks = 20
+        self.max_ls_iterations = 20
         self.alpha_0 = 1e-6
         self.armijo = 1e-6
         self.wolfe = .9
@@ -489,7 +483,7 @@ class MLNNStrongWolfe(MLNNOptimizer):
         self.arguments = None
         self.phi = None
         self.alpha = None
-        self.backtracks = None
+        self.ls_iterations = None
 
     def initialize(self):
         self.time_0 = time.perf_counter()
@@ -507,7 +501,7 @@ class MLNNStrongWolfe(MLNNOptimizer):
         self.arguments = None
         self.phi = None
         self.alpha = None
-        self.backtracks = None
+        self.ls_iterations = None
         self.termination = None
 
         self.mlnn.A = self.A_0
@@ -563,13 +557,13 @@ class MLNNStrongWolfe(MLNNOptimizer):
             alpha = alpha_0
 
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+            #warnings.simplefilter("ignore")
             alpha, fc, gc, new_fval, old_fval, new_slope = line_search(
                 self.mlnn.fun, self.mlnn.jac, xk, -gfk, gfk, F_prev, None,
-                (arguments,), self.armijo, self.wolfe, alpha, None, self.max_backtracks)
+                (arguments,), self.armijo, self.wolfe, alpha, None, self.max_ls_iterations)
 
         # If the strong Wolfe conditions are satisfied, the search is complete.
-        # Otherwise, the maximum number of backtracks have been performed. Return without taking a step.
+        # Otherwise, the maximum number of ls_iterations have been performed. Return without taking a step.
         if alpha is not None:
             # Take a step in the direction of steepest descent.
             if 'A' in arguments:
@@ -592,7 +586,7 @@ class MLNNStrongWolfe(MLNNOptimizer):
             self.arguments = arguments
             self.phi = phi
             self.alpha = alpha
-            self.backtracks = fc - 1
+            self.ls_iterations = fc - 1
             self.termination = None
             self.steps += 1
             return True
@@ -600,8 +594,8 @@ class MLNNStrongWolfe(MLNNOptimizer):
             self.mlnn.A = A_prev
             self.mlnn.E = E_prev
             self.mlnn.F = F_prev
-            self.backtracks = fc - 1
-            self.termination = 'max_backtracks'
+            self.ls_iterations = fc - 1
+            self.termination = 'max_ls_iterations'
             return False
 
     def minimize(self, method=None, **kwargs):
@@ -678,9 +672,6 @@ class MLNNStrongWolfe(MLNNOptimizer):
 
         self.run_time = self.time
 
-        if verbose:
-            self.print_result()
-
         if self.callback is not None:
             self.callback.end()
 
@@ -760,9 +751,6 @@ class MLNNStrongWolfe(MLNNOptimizer):
 
         self.run_time = self.time
 
-        if verbose:
-            self.print_result()
-
         if self.callback is not None:
             self.callback.end()
 
@@ -786,7 +774,7 @@ class MLNNBFGS(MLNNOptimizer):
         self.iprint = None
         self.finite_diff_rel_step = None
 
-        self.max_backtracks = 20
+        self.max_ls_iterations = 20
 
         super().__init__(mlnn, callback, A_0, E_0, d, optimize_params, line_search_params)
 
@@ -827,8 +815,8 @@ class MLNNBFGS(MLNNOptimizer):
         if self.finite_diff_rel_step is not None:
             self.options['finite_diff_rel_step'] = self.finite_diff_rel_step
 
-        if self.max_backtracks is not None:
-            self.options['maxls'] = self.max_backtracks
+        if self.max_ls_iterations is not None:
+            self.options['maxls'] = self.max_ls_iterations
 
     def set_bounds(self, arguments):
         lb = np.empty(0)
@@ -926,9 +914,6 @@ class MLNNBFGS(MLNNOptimizer):
 
         self.read_result(arguments)
 
-        if verbose:
-            self.print_result()
-
         if self.callback is not None:
             self.callback.end()
 
@@ -1013,7 +998,7 @@ class MLNNCallback:
     def _print_optimize_header(self):
         steps = f"{'step':^5s}"
         arguments = f"{'args':^4s}" if hasattr(self.optimizer, 'arguments') else ""
-        backtracks = f"{'bktr':^4s}" if hasattr(self.optimizer, 'backtracks') else ""
+        ls_iterations = f"{'iter':^4s}" if hasattr(self.optimizer, 'ls_iterations') else ""
         alpha = f"{'alpha':^10s}" if hasattr(self.optimizer, 'alpha') else ""
         phi = f"{'phi':^10s}" if hasattr(self.optimizer, 'phi') else ""
         delta_F = f"{'delta_F':^10s}"
@@ -1026,14 +1011,14 @@ class MLNNCallback:
         actv_cols = f"{'actv_cols':^9s}"
         actv_data = f"{'actv_data':^9s}"
 
-        print(" ".join((steps, arguments, backtracks, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
+        print(" ".join((steps, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
 
     def _print_optimize_row(self):
         steps = f"{self.iter:5d}" if self.iter is not None else f"{'-':^5s}"
         arguments = ((f"{self.optimizer.arguments:^4s}" if self.optimizer.arguments is not None else f"{'-':^4s}")
                      if hasattr(self.optimizer, 'arguments') else "")
-        backtracks = ((f"{self.optimizer.backtracks:4d}" if self.optimizer.backtracks is not None else f"{'-':^4s}")
-                      if hasattr(self.optimizer, 'backtracks') else "")
+        ls_iterations = ((f"{self.optimizer.ls_iterations:4d}" if self.optimizer.ls_iterations is not None else f"{'-':^4s}")
+                      if hasattr(self.optimizer, 'ls_iterations') else "")
         alpha = ((f"{self.optimizer.alpha:10.3e}" if self.optimizer.alpha is not None else f"{'-':^10s}")
                  if hasattr(self.optimizer, 'alpha') else "" if hasattr(self.optimizer, 'alpha') else "")
         phi = ((f"{self.optimizer.phi:10.3e}" if self.optimizer.phi is not None else f"{'-':^10s}")
@@ -1051,4 +1036,4 @@ class MLNNCallback:
         actv_data = (f"{self.optimizer.mlnn.subset_active_data.size:9d}"
                      if self.optimizer.mlnn.subset_active_data.size is not None else f"{'-':^9s}")
 
-        print(" ".join((steps, arguments, backtracks, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
+        print(" ".join((steps, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
