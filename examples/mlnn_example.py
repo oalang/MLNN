@@ -83,7 +83,7 @@ def main():
     min_delta_F = 1e-6
     max_steps = 100
     max_time = 100000
-    method = 'alternating'
+    method = 'fixed'
 
     X = X_train_scaled
     Y = Y_train
@@ -138,14 +138,15 @@ def main():
         'method': method,
     }
 
-    mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallback(print_stats=False)
-    optimizer = MLNNSteepestDescent(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(verbose=True)
-    optimizer.print_result()
+    #mlnn = MLNNEngine(B, T, N, C, mlnn_params)
+    #callback = MLNNCallback(print_stats=True)
+    #optimizer = MLNNSteepestDescent(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    #optimizer.minimize(verbose=True)
+    #optimizer.print_result()
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    optimizer = MLNNBFGS(mlnn, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    callback = MLNNCallback(print_stats=True)
+    optimizer = MLNNBFGS(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
     optimizer.minimize(verbose=False)
     optimizer.print_result()
 

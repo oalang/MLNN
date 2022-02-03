@@ -342,9 +342,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
         if verbose:
             if self.callback is None:
-                self.callback = MLNNCallback(print_stats=True)
-            else:
-                self.callback.print_stats = True
+                self.callback = MLNNCallback()
+            self.callback.print_stats = True
 
         self.initialize()
 
@@ -398,9 +397,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
         if verbose:
             if self.callback is None:
-                self.callback = MLNNCallback(print_stats=True)
-            else:
-                self.callback.print_stats = True
+                self.callback = MLNNCallback()
+            self.callback.print_stats = True
 
         self.initialize()
 
@@ -599,6 +597,11 @@ class MLNNBFGS(MLNNOptimizer):
         self.set_bounds(arguments)
         self.initialize()
 
+        iterate = None
+        if self.callback is not None:
+            self.callback.start(self)
+            iterate = self.callback.iterate
+
         x0 = np.empty(0)
 
         if 'A' in arguments:
@@ -607,7 +610,8 @@ class MLNNBFGS(MLNNOptimizer):
         if 'E' in arguments:
             x0 = np.append(x0, self.mlnn.E)
 
-        self.result = minimize(self.mlnn.fun, x0, (arguments,), 'L-BFGS-B', self.mlnn.jac, bounds=self.bounds, options=self.options)
+        self.result = minimize(self.mlnn.fun, x0, (arguments,), 'L-BFGS-B', self.mlnn.jac,
+                               bounds=self.bounds, options=self.options, callback=iterate)
 
         self.run_time = self.time
 
@@ -615,6 +619,9 @@ class MLNNBFGS(MLNNOptimizer):
 
         if verbose:
             self.print_result()
+
+        if self.callback is not None:
+            self.callback.end()
 
 
 class MLNNCallback:
@@ -642,7 +649,7 @@ class MLNNCallback:
         if self.show_figures:
             self._show_figures_start()
 
-    def iterate(self, xk=None):
+    def iterate(self, _=None):
         self.iter += 1
         self.delta_F = self.F_prev - self.optimizer.mlnn.F
         self.F_prev = self.optimizer.mlnn.F
