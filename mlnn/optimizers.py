@@ -3,6 +3,8 @@ import warnings
 import numpy as np
 from scipy.optimize import line_search, minimize, Bounds
 
+from mlnn.callback import MLNNCallback
+
 
 class MLNNOptimizer:
     def __init__(self, mlnn, callback, A_0, E_0, d, optimize_params, line_search_params):
@@ -100,15 +102,16 @@ class MLNNOptimizer:
 class MLNNBacktracking(MLNNOptimizer):
     def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
         self.i_mode = None
-        self.max_steps = 1000
+        self.max_steps = 15000
         self.min_delta_F = 1e-6
         self.verbose_optimize = False
-        self.max_time = 10
+        self.max_time = np.inf
         self.method = 'fixed'
 
         self.max_ls_iterations = 20
         self.alpha_0 = 1e-6
-        self.armijo = 1e-6
+        self.armijo = 1e-4
+        self.wolfe = .9
         self.rho_lo = .1
         self.rho_hi = .9
         self.verbose_line_search = False
@@ -175,9 +178,6 @@ class MLNNBacktracking(MLNNOptimizer):
             self.termination = 'zero_phi'
             return False
 
-        # Commence line search.
-        ls_iterations = 0
-
         # If a previous step was taken with the same arguments, assume that this step's first-order change in
         # F will be the same (i.e. alpha * phi = alpha_prev * phi_prev). Otherwise, set alpha to alpha_0.
         if arguments == arguments_prev:
@@ -197,6 +197,8 @@ class MLNNBacktracking(MLNNOptimizer):
             self.mlnn.update_A(A_prev, alpha, dA)
         if dE is not None:
             self.mlnn.update_E(E_prev, alpha, dE)
+
+        ls_iterations = 1
 
         # If Armijo's condition for sufficient decrease has been satisfied, the search is complete.
         if self.mlnn.F <= F_prev + self.armijo * alpha * phi:
@@ -430,7 +432,7 @@ class MLNNBacktracking(MLNNOptimizer):
                 arg_terminated[arguments] = True
 
                 if all(arg_terminated.values()):
-                    self.termination = 'convergence'
+                    self.termination = 'All minimization modes terminated'
                     break
 
             if self.steps == max_steps:
@@ -465,16 +467,18 @@ class MLNNBacktracking(MLNNOptimizer):
 class MLNNStrongWolfe(MLNNOptimizer):
     def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
         self.i_mode = None
-        self.max_steps = 1000
+        self.max_steps = 15000
         self.min_delta_F = 1e-6
         self.verbose_optimize = False
-        self.max_time = 10
+        self.max_time = np.inf
         self.method = 'fixed'
 
         self.max_ls_iterations = 20
         self.alpha_0 = 1e-6
-        self.armijo = 1e-6
+        self.armijo = 1e-4
         self.wolfe = .9
+        self.rho_lo = .1
+        self.rho_hi = .9
         self.verbose_line_search = False
 
         super().__init__(mlnn, callback, A_0, E_0, d, optimize_params, line_search_params)
@@ -523,25 +527,22 @@ class MLNNStrongWolfe(MLNNOptimizer):
 
         # Compute phi, the gradient of F with respect to the step size, alpha.
         phi = 0
-        xk = np.empty(0)
-        gfk = np.empty(0)
-        if 'A' in arguments:
+        if 'A' in arguments and self.mlnn.phiA:
             dA = self.mlnn.dFdA
             phi += self.mlnn.phiA
-            xk = np.append(xk, A_prev)
-            gfk = np.append(gfk, dA)
-        if 'E' in arguments:
+        else:
+            dA = None
+        if 'E' in arguments and self.mlnn.phiE:
             dE = self.mlnn.dFdE
             phi += self.mlnn.phiE
-            xk = np.append(xk, E_prev)
-            gfk = np.append(gfk, dE)
+        else:
+            dE = None
 
         # If phi == 0, F is at a minimum or a saddle point. Return without taking a step.
         if phi == 0:
             self.termination = 'zero_phi'
             return False
 
-        # Commence line search.
         # If a previous step was taken with the same arguments, assume that this step's first-order change in
         # F will be the same (i.e. alpha * phi = alpha_prev * phi_prev). Otherwise, set alpha to alpha_0.
         if arguments == arguments_prev:
@@ -555,6 +556,19 @@ class MLNNStrongWolfe(MLNNOptimizer):
         else:
             pi = None
             alpha = alpha_0
+
+        xk = np.empty(0)
+        gfk = np.empty(0)
+        if 'A' in arguments:
+            if dA is None:
+                dA = np.zeros(A_prev.size)
+            xk = np.append(xk, A_prev)
+            gfk = np.append(gfk, dA)
+        if 'E' in arguments:
+            if dE is None:
+                dE = np.zeros(E_prev.size)
+            xk = np.append(xk, E_prev)
+            gfk = np.append(gfk, dE)
 
         with warnings.catch_warnings():
             #warnings.simplefilter("ignore")
@@ -586,7 +600,7 @@ class MLNNStrongWolfe(MLNNOptimizer):
             self.arguments = arguments
             self.phi = phi
             self.alpha = alpha
-            self.ls_iterations = fc - 1
+            self.ls_iterations = fc
             self.termination = None
             self.steps += 1
             return True
@@ -594,8 +608,8 @@ class MLNNStrongWolfe(MLNNOptimizer):
             self.mlnn.A = A_prev
             self.mlnn.E = E_prev
             self.mlnn.F = F_prev
-            self.ls_iterations = fc - 1
-            self.termination = 'max_ls_iterations'
+            self.ls_iterations = fc
+            self.termination = 'line_search() did not converge'
             return False
 
     def minimize(self, method=None, **kwargs):
@@ -728,7 +742,7 @@ class MLNNStrongWolfe(MLNNOptimizer):
                 arg_terminated[arguments] = True
 
                 if all(arg_terminated.values()):
-                    self.termination = 'convergence'
+                    self.termination = 'All minimization modes terminated'
                     break
 
             if self.steps == max_steps:
@@ -764,8 +778,8 @@ class MLNNStrongWolfe(MLNNOptimizer):
 class MLNNBFGS(MLNNOptimizer):
     def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
         self.i_mode = None
-        self.max_steps = 1000
-        self.min_delta_F = 1e-6
+        self.max_steps = 15000
+        self.min_delta_F = 1e-9
         self.verbose_optimize = False
         self.maxcor = None
         self.gtol = None
@@ -918,122 +932,3 @@ class MLNNBFGS(MLNNOptimizer):
             self.callback.end()
 
 
-class MLNNCallback:
-    def __init__(self, print_stats=False, collect_stats=False, show_figures=False):
-        self.print_stats = print_stats
-        self.collect_stats = collect_stats
-        self.show_figures = show_figures
-
-        self.optimizer = None
-        self.iter = None
-        self.F_prev = None
-        self.delta_F = None
-
-    def start(self, optimizer):
-        self.optimizer = optimizer
-        self.iter = 0
-        self.F_prev = self.optimizer.mlnn.F
-
-        if self.print_stats:
-            self._print_stats_start()
-
-        if self.collect_stats:
-            self._collect_stats_start()
-
-        if self.show_figures:
-            self._show_figures_start()
-
-    def iterate(self, _=None):
-        self.iter += 1
-        self.delta_F = self.F_prev - self.optimizer.mlnn.F
-        self.F_prev = self.optimizer.mlnn.F
-
-        if self.print_stats:
-            self._print_stats_iterate()
-
-        if self.collect_stats:
-            self._collect_stats_iterate()
-
-        if self.show_figures:
-            self._show_figures_iterate()
-
-    def end(self):
-        if self.print_stats:
-            self._print_stats_end()
-
-        if self.collect_stats:
-            self._collect_stats_end()
-
-        if self.show_figures:
-            self._show_figures_end()
-
-    def _print_stats_start(self):
-        self._print_optimize_header()
-        self._print_optimize_row()
-
-    def _print_stats_iterate(self):
-        self._print_optimize_row()
-
-    def _print_stats_end(self):
-        pass
-
-    def _collect_stats_start(self):
-        pass
-
-    def _collect_stats_iterate(self):
-        pass
-
-    def _collect_stats_end(self):
-        pass
-
-    def _show_figures_start(self):
-        pass
-
-    def _show_figures_iterate(self):
-        pass
-
-    def _show_figures_end(self):
-        pass
-
-    def _print_optimize_header(self):
-        steps = f"{'step':^5s}"
-        arguments = f"{'args':^4s}" if hasattr(self.optimizer, 'arguments') else ""
-        ls_iterations = f"{'iter':^4s}" if hasattr(self.optimizer, 'ls_iterations') else ""
-        alpha = f"{'alpha':^10s}" if hasattr(self.optimizer, 'alpha') else ""
-        phi = f"{'phi':^10s}" if hasattr(self.optimizer, 'phi') else ""
-        delta_F = f"{'delta_F':^10s}"
-        F = f"{'F':^10s}"
-        R = f"{'R':^10s}"
-        S = f"{'S':^10s}"
-        L = f"{'L':^10s}"
-        mean_E = f"{'mean_E':^10s}"
-        actv_rows = f"{'actv_rows':^9s}"
-        actv_cols = f"{'actv_cols':^9s}"
-        actv_data = f"{'actv_data':^9s}"
-
-        print(" ".join((steps, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
-
-    def _print_optimize_row(self):
-        steps = f"{self.iter:5d}" if self.iter is not None else f"{'-':^5s}"
-        arguments = ((f"{self.optimizer.arguments:^4s}" if self.optimizer.arguments is not None else f"{'-':^4s}")
-                     if hasattr(self.optimizer, 'arguments') else "")
-        ls_iterations = ((f"{self.optimizer.ls_iterations:4d}" if self.optimizer.ls_iterations is not None else f"{'-':^4s}")
-                      if hasattr(self.optimizer, 'ls_iterations') else "")
-        alpha = ((f"{self.optimizer.alpha:10.3e}" if self.optimizer.alpha is not None else f"{'-':^10s}")
-                 if hasattr(self.optimizer, 'alpha') else "" if hasattr(self.optimizer, 'alpha') else "")
-        phi = ((f"{self.optimizer.phi:10.3e}" if self.optimizer.phi is not None else f"{'-':^10s}")
-               if hasattr(self.optimizer, 'phi') else "")
-        delta_F = f"{self.delta_F:10.3e}" if self.delta_F is not None else f"{'-':^10s}"
-        F = f"{self.optimizer.mlnn.F:10.3e}" if self.optimizer.mlnn.F is not None else f"{'-':^10s}"
-        R = f"{self.optimizer.mlnn.R:10.3e}" if self.optimizer.mlnn.R is not None else f"{'-':^10s}"
-        S = f"{self.optimizer.mlnn.S:10.3e}" if self.optimizer.mlnn.S is not None else f"{'-':^10s}"
-        L = f"{self.optimizer.mlnn.L:10.3e}" if self.optimizer.mlnn.L is not None else f"{'-':^10s}"
-        mean_E = f"{np.mean(self.optimizer.mlnn.E):10.3e}" if self.optimizer.mlnn.E is not None else f"{'-':^10s}"
-        actv_rows = (f"{self.optimizer.mlnn.subset_active_rows.size:9d}"
-                     if self.optimizer.mlnn.subset_active_rows.size is not None else f"{'-':^9s}")
-        actv_cols = (f"{self.optimizer.mlnn.subset_active_cols.size:9d}"
-                     if self.optimizer.mlnn.subset_active_cols.size is not None else f"{'-':^9s}")
-        actv_data = (f"{self.optimizer.mlnn.subset_active_data.size:9d}"
-                     if self.optimizer.mlnn.subset_active_data.size is not None else f"{'-':^9s}")
-
-        print(" ".join((steps, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))

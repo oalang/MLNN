@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import loss
 from mlnn.engine import MLNNEngine
-from mlnn.optimizers import MLNNBacktracking, MLNNStrongWolfe, MLNNBFGS, MLNNCallback
+from mlnn.callback import MLNNCallback
+from mlnn.optimizers import MLNNBacktracking, MLNNStrongWolfe, MLNNBFGS
 
 from sklearn.datasets import load_wine
 from sklearn.model_selection import StratifiedShuffleSplit
@@ -78,6 +79,7 @@ def main():
 
     alpha_0 = 1e-3
     armijo = 1e-6
+    wolfe = .9
     max_ls_iterations = 50
 
     min_delta_F = 1e-6
@@ -128,6 +130,7 @@ def main():
     line_search_params = {
         'alpha_0': alpha_0,
         'armijo': armijo,
+        'wolfe': wolfe,
         'max_ls_iterations': max_ls_iterations,
     }
 
@@ -138,23 +141,23 @@ def main():
         'method': method,
     }
 
+    mlnn = MLNNEngine(B, T, N, C, mlnn_params)
+    callback = MLNNCallback(print_stats=True)
+    optimizer = MLNNBacktracking(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer.minimize(verbose=False)
+    optimizer.report()
+
+    mlnn = MLNNEngine(B, T, N, C, mlnn_params)
+    callback = MLNNCallback(print_stats=True)
+    optimizer = MLNNStrongWolfe(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer.minimize(verbose=False)
+    optimizer.report()
+
     #mlnn = MLNNEngine(B, T, N, C, mlnn_params)
     #callback = MLNNCallback(print_stats=True)
-    #optimizer = MLNNBacktracking(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    #optimizer = MLNNBFGS(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
     #optimizer.minimize(verbose=False)
-    #optimizer.print_result()
-
-    mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallback(print_stats=True)
-    optimizer = MLNNStrongWolfe(mlnn, callback=None, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(verbose=True)
-    optimizer.report()
-
-    mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallback(print_stats=True)
-    optimizer = MLNNBFGS(mlnn, callback=None, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(verbose=True)
-    optimizer.report()
+    #optimizer.report()
 
     #plt.show()
 
