@@ -80,7 +80,7 @@ def main():
     optimize_method = 'fixed'
     min_delta_F = 1e-6
     max_steps = 100
-    max_time = 10
+    max_time = 1000
     fixed_arguments = 'AE'
     max_arg_steps = 5
 
@@ -152,8 +152,8 @@ def main():
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
     callback = MLNNCallback(print_stats=True)
     optimizer = MLNNSteepestDescent(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(verbose=False)
-    optimizer.report()
+    #optimizer.minimize(verbose=False)
+    #optimizer.report()
 
     line_search_params['line_search_method'] = 'strong_wolfe'
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
@@ -165,8 +165,8 @@ def main():
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
     callback = MLNNCallback(print_stats=True)
     optimizer = MLNNBFGS(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(verbose=False)
-    optimizer.report()
+    #optimizer.minimize(verbose=False)
+    #optimizer.report()
 
     #plt.show()
 
