@@ -306,10 +306,10 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
             i = 0
             if 'A' in arguments:
-                self.mlnn.dFdA = new_slope[0:self.mlnn.dFdA.size].reshape(self.mlnn.dFdA.shape)
-                i = self.mlnn.dFdA.size
+                self.mlnn.dFdA = new_slope[0:self.A_0.size].reshape(self.A_0.shape)
+                i = self.A_0.size
             if 'E' in arguments:
-                self.mlnn.dFdE = new_slope[i:].reshape(self.mlnn.dFdE.shape)
+                self.mlnn.dFdE = new_slope[i:].reshape(self.E_0.shape)
 
             self.arguments = arguments
             self.phi = phi
