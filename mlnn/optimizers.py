@@ -285,7 +285,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
             gfk = np.append(gfk, dE)
 
         with warnings.catch_warnings():
-            #warnings.simplefilter("ignore")
+            warnings.simplefilter("ignore")
             alpha, fc, gc, new_fval, old_fval, new_slope = line_search(
                 self.mlnn.fun, self.mlnn.jac, xk, -gfk, gfk, F_prev, None,
                 (arguments,), self.armijo, self.wolfe, alpha, None, self.max_ls_iterations)
