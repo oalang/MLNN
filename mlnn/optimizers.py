@@ -699,8 +699,10 @@ class MLNNBFGS(MLNNOptimizer):
         if 'E' in arguments:
             x0 = np.append(x0, self.mlnn.E)
 
-        self.result = minimize(self.mlnn.fun, x0, (arguments,), 'L-BFGS-B', self.mlnn.jac,
-                               bounds=self.bounds, options=self.options, callback=iterate)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.result = minimize(self.mlnn.fun, x0, (arguments,), 'L-BFGS-B', self.mlnn.jac,
+                                   bounds=self.bounds, options=self.options, callback=iterate)
 
         self.run_time = self.time
 
