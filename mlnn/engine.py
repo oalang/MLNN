@@ -26,7 +26,7 @@ class MLNNEngine:
             if C is None:
                 self.kernel = 'linear'
             else:
-                self.kernel = 'rbf'
+                self.kernel = 'nonlinear'
 
         if self.keep_e_positive is None:
             self.keep_e_positive = self.keep_a_psd
@@ -52,7 +52,7 @@ class MLNNEngine:
 
         if self.kernel == 'linear':
             assert C is None
-        elif self.kernel == 'rbf':
+        elif self.kernel == 'nonlinear':
             if C is None:
                 self.C = self.B
             else:
@@ -415,7 +415,7 @@ class MLNNEngine:
     def _compute_J(self):
         if self.kernel == 'linear':
             self.J = self.A
-        elif self.kernel == 'rbf':
+        elif self.kernel == 'nonlinear':
             if self.a_mode == 'full' or self.a_mode == 'decomposed':
                 self.J = self.A @ self.C
             elif self.a_mode == 'diagonal':
@@ -481,12 +481,12 @@ class MLNNEngine:
         if self.a_mode == 'full':
             if self.kernel == 'linear':
                 self.dRdA = self.r * self.K
-            elif self.kernel == 'rbf':
+            elif self.kernel == 'nonlinear':
                 self.dRdA = self.r * self.C @ self.K
         elif self.a_mode == 'diagonal':
             if self.kernel == 'linear':
                 self.dRdA = self.r * self.K
-            elif self.kernel == 'rbf':
+            elif self.kernel == 'nonlinear':
                 self.dRdA = self.r * np.sum(self.C * self.K, axis=1, keepdims=True)
         elif self.a_mode == 'decomposed':
             self.dRdA = self.r * 2 * self.K @ self.J
@@ -603,7 +603,7 @@ class MLNNEngine:
 
                 if self.kernel == 'linear':
                     K = A
-                elif self.kernel == 'rbf':
+                elif self.kernel == 'nonlinear':
                     K = A @ self.C
                 A /= np.dot(K.T.ravel(), K.ravel()) ** .5
         elif self.a_mode == 'diagonal':
@@ -617,7 +617,7 @@ class MLNNEngine:
 
                 if self.kernel == 'linear':
                     K = A
-                elif self.kernel == 'rbf':
+                elif self.kernel == 'nonlinear':
                     K = A * self.C
                 A /= np.dot(K.T.ravel(), K.ravel()) ** .5
         elif self.a_mode == 'decomposed':
@@ -631,14 +631,14 @@ class MLNNEngine:
                     pca = PCA(n_components=d)
                     pca.fit(self.B)
                     A = pca.components_ / d ** .5
-                elif self.kernel == 'rbf':
+                elif self.kernel == 'nonlinear':
                     kpca = KernelPCA(n_components=d, kernel='precomputed')
                     kpca.fit(self.C)
                     A = kpca.eigenvectors_.T / d ** .5
 
             if self.kernel == 'linear':
                 K = A @ A.T
-            elif self.kernel == 'rbf':
+            elif self.kernel == 'nonlinear':
                 K = A @ self.C @ A.T
             A /= np.dot(K.T.ravel(), K.ravel()) ** .25
 
