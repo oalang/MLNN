@@ -663,7 +663,7 @@ class MLNNEngine:
             elif i_mode == 'centered' or i_mode == 'identity' or i_mode == 'pca':
                 E = np.ones(self.n).reshape(self.n, 1)
 
-        return E
+        return np.atleast_2d(E)
 
     def fun(self, x, arguments='AE'):
         i = 0

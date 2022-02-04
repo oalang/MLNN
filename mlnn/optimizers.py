@@ -68,10 +68,10 @@ class MLNNOptimizer:
         if E_0 is None:
             self.E_0 = self.mlnn.compute_E_0(self.i_mode)
         else:
-            self.E_0 = E_0
+            self.E_0 = np.atleast_2d(E_0)
 
         if self.mlnn.e_mode == 'single':
-            assert np.isscalar(self.E_0)
+            assert self.E_0.size == 1
         elif self.mlnn.e_mode == 'multiple':
             assert self.E_0.shape[0] == self.mlnn.n
             assert self.E_0.shape[1] == 1
