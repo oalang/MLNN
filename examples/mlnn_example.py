@@ -83,6 +83,7 @@ def main():
     max_time = 10
 
     line_search_method = 'backtracking'
+    use_prev_f = False
     alpha_0 = 1e-3
     armijo = 1e-6
     wolfe = .9
@@ -137,17 +138,18 @@ def main():
 
     line_search_params = {
         'line_search_method': line_search_method,
+        'use_prev_f': use_prev_f,
         'alpha_0': alpha_0,
         'armijo': armijo,
         'wolfe': wolfe,
         'max_ls_iterations': max_ls_iterations,
     }
 
-    mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallback(print_stats=True)
-    optimizer = MLNNSteepestDescent(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(verbose=False)
-    optimizer.report()
+    #mlnn = MLNNEngine(B, T, N, C, mlnn_params)
+    #callback = MLNNCallback(print_stats=True)
+    #optimizer = MLNNSteepestDescent(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    #optimizer.minimize(verbose=False)
+    #optimizer.report()
 
     line_search_params['line_search_method'] = 'strong_wolfe'
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
@@ -156,11 +158,11 @@ def main():
     optimizer.minimize(verbose=False)
     optimizer.report()
 
-    mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallback(print_stats=True)
-    optimizer = MLNNBFGS(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    optimizer.minimize(verbose=False)
-    optimizer.report()
+    #mlnn = MLNNEngine(B, T, N, C, mlnn_params)
+    #callback = MLNNCallback(print_stats=True)
+    #optimizer = MLNNBFGS(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    #optimizer.minimize(verbose=False)
+    #optimizer.report()
 
     #plt.show()
 

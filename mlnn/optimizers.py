@@ -116,6 +116,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
         self.optimize_verbose = False
 
         self.line_search_method = 'backtracking'
+        self.use_prev_f = False
         self.alpha_0 = 1e-6
         self.armijo = 1e-4
         self.wolfe = .9
@@ -270,7 +271,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
                 self.termination = 'max_ls_iterations'
                 return False
 
-    def strong_wolfe_line_search(self, F_prev, A_prev, E_prev, dA, dE, phi, alpha, arguments):
+    def strong_wolfe_line_search(self, F_prev, A_prev, E_prev, dA, dE, phi, alpha, F_prev_prev, arguments):
         xk = np.empty(0)
         gfk = np.empty(0)
         if 'A' in arguments:
@@ -287,7 +288,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             alpha, fc, gc, new_fval, old_fval, new_slope = line_search(
-                self.mlnn.fun, self.mlnn.jac, xk, -gfk, gfk, F_prev, None,
+                self.mlnn.fun, self.mlnn.jac, xk, -gfk, gfk, F_prev, F_prev_prev,
                 (arguments,), self.armijo, self.wolfe, alpha, None, self.max_ls_iterations)
 
         # If the strong Wolfe conditions are satisfied, the search is complete.
@@ -326,7 +327,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
             self.termination = 'line_search() did not converge'
             return False
 
-    def take_step(self, arguments='AE', alpha_0=None, method=None, verbose=None):
+    def take_step(self, arguments='AE', alpha_0=None, F_prev_prev=None, method=None, verbose=None):
         if method is None:
             method = self.line_search_method
 
@@ -378,7 +379,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
         if method == 'backtracking':
             return self.backtracking_line_search(F_prev, A_prev, E_prev, dA, dE, phi, alpha, arguments)
         elif method == 'strong_wolfe':
-            return self.strong_wolfe_line_search(F_prev, A_prev, E_prev, dA, dE, phi, alpha, arguments)
+            return self.strong_wolfe_line_search(F_prev, A_prev, E_prev, dA, dE, phi, alpha, F_prev_prev, arguments)
 
     def minimize(self, method=None, **kwargs):
         if method is None:
@@ -432,9 +433,12 @@ class MLNNSteepestDescent(MLNNOptimizer):
             self.callback.start(self)
 
         self.F_0 = F_prev = self.mlnn.F
+        F_prev_prev = None
 
-        while self.take_step(arguments, alpha_0):
+        while self.take_step(arguments, alpha_0, F_prev_prev):
             self.delta_F = F_prev - self.mlnn.F
+            if self.use_prev_f:
+                F_prev_prev = F_prev
             F_prev = self.mlnn.F
 
             if self.callback is not None:
@@ -489,10 +493,13 @@ class MLNNSteepestDescent(MLNNOptimizer):
         arg_steps = 0
 
         self.F_0 = F_prev = self.mlnn.F
+        F_prev_prev = None
 
         while True:
-            if self.take_step(arguments, arg_alpha_0[arguments]):
+            if self.take_step(arguments, arg_alpha_0[arguments], F_prev_prev):
                 arg_alpha_0[arguments] = self.alpha
+                if self.use_prev_f:
+                    F_prev_prev = F_prev
                 arg_steps += 1
 
                 self.delta_F = F_prev - self.mlnn.F
