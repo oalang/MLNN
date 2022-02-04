@@ -309,10 +309,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
                 self.mlnn.dFdA = new_slope[0:self.mlnn.dFdA.size].reshape(self.mlnn.dFdA.shape)
                 i = self.mlnn.dFdA.size
             if 'E' in arguments:
-                if self.mlnn.e_mode == 'single':
-                    self.mlnn.dFdE = new_slope[i:]
-                elif self.mlnn.e_mode == 'multiple':
-                    self.mlnn.dFdE = new_slope[i:].reshape(self.mlnn.dFdE.shape)
+                self.mlnn.dFdE = new_slope[i:].reshape(self.mlnn.dFdE.shape)
 
             self.arguments = arguments
             self.phi = phi
@@ -630,15 +627,9 @@ class MLNNBFGS(MLNNOptimizer):
 
         if 'E' in arguments:
             if self.mlnn.keep_e_positive:
-                if self.mlnn.e_mode == 'single':
-                    lb = np.append(lb, 0)
-                elif self.mlnn.e_mode == 'multiple':
-                    lb = np.append(lb, np.zeros(self.E_0.size))
+                lb = np.append(lb, np.zeros(self.E_0.size))
             else:
-                if self.mlnn.e_mode == 'single':
-                    lb = np.append(lb, -np.inf)
-                elif self.mlnn.e_mode == 'multiple':
-                    lb = np.append(lb, np.full(self.E_0.size, -np.inf))
+                lb = np.append(lb, np.full(self.E_0.size, -np.inf))
 
         self.bounds = Bounds(lb, np.inf)
         self.mlnn.keep_a_psd = False
@@ -666,10 +657,7 @@ class MLNNBFGS(MLNNOptimizer):
             self.mlnn.A = self.result.x[0:self.A_0.size].reshape(self.A_0.shape)
             i = self.A_0.size
         if 'E' in arguments:
-            if self.mlnn.e_mode == 'single':
-                self.mlnn.E = self.result.x[i:]
-            elif self.mlnn.e_mode == 'multiple':
-                self.mlnn.E = self.result.x[i:].reshape(self.E_0.shape)
+            self.mlnn.E = self.result.x[i:].reshape(self.E_0.shape)
 
         self.steps = self.result.nit
         self.termination = self.result.message
