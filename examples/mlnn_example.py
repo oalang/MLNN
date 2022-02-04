@@ -78,9 +78,9 @@ def main():
 #    outer_loss = None
 
     optimize_method = 'fixed'
+    min_delta_F = 1e-6
     max_steps = 100
     max_time = 10
-    min_delta_F = 1e-6
 
     line_search_method = 'backtracking'
     alpha_0 = 1e-3
@@ -130,9 +130,9 @@ def main():
 
     optimize_params = {
         'optimize_method': optimize_method,
+        'min_delta_F': min_delta_F,
         'max_steps': max_steps,
         'max_time': max_time,
-        'min_delta_F': min_delta_F,
     }
 
     line_search_params = {

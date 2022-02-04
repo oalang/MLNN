@@ -674,7 +674,7 @@ class MLNNEngine:
                 self.A = A
         if 'E' in arguments:
             if self.e_mode == 'single':
-                E = x[-1]
+                E = x[i:]
             elif self.e_mode == 'multiple':
                 E = x[i:].reshape(self.E.shape)
             if not np.array_equal(E, self.E):
@@ -692,7 +692,7 @@ class MLNNEngine:
                 self.A = A
         if 'E' in arguments:
             if self.e_mode == 'single':
-                E = x[-1]
+                E = x[i:]
             elif self.e_mode == 'multiple':
                 E = x[i:].reshape(self.E.shape)
 

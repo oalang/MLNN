@@ -103,9 +103,9 @@ class MLNNSteepestDescent(MLNNOptimizer):
     def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
         self.optimize_method = 'fixed'
         self.i_mode = None
+        self.min_delta_F = 1e-6
         self.max_steps = 15000
         self.max_time = np.inf
-        self.min_delta_F = 1e-6
         self.optimize_verbose = False
 
         self.line_search_method = 'backtracking'
@@ -295,7 +295,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
                 i = self.mlnn.dFdA.size
             if 'E' in arguments:
                 if self.mlnn.e_mode == 'single':
-                    self.mlnn.dFdE = new_slope[-1]
+                    self.mlnn.dFdE = new_slope[i:]
                 elif self.mlnn.e_mode == 'multiple':
                     self.mlnn.dFdE = new_slope[i:].reshape(self.mlnn.dFdE.shape)
 
@@ -528,8 +528,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
 class MLNNBFGS(MLNNOptimizer):
     def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
         self.i_mode = None
-        self.max_steps = 15000
         self.min_delta_F = 1e-9
+        self.max_steps = 15000
         self.maxcor = None
         self.gtol = None
         self.eps = None
@@ -639,7 +639,7 @@ class MLNNBFGS(MLNNOptimizer):
             i = self.A_0.size
         if 'E' in arguments:
             if self.mlnn.e_mode == 'single':
-                self.mlnn.E = self.result.x[-1]
+                self.mlnn.E = self.result.x[i:]
             elif self.mlnn.e_mode == 'multiple':
                 self.mlnn.E = self.result.x[i:].reshape(self.E_0.shape)
 
