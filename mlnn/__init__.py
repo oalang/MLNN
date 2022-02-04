@@ -1,7 +1,7 @@
 import numpy as np
 
 from mlnn.engine import MLNNEngine
-from mlnn.optimizers import MLNNBacktracking
+from mlnn.optimizers import MLNNSteepestDescent
 
 
 class MLNN:
@@ -18,7 +18,7 @@ class MLNN:
         N = np.sum(T == 1, axis=1, keepdims=True) - 1
 
         self.mlnn = MLNNEngine(B, T, N, mlnn_params=self.mlnn_params)
-        optimizer = MLNNBacktracking(
+        optimizer = MLNNSteepestDescent(
             self.mlnn, d=self.d,
             line_search_params=self.line_search_params,
             optimize_params=self.optimize_params,
