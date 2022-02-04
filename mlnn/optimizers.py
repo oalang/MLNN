@@ -7,54 +7,18 @@ from mlnn.callback import MLNNCallback
 
 
 class MLNNOptimizer:
-    def __init__(self, mlnn, callback, A_0, E_0, d, optimize_params, line_search_params):
+    def __init__(self, mlnn, callback):
         self.mlnn = mlnn
         self.callback = callback
+        self.A_0 = None
+        self.E_0 = None
 
-        if optimize_params:
-            self.apply_params(optimize_params)
-        if line_search_params:
-            self.apply_params(line_search_params)
-
-        if self.i_mode is None:
-            if self.mlnn.a_mode == 'full' or self.mlnn.a_mode == 'diagonal':
-                self.i_mode = 'zero'
-            elif self.mlnn.a_mode == 'decomposed':
-                self.i_mode = 'pca'
-
-        if self.mlnn.a_mode == 'full':
-            assert (self.i_mode == 'random' or self.i_mode == 'zero' or
-                    self.i_mode == 'identity' or self.i_mode == 'centered')
-        elif self.mlnn.a_mode == 'diagonal':
-            assert (self.i_mode == 'random' or self.i_mode == 'zero' or
-                    self.i_mode == 'identity')
-        elif self.mlnn.a_mode == 'decomposed':
-            assert (self.i_mode == 'random' or self.i_mode == 'pca')
-
-        if A_0 is None:
-            self.A_0 = mlnn.compute_A_0(self.i_mode, d)
-        else:
-            self.A_0 = A_0
-
-        if self.mlnn.a_mode == 'full':
-            assert self.A_0.shape[0] == self.mlnn.m
-            assert np.array_equal(self.A_0, self.A_0.T)
-        elif self.mlnn.a_mode == 'diagonal':
-            assert self.A_0.shape[0] == self.mlnn.m
-            assert self.A_0.shape[1] == 1
-        elif self.mlnn.a_mode == 'decomposed':
-            assert self.A_0.shape[1] == self.mlnn.m
-
-        if E_0 is None:
-            self.E_0 = mlnn.compute_E_0(self.i_mode)
-        else:
-            self.E_0 = E_0
-
-        if self.mlnn.e_mode == 'single':
-            assert np.isscalar(self.E_0)
-        elif self.mlnn.e_mode == 'multiple':
-            assert self.E_0.shape[0] == self.mlnn.n
-            assert self.E_0.shape[1] == 1
+        self.i_mode = None
+        self.min_delta_F = None
+        self.max_steps = None
+        self.max_time = None
+        self.delta_F = None
+        self.max_ls_iterations = None
 
         self.time_0 = None
         self.run_time = None
@@ -71,6 +35,47 @@ class MLNNOptimizer:
             if hasattr(self, attr):
                 setattr(self, attr, params[attr])
     
+    def initialize_args(self, A_0=None, E_0=None, d=None):
+        if self.i_mode is None:
+            if self.mlnn.a_mode == 'full' or self.mlnn.a_mode == 'diagonal':
+                self.i_mode = 'zero'
+            elif self.mlnn.a_mode == 'decomposed':
+                self.i_mode = 'pca'
+
+        if self.mlnn.a_mode == 'full':
+            assert (self.i_mode == 'random' or self.i_mode == 'zero' or
+                    self.i_mode == 'identity' or self.i_mode == 'centered')
+        elif self.mlnn.a_mode == 'diagonal':
+            assert (self.i_mode == 'random' or self.i_mode == 'zero' or
+                    self.i_mode == 'identity')
+        elif self.mlnn.a_mode == 'decomposed':
+            assert (self.i_mode == 'random' or self.i_mode == 'pca')
+
+        if A_0 is None:
+            self.A_0 = self.mlnn.compute_A_0(self.i_mode, d)
+        else:
+            self.A_0 = A_0
+
+        if self.mlnn.a_mode == 'full':
+            assert self.A_0.shape[0] == self.mlnn.m
+            assert np.array_equal(self.A_0, self.A_0.T)
+        elif self.mlnn.a_mode == 'diagonal':
+            assert self.A_0.shape[0] == self.mlnn.m
+            assert self.A_0.shape[1] == 1
+        elif self.mlnn.a_mode == 'decomposed':
+            assert self.A_0.shape[1] == self.mlnn.m
+
+        if E_0 is None:
+            self.E_0 = self.mlnn.compute_E_0(self.i_mode)
+        else:
+            self.E_0 = E_0
+
+        if self.mlnn.e_mode == 'single':
+            assert np.isscalar(self.E_0)
+        elif self.mlnn.e_mode == 'multiple':
+            assert self.E_0.shape[0] == self.mlnn.n
+            assert self.E_0.shape[1] == 1
+
     def report(self):
         if self.termination == 'max_ls_iterations':
             threshold = f" (max_ls_iterations = {self.max_ls_iterations:d})"
@@ -87,7 +92,7 @@ class MLNNOptimizer:
         print(f"Termination: {self.termination}{threshold}")
         print(f"       F_0 = {self.F_0:f}")
         print(f"         F = {self.mlnn.F:f}")
-        if hasattr(self, 'delta_F') and self.delta_F is not None:
+        if self.delta_F is not None:
             print(f"   delta_F = {self.delta_F:e}")
         print(f"     steps = {self.steps:d}")
         print(f"  run_time = {self.run_time:f} seconds")
@@ -101,6 +106,8 @@ class MLNNOptimizer:
 
 class MLNNSteepestDescent(MLNNOptimizer):
     def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
+        super().__init__(mlnn, callback)
+
         self.optimize_method = 'fixed'
         self.i_mode = None
         self.min_delta_F = 1e-6
@@ -117,7 +124,12 @@ class MLNNSteepestDescent(MLNNOptimizer):
         self.max_ls_iterations = 20
         self.line_search_verbose = False
 
-        super().__init__(mlnn, callback, A_0, E_0, d, optimize_params, line_search_params)
+        if optimize_params:
+            self.apply_params(optimize_params)
+        if line_search_params:
+            self.apply_params(line_search_params)
+
+        self.initialize_args(A_0, E_0, d)
 
         self.arguments = None
         self.phi = None
@@ -527,6 +539,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
 class MLNNBFGS(MLNNOptimizer):
     def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
+        super().__init__(mlnn, callback)
+
         self.i_mode = None
         self.min_delta_F = 1e-9
         self.max_steps = 15000
@@ -540,7 +554,12 @@ class MLNNBFGS(MLNNOptimizer):
 
         self.max_ls_iterations = 20
 
-        super().__init__(mlnn, callback, A_0, E_0, d, optimize_params, line_search_params)
+        if optimize_params:
+            self.apply_params(optimize_params)
+        if line_search_params:
+            self.apply_params(line_search_params)
+
+        self.initialize_args(A_0, E_0, d)
 
         self.options = None
         self.bounds = None
