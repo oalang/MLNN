@@ -81,6 +81,8 @@ def main():
     min_delta_F = 1e-6
     max_steps = 100
     max_time = 10
+    fixed_arguments = 'AE'
+    max_arg_steps = 5
 
     line_search_method = 'backtracking'
     use_prev_f = False
@@ -134,6 +136,8 @@ def main():
         'min_delta_F': min_delta_F,
         'max_steps': max_steps,
         'max_time': max_time,
+        'fixed_arguments': fixed_arguments,
+        'max_arg_steps': max_arg_steps,
     }
 
     line_search_params = {

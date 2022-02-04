@@ -113,6 +113,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
         self.min_delta_F = 1e-6
         self.max_steps = 15000
         self.max_time = np.inf
+        self.fixed_arguments = 'AE'
+        self.max_arg_steps = 5
         self.optimize_verbose = False
 
         self.line_search_method = 'backtracking'
@@ -392,14 +394,14 @@ class MLNNSteepestDescent(MLNNOptimizer):
         verbose = kwargs['verbose'] if 'verbose' in kwargs else None
 
         if method == 'fixed':
-            arguments = kwargs['arguments'] if 'arguments' in kwargs else 'AE'
+            arguments = kwargs['arguments'] if 'arguments' in kwargs else self.fixed_arguments
 
             self.optimize_fixed(
                 arguments=arguments, alpha_0=alpha_0, min_delta_F=min_delta_F,
                 max_steps=max_steps, max_time=max_time, verbose=verbose
             )
         elif method == 'alternating':
-            max_arg_steps = kwargs['max_arg_steps'] if 'max_arg_steps' in kwargs else 5
+            max_arg_steps = kwargs['max_arg_steps'] if 'max_arg_steps' in kwargs else self.max_arg_steps
 
             self.optimize_alternating(
                 max_arg_steps=max_arg_steps, alpha_0=alpha_0, min_delta_F=min_delta_F,
