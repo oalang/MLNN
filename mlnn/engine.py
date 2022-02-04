@@ -12,7 +12,7 @@ class MLNNEngine:
         self.q = 1
         self.inner_loss = ReLU(1)
         self.outer_loss = ReLU(1)
-        self.k_mode = None
+        self.kernel = None
         self.a_mode = 'full'
         self.e_mode = 'single'
         self.keep_a_psd = True
@@ -22,11 +22,11 @@ class MLNNEngine:
         if mlnn_params:
             apply_params(self, mlnn_params)
 
-        if self.k_mode is None:
+        if self.kernel is None:
             if C is None:
-                self.k_mode = 'linear'
+                self.kernel = 'linear'
             else:
-                self.k_mode = 'nonlinear'
+                self.kernel = 'rbf'
 
         if self.keep_e_positive is None:
             self.keep_e_positive = self.keep_a_psd
@@ -50,9 +50,9 @@ class MLNNEngine:
         assert self.N.shape[0] == self.n
         assert self.N.shape[1] == 1
 
-        if self.k_mode == 'linear':
+        if self.kernel == 'linear':
             assert C is None
-        elif self.k_mode == 'nonlinear':
+        elif self.kernel == 'rbf':
             if C is None:
                 self.C = self.B
             else:
@@ -413,9 +413,9 @@ class MLNNEngine:
         self.Q = np.where(self.T == 1, self.q, 1)
 
     def _compute_J(self):
-        if self.k_mode == 'linear':
+        if self.kernel == 'linear':
             self.J = self.A
-        elif self.k_mode == 'nonlinear':
+        elif self.kernel == 'rbf':
             if self.a_mode == 'full' or self.a_mode == 'decomposed':
                 self.J = self.A @ self.C
             elif self.a_mode == 'diagonal':
@@ -479,14 +479,14 @@ class MLNNEngine:
 
     def _compute_dRdA(self):
         if self.a_mode == 'full':
-            if self.k_mode == 'linear':
+            if self.kernel == 'linear':
                 self.dRdA = self.r * self.K
-            elif self.k_mode == 'nonlinear':
+            elif self.kernel == 'rbf':
                 self.dRdA = self.r * self.C @ self.K
         elif self.a_mode == 'diagonal':
-            if self.k_mode == 'linear':
+            if self.kernel == 'linear':
                 self.dRdA = self.r * self.K
-            elif self.k_mode == 'nonlinear':
+            elif self.kernel == 'rbf':
                 self.dRdA = self.r * np.sum(self.C * self.K, axis=1, keepdims=True)
         elif self.a_mode == 'decomposed':
             self.dRdA = self.r * 2 * self.K @ self.J
@@ -583,84 +583,84 @@ class MLNNEngine:
     def update_E(self, E, alpha, dE):
         self.E = E - alpha * dE
 
-    def compute_A_0(self, i_mode='random', d=None):
-        if i_mode == 'random':
+    def compute_A_0(self, initialization='random', d=None):
+        if initialization == 'random':
             rng = np.random.Generator(np.random.PCG64(12345))
             
         if self.a_mode == 'full':
-            if i_mode == 'zero':
+            if initialization == 'zero':
                 A = np.zeros((self.m, self.m))
             else:
-                if i_mode == 'random':
+                if initialization == 'random':
                     A = rng.standard_normal(self.m * self.m).reshape(self.m, self.m) / self.m ** .5
                     A = A.T @ A
-                elif i_mode == 'identity':
+                elif initialization == 'identity':
                     A = np.diag(np.ones(self.m) / self.m ** .5)
-                elif i_mode == 'centered':
+                elif initialization == 'centered':
                     U = np.identity(self.n) - 1 / self.n
                     A = self.B.T @ U @ self.B
                     A = (A + A.T) / 2
 
-                if self.k_mode == 'linear':
+                if self.kernel == 'linear':
                     K = A
-                elif self.k_mode == 'nonlinear':
+                elif self.kernel == 'rbf':
                     K = A @ self.C
                 A /= np.dot(K.T.ravel(), K.ravel()) ** .5
         elif self.a_mode == 'diagonal':
-            if i_mode == 'zero':
+            if initialization == 'zero':
                 A = np.zeros(self.m).reshape(self.m, 1)
             else:
-                if i_mode == 'random':
+                if initialization == 'random':
                     A = rng.standard_normal(self.m).reshape(self.m, 1) ** 2
-                elif i_mode == 'identity':
+                elif initialization == 'identity':
                     A = np.ones(self.m).reshape(self.m, 1) / self.m ** .5
 
-                if self.k_mode == 'linear':
+                if self.kernel == 'linear':
                     K = A
-                elif self.k_mode == 'nonlinear':
+                elif self.kernel == 'rbf':
                     K = A * self.C
                 A /= np.dot(K.T.ravel(), K.ravel()) ** .5
         elif self.a_mode == 'decomposed':
             if d is None:
                 d = self.m
             
-            if i_mode == 'random':
+            if initialization == 'random':
                 A = rng.standard_normal(d * self.m).reshape(d, self.m) / d ** .5
-            elif i_mode == 'pca':
-                if self.k_mode == 'linear':
+            elif initialization == 'pca':
+                if self.kernel == 'linear':
                     pca = PCA(n_components=d)
                     pca.fit(self.B)
                     A = pca.components_ / d ** .5
-                elif self.k_mode == 'nonlinear':
+                elif self.kernel == 'rbf':
                     kpca = KernelPCA(n_components=d, kernel='precomputed')
                     kpca.fit(self.C)
                     A = kpca.eigenvectors_.T / d ** .5
 
-            if self.k_mode == 'linear':
+            if self.kernel == 'linear':
                 K = A @ A.T
-            elif self.k_mode == 'nonlinear':
+            elif self.kernel == 'rbf':
                 K = A @ self.C @ A.T
             A /= np.dot(K.T.ravel(), K.ravel()) ** .25
 
         return A
 
-    def compute_E_0(self, i_mode='random'):
-        if i_mode == 'random':
+    def compute_E_0(self, initialization='random'):
+        if initialization == 'random':
             rng = np.random.Generator(np.random.PCG64(12345))
 
         if self.e_mode == 'single':
-            if i_mode == 'zero':
+            if initialization == 'zero':
                 E = 0
-            elif i_mode == 'random':
+            elif initialization == 'random':
                 E = rng.standard_normal(1).item() ** 2
-            elif i_mode == 'centered' or i_mode == 'identity' or i_mode == 'pca':
+            elif initialization == 'centered' or initialization == 'identity' or initialization == 'pca':
                 E = 1
         elif self.e_mode == 'multiple':
-            if i_mode == 'zero':
+            if initialization == 'zero':
                 E = np.zeros(self.n).reshape(self.n, 1)
-            elif i_mode == 'random':
+            elif initialization == 'random':
                 E = rng.standard_normal(self.n).reshape(self.n, 1) ** 2
-            elif i_mode == 'centered' or i_mode == 'identity' or i_mode == 'pca':
+            elif initialization == 'centered' or initialization == 'identity' or initialization == 'pca':
                 E = np.ones(self.n).reshape(self.n, 1)
 
         return np.atleast_2d(E)

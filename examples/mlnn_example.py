@@ -44,15 +44,14 @@ def main():
     accuracy = accuracy_score(Y_test, Y_test_pred)
     print(f"accuracy = {accuracy: .3f}")
     
+    rbf = False
+
     kernel = 'linear'
 #    kernel = 'rbf'
 
-    k_mode = 'linear'
-#    k_mode = 'nonlinear'
-
     a_mode = 'full'
 #    a_mode = 'diagonal'
-#    a_mode = 'decomposed'
+    a_mode = 'decomposed'
 
     e_mode = 'single'
 #    e_mode = 'multiple'
@@ -61,13 +60,13 @@ def main():
 #    i_mode = 'random'
 #    i_mode = 'centered'
 #    i_mode = 'identity'
-#    i_mode = 'pca'
+    i_mode = 'pca'
 
     keep_a_psd = False
     keep_a_centered = False
     keep_e_positive = False
 
-    d = 2
+    n_components = 2
 
     r = 1
     s = 0
@@ -78,6 +77,7 @@ def main():
 #    outer_loss = None
 
     optimize_method = 'fixed'
+    initialization = i_mode
     min_delta_F = 1e-6
     max_steps = 100
     max_time = 1000
@@ -101,17 +101,17 @@ def main():
     D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
     G = np.exp(D / (-2 * sigma2))
 
-    if k_mode == 'linear':
+    if kernel == 'linear':
         B = X
-    elif k_mode == 'nonlinear':
-        if kernel == 'linear':
-            B = P
-        elif kernel == 'rbf':
+    elif kernel == 'nonlinear':
+        if rbf:
+            B = G
+        else:
             B = G
 
-    if k_mode == 'linear':
+    if kernel == 'linear':
         C = None
-    elif k_mode == 'nonlinear':
+    elif kernel == 'nonlinear':
         #C = B
         C = None
 
@@ -122,10 +122,9 @@ def main():
         'q': q,
         'inner_loss': inner_loss,
         'outer_loss': outer_loss,
-        'k_mode': k_mode,
+        'kernel': kernel,
         'a_mode': a_mode,
         'e_mode': e_mode,
-        'i_mode': i_mode,
         'keep_a_psd': keep_a_psd,
         'keep_a_centered': keep_a_centered,
         'keep_e_positive': keep_e_positive,
@@ -133,6 +132,7 @@ def main():
 
     optimize_params = {
         'optimize_method': optimize_method,
+        'initialization': initialization,
         'min_delta_F': min_delta_F,
         'max_steps': max_steps,
         'max_time': max_time,
@@ -151,22 +151,22 @@ def main():
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
     callback = MLNNCallback(print_stats=True)
-    optimizer = MLNNSteepestDescent(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    #optimizer.minimize(verbose=False)
-    #optimizer.report()
+    optimizer = MLNNSteepestDescent(mlnn, callback=callback, n_components=n_components, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer.minimize(verbose=False)
+    optimizer.report()
 
     line_search_params['line_search_method'] = 'strong_wolfe'
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
     callback = MLNNCallback(print_stats=True)
-    optimizer = MLNNSteepestDescent(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer = MLNNSteepestDescent(mlnn, callback=callback, n_components=n_components, optimize_params=optimize_params, line_search_params=line_search_params)
     optimizer.minimize(verbose=False)
     optimizer.report()
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
     callback = MLNNCallback(print_stats=True)
-    optimizer = MLNNBFGS(mlnn, callback=callback, d=d, optimize_params=optimize_params, line_search_params=line_search_params)
-    #optimizer.minimize(verbose=False)
-    #optimizer.report()
+    optimizer = MLNNBFGS(mlnn, callback=callback, n_components=n_components, optimize_params=optimize_params, line_search_params=line_search_params)
+    optimizer.minimize(verbose=False)
+    optimizer.report()
 
     #plt.show()
 

@@ -5,8 +5,8 @@ from mlnn.optimizers import MLNNSteepestDescent
 
 
 class MLNN:
-    def __init__(self, d=None, mlnn_params=None, line_search_params=None, optimize_params=None):
-        self.d = d
+    def __init__(self, n_components=None, mlnn_params=None, line_search_params=None, optimize_params=None):
+        self.d = n_components
         self.mlnn_params = mlnn_params
         self.line_search_params = line_search_params
         self.optimize_params = optimize_params
@@ -19,7 +19,7 @@ class MLNN:
 
         self.mlnn = MLNNEngine(B, T, N, mlnn_params=self.mlnn_params)
         optimizer = MLNNSteepestDescent(
-            self.mlnn, d=self.d,
+            self.mlnn, n_components=self.d,
             line_search_params=self.line_search_params,
             optimize_params=self.optimize_params,
         )

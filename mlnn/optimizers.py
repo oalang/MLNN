@@ -13,7 +13,7 @@ class MLNNOptimizer:
         self.A_0 = None
         self.E_0 = None
 
-        self.i_mode = None
+        self.initialization = None
         self.min_delta_F = None
         self.max_steps = None
         self.max_time = None
@@ -35,24 +35,24 @@ class MLNNOptimizer:
             if hasattr(self, attr):
                 setattr(self, attr, params[attr])
     
-    def initialize_args(self, A_0=None, E_0=None, d=None):
-        if self.i_mode is None:
+    def initialize_args(self, A_0=None, E_0=None, n_components=None):
+        if self.initialization is None:
             if self.mlnn.a_mode == 'full' or self.mlnn.a_mode == 'diagonal':
-                self.i_mode = 'zero'
+                self.initialization = 'zero'
             elif self.mlnn.a_mode == 'decomposed':
-                self.i_mode = 'pca'
+                self.initialization = 'pca'
 
         if self.mlnn.a_mode == 'full':
-            assert (self.i_mode == 'random' or self.i_mode == 'zero' or
-                    self.i_mode == 'identity' or self.i_mode == 'centered')
+            assert (self.initialization == 'random' or self.initialization == 'zero' or
+                    self.initialization == 'identity' or self.initialization == 'centered')
         elif self.mlnn.a_mode == 'diagonal':
-            assert (self.i_mode == 'random' or self.i_mode == 'zero' or
-                    self.i_mode == 'identity')
+            assert (self.initialization == 'random' or self.initialization == 'zero' or
+                    self.initialization == 'identity')
         elif self.mlnn.a_mode == 'decomposed':
-            assert (self.i_mode == 'random' or self.i_mode == 'pca')
+            assert (self.initialization == 'random' or self.initialization == 'pca')
 
         if A_0 is None:
-            self.A_0 = self.mlnn.compute_A_0(self.i_mode, d)
+            self.A_0 = self.mlnn.compute_A_0(self.initialization, n_components)
         else:
             self.A_0 = A_0
 
@@ -66,7 +66,7 @@ class MLNNOptimizer:
             assert self.A_0.shape[1] == self.mlnn.m
 
         if E_0 is None:
-            self.E_0 = self.mlnn.compute_E_0(self.i_mode)
+            self.E_0 = self.mlnn.compute_E_0(self.initialization)
         else:
             self.E_0 = np.atleast_2d(E_0)
 
@@ -105,11 +105,11 @@ class MLNNOptimizer:
 
 
 class MLNNSteepestDescent(MLNNOptimizer):
-    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
+    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, n_components=None, optimize_params=None, line_search_params=None):
         super().__init__(mlnn, callback)
 
         self.optimize_method = 'fixed'
-        self.i_mode = None
+        self.initialization = None
         self.min_delta_F = 1e-6
         self.max_steps = 15000
         self.max_time = np.inf
@@ -132,7 +132,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
         if line_search_params:
             self.apply_params(line_search_params)
 
-        self.initialize_args(A_0, E_0, d)
+        self.initialize_args(A_0, E_0, n_components)
 
         self.arguments = None
         self.phi = None
@@ -544,10 +544,10 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
 
 class MLNNBFGS(MLNNOptimizer):
-    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, d=None, optimize_params=None, line_search_params=None):
+    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, n_components=None, optimize_params=None, line_search_params=None):
         super().__init__(mlnn, callback)
 
-        self.i_mode = None
+        self.initialization = None
         self.min_delta_F = 1e-9
         self.max_steps = 15000
         self.maxcor = None
@@ -565,7 +565,7 @@ class MLNNBFGS(MLNNOptimizer):
         if line_search_params:
             self.apply_params(line_search_params)
 
-        self.initialize_args(A_0, E_0, d)
+        self.initialize_args(A_0, E_0, n_components)
 
         self.options = None
         self.bounds = None
