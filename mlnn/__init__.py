@@ -2,8 +2,8 @@ import numpy as np
 
 from loss import SmoothReLU
 from mlnn.engine import MLNNEngine
-from mlnn.callbacks import MLNNCallbacks
-from mlnn.optimizers import MLNNSteepestDescent, MLNNBFGS
+from mlnn.callback import MLNNCallback
+from mlnn.optimize import MLNNSteepestDescent, MLNNBFGS
 
 
 class MLNN:
@@ -92,7 +92,7 @@ class MLNN:
 
         callback = None
         if self.verbose >= 2:
-            callback = MLNNCallbacks(print_stats=True)
+            callback = MLNNCallback(print_stats=True)
 
         optimizer = None
         if 'steepest' in self.solver:

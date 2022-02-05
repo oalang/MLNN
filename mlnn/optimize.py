@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 from scipy.optimize import line_search, minimize, Bounds
 
-from mlnn.callbacks import MLNNCallbacks
+from mlnn.callback import MLNNCallback
 
 
 class MLNNOptimizer:
@@ -424,7 +424,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
         if verbose:
             if self.callback is None:
-                self.callback = MLNNCallbacks()
+                self.callback = MLNNCallback()
             self.callback.print_stats = True
 
         self.initialize()
@@ -479,7 +479,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
         if verbose:
             if self.callback is None:
-                self.callback = MLNNCallbacks()
+                self.callback = MLNNCallback()
             self.callback.print_stats = True
 
         self.initialize()

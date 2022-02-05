@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import loss
 from mlnn.engine import MLNNEngine
-from mlnn.callbacks import MLNNCallbacks
-from mlnn.optimizers import MLNNSteepestDescent, MLNNBFGS
+from mlnn.callback import MLNNCallback
+from mlnn.optimize import MLNNSteepestDescent, MLNNBFGS
 
 from sklearn.datasets import load_wine
 from sklearn.model_selection import StratifiedShuffleSplit
@@ -150,20 +150,20 @@ def main():
     }
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallbacks(print_stats=True)
+    callback = MLNNCallback(print_stats=True)
     optimizer = MLNNSteepestDescent(mlnn, callback=callback, n_components=n_components, optimize_params=optimize_params, line_search_params=line_search_params)
     optimizer.minimize(verbose=False)
     optimizer.report()
 
     line_search_params['line_search_method'] = 'strong_wolfe'
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallbacks(print_stats=True)
+    callback = MLNNCallback(print_stats=True)
     optimizer = MLNNSteepestDescent(mlnn, callback=callback, n_components=n_components, optimize_params=optimize_params, line_search_params=line_search_params)
     optimizer.minimize(verbose=False)
     optimizer.report()
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallbacks(print_stats=True)
+    callback = MLNNCallback(print_stats=True)
     optimizer = MLNNBFGS(mlnn, callback=callback, n_components=n_components, optimize_params=optimize_params, line_search_params=line_search_params)
     optimizer.minimize(verbose=False)
     optimizer.report()
