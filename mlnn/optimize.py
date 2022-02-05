@@ -278,15 +278,17 @@ class MLNNSteepestDescent(MLNNOptimizer):
         xk = np.empty(0)
         gfk = np.empty(0)
         if 'A' in arguments:
-            if dA is None:
-                dA = np.zeros(A_prev.size)
             xk = np.append(xk, A_prev)
-            gfk = np.append(gfk, dA)
+            if dA is None:
+                gfk = np.append(gfk, np.zeros(A_prev.size))
+            else:
+                gfk = np.append(gfk, dA)
         if 'E' in arguments:
-            if dE is None:
-                dE = np.zeros(E_prev.size)
             xk = np.append(xk, E_prev)
-            gfk = np.append(gfk, dE)
+            if dE is None:
+                gfk = np.append(gfk, np.zeros(E_prev.size))
+            else:
+                gfk = np.append(gfk, dE)
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -298,9 +300,9 @@ class MLNNSteepestDescent(MLNNOptimizer):
         # Otherwise, the maximum number of ls_iterations have been performed. Return without taking a step.
         if alpha is not None:
             # Take a step in the direction of steepest descent.
-            if 'A' in arguments:
+            if dA is not None:
                 self.mlnn.update_A(A_prev, alpha, dA)
-            if 'E' in arguments:
+            if dE is not None:
                 self.mlnn.update_E(E_prev, alpha, dE)
 
             self.mlnn.F = new_fval

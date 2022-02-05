@@ -504,14 +504,17 @@ class MLNNEngine:
             elif self.a_mode == 'decomposed':
                 self.dLdA = 2 * ((self.A @ B.T) @ U @ B)
         else:
-            self.dLdA = np.zeros(1)
+            self.dLdA = 0
 
     def _compute_dFdA(self):
         self.dFdA = self.dRdA + self.dLdA
         self.dFdA_count += 1
 
     def _compute_phiA(self):
-        self.phiA = -np.dot(self.dFdA.ravel(), self.dFdA.ravel())
+        if np.isscalar(self.dFdA):
+            self.phiA = 0
+        else:
+            self.phiA = -np.dot(self.dFdA.ravel(), self.dFdA.ravel())
 
     def _compute_dSdE(self):
         self.dSdE = self.s * (self.E - 1)
@@ -524,14 +527,17 @@ class MLNNEngine:
                 self.dLdE = np.zeros(self.n).reshape(self.n, 1)
                 self.dLdE[self.subset_active_data] = -np.sum(self.V, axis=1, keepdims=True)
         else:
-            self.dLdE = np.zeros(1)
+            self.dLdE = 0
 
     def _compute_dFdE(self):
         self.dFdE = self.dSdE + self.dLdE
         self.dFdE_count += 1
 
     def _compute_phiE(self):
-        self.phiE = -np.dot(self.dFdE.ravel(), self.dFdE.ravel())
+        if np.isscalar(self.dFdE):
+            self.phiE = 0
+        else:
+            self.phiE = -np.dot(self.dFdE.ravel(), self.dFdE.ravel())
 
     def _compute_A_is_psd(self):
         if self.a_mode == 'full':
@@ -693,9 +699,15 @@ class MLNNEngine:
 
         jac = np.empty(0)
         if 'A' in arguments:
-            jac = np.append(jac, self.dFdA)
+            if np.isscalar(self.dFdA):
+                jac = np.append(jac, np.zeros(self.A.size))
+            else:
+                jac = np.append(jac, self.dFdA)
         if 'E' in arguments:
-            jac = np.append(jac, self.dFdE)
+            if np.isscalar(self.dFdE):
+                jac = np.append(jac, np.zeros(self.E.size))
+            else:
+                jac = np.append(jac, self.dFdE)
 
         return jac
 

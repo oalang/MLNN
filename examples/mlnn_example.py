@@ -54,7 +54,7 @@ def main():
 #    a_mode = 'decomposed'
 
     e_mode = 'single'
-#    e_mode = 'multiple'
+    e_mode = 'multiple'
 
     i_mode = 'zero'
 #    i_mode = 'random'
@@ -72,8 +72,8 @@ def main():
     s = 0
     l = 1
     q = 1
-    inner_loss = loss.SmoothReLU(.5)
-    outer_loss = loss.SmoothReLU(.5)
+    inner_loss = loss.SmoothReLU2(.5)
+    outer_loss = loss.SmoothReLU2(.5)
 #    outer_loss = None
 
     optimize_method = 'fixed'
@@ -84,7 +84,7 @@ def main():
     fixed_arguments = 'AE'
     max_arg_steps = 5
 
-    line_search_method = 'backtracking'
+    line_search_method = 'strong_wolfe'
     use_prev_f = False
     alpha_0 = 1e-3
     armijo = 1e-6
