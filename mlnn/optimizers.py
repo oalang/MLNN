@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 from scipy.optimize import line_search, minimize, Bounds
 
-from mlnn.callback import MLNNCallback
+from mlnn.callbacks import MLNNCallbacks
 
 
 class MLNNOptimizer:
@@ -105,12 +105,13 @@ class MLNNOptimizer:
 
 
 class MLNNSteepestDescent(MLNNOptimizer):
-    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, n_components=None, optimize_params=None, line_search_params=None):
+    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, n_components=None,
+                 optimize_params=None, line_search_params=None):
         super().__init__(mlnn, callback)
 
         self.optimize_method = 'fixed'
         self.initialization = None
-        self.min_delta_F = 1e-6
+        self.min_delta_F = 1e-06
         self.max_steps = 15000
         self.max_time = np.inf
         self.fixed_arguments = 'AE'
@@ -119,11 +120,11 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
         self.line_search_method = 'backtracking'
         self.use_prev_f = False
-        self.alpha_0 = 1e-6
-        self.armijo = 1e-4
-        self.wolfe = .9
-        self.rho_lo = .1
-        self.rho_hi = .9
+        self.alpha_0 = 1e-06
+        self.armijo = 1e-04
+        self.wolfe = 0.9
+        self.rho_lo = 0.1
+        self.rho_hi = 0.9
         self.max_ls_iterations = 20
         self.line_search_verbose = False
 
@@ -423,7 +424,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
         if verbose:
             if self.callback is None:
-                self.callback = MLNNCallback()
+                self.callback = MLNNCallbacks()
             self.callback.print_stats = True
 
         self.initialize()
@@ -478,7 +479,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
         if verbose:
             if self.callback is None:
-                self.callback = MLNNCallback()
+                self.callback = MLNNCallbacks()
             self.callback.print_stats = True
 
         self.initialize()
@@ -544,11 +545,12 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
 
 class MLNNBFGS(MLNNOptimizer):
-    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, n_components=None, optimize_params=None, line_search_params=None):
+    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, n_components=None,
+                 optimize_params=None, line_search_params=None):
         super().__init__(mlnn, callback)
 
         self.initialization = None
-        self.min_delta_F = 1e-9
+        self.min_delta_F = 1e-09
         self.max_steps = 15000
         self.maxcor = None
         self.gtol = None

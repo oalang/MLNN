@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import loss
 from mlnn.engine import MLNNEngine
-from mlnn.callback import MLNNCallback
+from mlnn.callbacks import MLNNCallbacks
 from mlnn.optimizers import MLNNSteepestDescent, MLNNBFGS
 
 from sklearn.datasets import load_wine
@@ -51,7 +51,7 @@ def main():
 
     a_mode = 'full'
 #    a_mode = 'diagonal'
-    a_mode = 'decomposed'
+#    a_mode = 'decomposed'
 
     e_mode = 'single'
 #    e_mode = 'multiple'
@@ -60,7 +60,7 @@ def main():
 #    i_mode = 'random'
 #    i_mode = 'centered'
 #    i_mode = 'identity'
-    i_mode = 'pca'
+#    i_mode = 'pca'
 
     keep_a_psd = False
     keep_a_centered = False
@@ -150,20 +150,20 @@ def main():
     }
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallback(print_stats=True)
+    callback = MLNNCallbacks(print_stats=True)
     optimizer = MLNNSteepestDescent(mlnn, callback=callback, n_components=n_components, optimize_params=optimize_params, line_search_params=line_search_params)
     optimizer.minimize(verbose=False)
     optimizer.report()
 
     line_search_params['line_search_method'] = 'strong_wolfe'
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallback(print_stats=True)
+    callback = MLNNCallbacks(print_stats=True)
     optimizer = MLNNSteepestDescent(mlnn, callback=callback, n_components=n_components, optimize_params=optimize_params, line_search_params=line_search_params)
     optimizer.minimize(verbose=False)
     optimizer.report()
 
     mlnn = MLNNEngine(B, T, N, C, mlnn_params)
-    callback = MLNNCallback(print_stats=True)
+    callback = MLNNCallbacks(print_stats=True)
     optimizer = MLNNBFGS(mlnn, callback=callback, n_components=n_components, optimize_params=optimize_params, line_search_params=line_search_params)
     optimizer.minimize(verbose=False)
     optimizer.report()

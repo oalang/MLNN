@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class MLNNCallback:
+class MLNNCallbacks:
     def __init__(self, print_stats=False, collect_stats=False, show_figures=False):
         self.print_stats = print_stats
         self.collect_stats = collect_stats

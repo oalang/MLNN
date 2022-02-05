@@ -1,121 +1,98 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import loss
-from mlnn import MLNN
-
-from sklearn.datasets import load_wine
+from sklearn.datasets import load_digits
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.neighbors import NeighborhoodComponentsAnalysis, KNeighborsClassifier
 from sklearn.metrics import accuracy_score
+
+from mlnn import MLNN
 
 
 def main():
-    data = load_wine()
+    data = load_digits()
 
     X_original = np.array(data['data'])
     Y_original = np.array(data['target'], dtype=int)
 
-    split = StratifiedShuffleSplit(n_splits=1, test_size=0.3, random_state=42)
+    split = StratifiedShuffleSplit(n_splits=1, test_size=0.3, random_state=12345)
     for train_index, test_index in split.split(X_original, Y_original):
         X_train, Y_train = X_original[train_index, :], Y_original[train_index]
         X_test, Y_test = X_original[test_index, :], Y_original[test_index]
-
-    X_train, Y_train = X_original, Y_original
-    X_test, Y_test = X_original, Y_original
 
     pipeline = Pipeline([('std_scaler', StandardScaler())])
     X_train_scaled = pipeline.fit_transform(X_train)
     X_test_scaled = pipeline.transform(X_test)
 
     pca = PCA(n_components=2)
-    X_train_2D = pca.fit_transform(X_train_scaled)
+    X_train_pca = pca.fit_transform(X_train_scaled)
+    X_test_pca = pca.transform(X_test_scaled)
+    
+    lda = LinearDiscriminantAnalysis(n_components=2)
+    X_train_lda = lda.fit_transform(X_train_scaled, Y_train)
+    X_test_lda = lda.transform(X_test_scaled)
 
-    plt.figure(figsize=(4, 4))
-    plt.scatter(X_train_2D[:, 0], X_train_2D[:, 1], c=Y_train)
+    nca = NeighborhoodComponentsAnalysis(n_components=2)
+    X_train_nca = nca.fit_transform(X_train_scaled, Y_train)
+    X_test_nca = nca.transform(X_test_scaled)
 
-    knn = KNeighborsClassifier(3)
-    knn.fit(X_train_scaled, Y_train)
-    Y_test_pred = knn.predict(X_test_scaled)
-    accuracy = accuracy_score(Y_test, Y_test_pred)
-    print(f"accuracy = {accuracy: .3f}")
+    mlnn = MLNN(n_components=2)
+    X_train_mlnn = mlnn.fit_transform(X_train_scaled, Y_train)
+    X_test_mlnn = mlnn.transform(X_test_scaled)
 
-    k_mode = 'linear'
-    # k_mode = 'nonlinear'
+    scaled_knn = KNeighborsClassifier(3)
+    scaled_knn.fit(X_train_scaled, Y_train)
+    Y_test_scaled = scaled_knn.predict(X_test_scaled)
+    scaled_accuracy = accuracy_score(Y_test, Y_test_scaled)
+    print(f"scaled_accuracy = {scaled_accuracy: .3f}")
 
-    a_mode = 'full'
-    # a_mode = 'diagonal'
-    # a_mode = 'decomposed'
+    pca_knn = KNeighborsClassifier(3)
+    pca_knn.fit(X_train_pca, Y_train)
+    Y_test_pca = pca_knn.predict(X_test_pca)
+    pca_accuracy = accuracy_score(Y_test, Y_test_pca)
+    print(f"pca_accuracy = {pca_accuracy: .3f}")
+    
+    lda_knn = KNeighborsClassifier(3)
+    lda_knn.fit(X_train_lda, Y_train)
+    Y_test_lda = lda_knn.predict(X_test_lda)
+    lda_accuracy = accuracy_score(Y_test, Y_test_lda)
+    print(f"lda_accuracy = {lda_accuracy: .3f}")
 
-    e_mode = 'single'
-    # e_mode = 'multiple'
+    nca_knn = KNeighborsClassifier(3)
+    nca_knn.fit(X_train_nca, Y_train)
+    Y_test_nca = nca_knn.predict(X_test_nca)
+    nca_accuracy = accuracy_score(Y_test, Y_test_nca)
+    print(f"nca_accuracy = {nca_accuracy: .3f}")
 
-    i_mode = 'zero'
-    # i_mode = 'random'
-    # i_mode = 'centered'
-    # i_mode = 'identity'
-    # i_mode = 'pca'
+    mlnn_knn = KNeighborsClassifier(3)
+    mlnn_knn.fit(X_train_mlnn, Y_train)
+    Y_test_mlnn = mlnn_knn.predict(X_test_mlnn)
+    mlnn_accuracy = accuracy_score(Y_test, Y_test_mlnn)
+    print(f"mlnn_accuracy = {mlnn_accuracy: .3f}")
 
-    keep_a_psd = False
-    keep_a_centered = False
-    keep_e_positive = False
+    plt.figure(figsize=(10, 10))
 
-    d = 2
+    plt.subplot(221)
+    plt.scatter(X_train_pca[:, 0], X_train_pca[:, 1], c=Y_train)
+    plt.title(f"PCA, accuracy = {pca_accuracy: .3f}")
 
-    r = 1
-    s = 0
-    l = 1
-    q = 1
-    inner_loss = loss.SmoothReLU(.5)
-    outer_loss = loss.SmoothReLU(.5)
-    # outer_loss = None
+    plt.subplot(222)
+    plt.scatter(X_train_lda[:, 0], X_train_lda[:, 1], c=Y_train)
+    plt.title(f"LDA, accuracy = {lda_accuracy: .3f}")
 
-    alpha_0 = 1e-3
-    armijo = 1e-6
-    max_backtracks = 50
+    plt.subplot(223)
+    plt.scatter(X_train_nca[:, 0], X_train_nca[:, 1], c=Y_train)
+    plt.title(f"NCA, accuracy = {nca_accuracy: .3f}")
 
-    min_delta_F = 1e-6
-    max_steps = 100
-    max_time = 1
+    plt.subplot(224)
+    plt.scatter(X_train_mlnn[:, 0], X_train_mlnn[:, 1], c=Y_train)
+    plt.title(f"MLNN, accuracy = {mlnn_accuracy: .3f}")
 
-    mlnn_params = {
-        'r': r,
-        's': s,
-        'l': l,
-        'q': q,
-        'inner_loss': inner_loss,
-        'outer_loss': outer_loss,
-        'k_mode': k_mode,
-        'a_mode': a_mode,
-        'e_mode': e_mode,
-        'i_mode': i_mode,
-        'keep_a_psd': keep_a_psd,
-        'keep_a_centered': keep_a_centered,
-        'keep_e_positive': keep_e_positive,
-    }
-
-    optimize_params = {
-        'min_delta_F': min_delta_F,
-        'max_steps': max_steps,
-        'max_time': max_time,
-    }
-
-    line_search_params = {
-        'alpha_0': alpha_0,
-        'armijo': armijo,
-        'max_backtracks': max_backtracks,
-    }
-
-    X = X_train_scaled
-    Y = Y_train
-
-    mlnn = MLNN(d, mlnn_params, optimize_params, line_search_params)
-    mlnn.fit(X, Y)
-
-    # plt.show()
+    plt.show()
 
 
 if __name__ == '__main__':
