@@ -663,6 +663,7 @@ class MLNNBFGS(MLNNOptimizer):
         if 'E' in arguments:
             self.mlnn.E = self.result.x[i:].reshape(self.E_0.shape)
 
+        self.mlnn.F = self.result.fun
         self.steps = self.result.nit
         self.termination = self.result.message
 
