@@ -267,18 +267,6 @@ class MLNNEngine:
         self.dLdE = None
 
     @property
-    def subset_active_data(self):
-        if self._subset_active_data is None:
-            self._compute_V()
-        return self._subset_active_data
-
-    @subset_active_data.setter
-    def subset_active_data(self, subset_active_data):
-        self._subset_active_data = subset_active_data
-        self.dLdA = None
-        self.dLdE = None
-
-    @property
     def subset_active_rows(self):
         if self._subset_active_rows is None:
             self._compute_V()
@@ -297,6 +285,18 @@ class MLNNEngine:
     @subset_active_cols.setter
     def subset_active_cols(self, subset_active_cols):
         self._subset_active_cols = subset_active_cols
+
+    @property
+    def subset_active_data(self):
+        if self._subset_active_data is None:
+            self._compute_V()
+        return self._subset_active_data
+
+    @subset_active_data.setter
+    def subset_active_data(self, subset_active_data):
+        self._subset_active_data = subset_active_data
+        self.dLdA = None
+        self.dLdE = None
 
     @property
     def dRdA(self):
