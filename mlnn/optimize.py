@@ -170,20 +170,20 @@ class MLNNSteepestDescent(MLNNOptimizer):
         if dE is not None:
             self.mlnn.update_E(E_prev, alpha, dE)
 
-        ls_iterations = 1
+        iterations = 1
 
         # If Armijo's condition for sufficient decrease has been satisfied, the search is complete.
         if self.mlnn.F <= F_prev + self.armijo * alpha * phi:
             self.arguments = arguments
             self.phi = phi
             self.alpha = alpha
-            self.ls_iterations = ls_iterations
+            self.ls_iterations = iterations
             self.termination = None
             self.steps += 1
             return True
 
         # If the maximum number of ls_iterations have been performed, return without taking a step.
-        if ls_iterations == self.max_ls_iterations:
+        if iterations == self.max_ls_iterations:
             self.mlnn.A = A_prev
             self.mlnn.E = E_prev
             self.mlnn.F = F_prev
@@ -207,20 +207,20 @@ class MLNNSteepestDescent(MLNNOptimizer):
         if dE is not None:
             self.mlnn.update_E(E_prev, alpha, dE)
 
-        ls_iterations += 1
+        iterations += 1
 
         # If Armijo's condition for sufficient decrease has been satisfied, the search is complete.
         if self.mlnn.F <= F_prev + self.armijo * alpha * phi:
             self.arguments = arguments
             self.phi = phi
             self.alpha = alpha
-            self.ls_iterations = ls_iterations
+            self.ls_iterations = iterations
             self.termination = None
             self.steps += 1
             return True
 
         # If the maximum number of ls_iterations have been performed, return without taking a step.
-        if ls_iterations == self.max_ls_iterations:
+        if iterations == self.max_ls_iterations:
             self.mlnn.A = A_prev
             self.mlnn.E = E_prev
             self.mlnn.F = F_prev
@@ -254,20 +254,20 @@ class MLNNSteepestDescent(MLNNOptimizer):
             if dE is not None:
                 self.mlnn.update_E(E_prev, alpha, dE)
 
-            ls_iterations += 1
+            iterations += 1
 
             # If Armijo's condition for sufficient decrease has been satisfied, the search is complete.
             if self.mlnn.F <= F_prev + self.armijo * alpha * phi:
                 self.arguments = arguments
                 self.phi = phi
                 self.alpha = alpha
-                self.ls_iterations = ls_iterations
+                self.ls_iterations = iterations
                 self.termination = None
                 self.steps += 1
                 return True
 
             # If the maximum number of ls_iterations have been performed, return without taking a step.
-            if ls_iterations == self.max_ls_iterations:
+            if iterations == self.max_ls_iterations:
                 self.mlnn.A = A_prev
                 self.mlnn.E = E_prev
                 self.mlnn.F = F_prev
