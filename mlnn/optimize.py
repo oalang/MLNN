@@ -702,5 +702,3 @@ class MLNNBFGS(MLNNOptimizer):
 
         if self.callback is not None:
             self.callback.end()
-
-
