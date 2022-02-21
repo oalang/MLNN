@@ -109,7 +109,7 @@ class MLNN:
         if self.verbose >= 1:
             optimizer.report()
 
-        self.transformer = LinearTransformer(optimizer.mlnn.A)
+        self.transformer = LinearTransformation(optimizer.mlnn.A)
         self.epsilon = np.mean(optimizer.mlnn.E)
 
         return self
@@ -123,12 +123,12 @@ class MLNN:
         return self.transform(X)
 
 
-class Transformer:
+class Transformation:
     def __init__(self, L):
         self.L = L
 
 
-class LinearTransformer(Transformer):
+class LinearTransformation(Transformation):
     def __init__(self, L):
         super().__init__(L)
 
@@ -136,7 +136,7 @@ class LinearTransformer(Transformer):
         return X @ self.L.T
 
 
-class RBFTransformer(Transformer):
+class RBFTransformation(Transformation):
     def __init__(self, L, Z, sigma2):
         super().__init__(L)
 
