@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import norm
 
 
 class ReLU:
@@ -224,3 +225,42 @@ class LeakySigmoid:
         Xo = 4 * (X + self.offset)
         Y = 1 / (1 + np.exp(-Xo))
         return np.where(Xo > self.c, self.beta, np.where(Xo > self.a, 4 * Y * (1 - Y), self.alpha))
+
+
+class Softplus:
+    def __init__(self, offset=0):
+        self.offset = offset
+
+    def func(self, X):
+        return np.log(1 + np.exp(X + self.offset))
+
+    def grad(self, X):
+        return 1 / (1 + np.exp(-(X + self.offset)))
+
+
+class SiLU:
+    def __init__(self, offset=0):
+        self.offset = offset
+
+    def func(self, X):
+        Xo = X + self.offset
+        return Xo / (1 + np.exp(-Xo))
+
+    def grad(self, X):
+        Xo = X + self.offset
+        Y = np.exp(-Xo)
+        Z = 1 + Y
+        return Xo * Y / Z ** 2 + 1 / Z
+
+
+class GELU:
+    def __init__(self, offset=0):
+        self.offset = offset
+
+    def func(self, X):
+        Xo = X + self.offset
+        return Xo * norm.cdf(Xo)
+
+    def grad(self, X):
+        Xo = X + self.offset
+        return Xo * norm.pdf(Xo) + norm.cdf(Xo)
