@@ -10,7 +10,7 @@ class ReLU:
         return np.maximum(X + self.offset, 0)
 
     def grad(self, X):
-        return (X + self.offset) > 0
+        return np.where(X + self.offset > 0, 1, 0)
 
 
 class LeakyReLU:
@@ -161,7 +161,7 @@ class Logistic:
     def func(self, X):
         Xo = 4 * (X + self.offset)
         Y = np.exp(Xo)
-        return np.where(np.isposinf(Y), Xo, .25 * np.log1p(Y))
+        return .25 * np.where(np.isposinf(Y), Xo, np.log1p(Y))
 
     def grad(self, X):
         Xo = 4 * (X + self.offset)
@@ -181,7 +181,7 @@ class LeakyLogistic:
     def func(self, X):
         Xo = 4 * (X + self.offset)
         Y = np.exp(Xo)
-        return np.where(Xo > self.a, np.where(np.isposinf(Y), Xo, .25 * np.log1p(Y)), .25 * self.alpha * Xo + self.b)
+        return np.where(Xo > self.a, .25 * np.where(np.isposinf(Y), Xo, np.log1p(Y)), .25 * self.alpha * Xo + self.b)
 
     def grad(self, X):
         Xo = 4 * (X + self.offset)
@@ -232,10 +232,14 @@ class Softplus:
         self.offset = offset
 
     def func(self, X):
-        return np.log(1 + np.exp(X + self.offset))
+        Xo = X + self.offset
+        Y = np.exp(Xo)
+        return np.where(np.isposinf(Y), Xo, np.log1p(Y))
 
     def grad(self, X):
-        return 1 / (1 + np.exp(-(X + self.offset)))
+        Xo = X + self.offset
+        Y = np.exp(Xo)
+        return np.where(np.isposinf(Y), 1, 1 - 1 / (1 + Y))
 
 
 class SiLU:
