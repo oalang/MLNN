@@ -104,7 +104,7 @@ class MLNNEngine:
     @N.setter
     def N(self, N):
         self._N = N
-        self.I = None
+        self.O = None
 
     @property
     def C(self):
@@ -122,8 +122,8 @@ class MLNNEngine:
     @A.setter
     def A(self, A):
         self._A = A
-        self.I = None
         self.J = None
+        self.I = None
         self.A_is_psd = None
         self.eigenvalues = None
         self.eigenvectors = None
@@ -295,8 +295,6 @@ class MLNNEngine:
     @subset_active_data.setter
     def subset_active_data(self, subset_active_data):
         self._subset_active_data = subset_active_data
-        self.dLdA = None
-        self.dLdE = None
 
     @property
     def dRdA(self):
@@ -436,7 +434,7 @@ class MLNNEngine:
         self.R = self.r * .5 * np.dot(self.K.T.ravel(), self.K.ravel())
 
     def _compute_S(self):
-        self.S = self.s * .5 * np.sum(np.square(self.E - 1))
+        self.S = self.s * .5 * np.sum((self.E - 1) ** 2)
 
     def _compute_I(self):
         if self.a_mode == 'full':
@@ -498,8 +496,8 @@ class MLNNEngine:
 
     def _compute_dLdA(self):
         if self.subset_active_data.size:
-            Z = self.V + self.V.T
-            U = np.diag(np.sum(Z, axis=0)) - Z
+            U = np.negative(self.V + self.V.T)
+            np.fill_diagonal(U, np.diagonal(U) - np.sum(U, axis=0))
             B = self.B.take(self.subset_active_data, axis=0)
 
             if self.a_mode == 'full':
@@ -567,19 +565,23 @@ class MLNNEngine:
         if self.a_mode == 'full':
             if self.eigenvalues[-1] > tol:
                 i = np.argmax(self.eigenvalues > tol)
-                return (self.eigenvectors[:, i:] * self.eigenvalues[i:]) @ self.eigenvectors[:, i:].T
+                A = (self.eigenvectors[:, i:] * self.eigenvalues[i:]) @ self.eigenvectors[:, i:].T
+                A = (A + A.T) / 2
             else:
-                return np.zeros(self.A.shape)
+                A = np.zeros(self.A.shape)
         elif self.a_mode == 'diagonal':
-            return np.maximum(self.A, 0)
+            A = np.maximum(self.A, 0)
         elif self.a_mode == 'decomposed':
-            return self.A
+            A = self.A
+
+        return A
 
     def A_center_projection(self):
         A = self.A
         if self.a_mode == 'full':
             A -= np.sum(A, axis=0, keepdims=True) / self.m
             A -= np.sum(A, axis=1, keepdims=True) / self.m
+            A = (A + A.T) / 2
         elif self.a_mode == 'decomposed':
             A -= np.sum(A, axis=1, keepdims=True) / self.m
 
@@ -597,7 +599,7 @@ class MLNNEngine:
     def compute_A_0(self, initialization='random', d=None):
         if initialization == 'random':
             rng = np.random.Generator(np.random.PCG64(12345))
-            
+
         if self.a_mode == 'full':
             if initialization == 'zero':
                 A = np.zeros((self.m, self.m))
@@ -608,15 +610,19 @@ class MLNNEngine:
                 elif initialization == 'identity':
                     A = np.diag(np.ones(self.m) / self.m ** .5)
                 elif initialization == 'centered':
-                    U = np.identity(self.n) - 1 / self.n
-                    A = self.B.T @ U @ self.B
-                    A = (A + A.T) / 2
+                    A = self.B.T @ (np.identity(self.n) - 1 / self.n) @ self.B
+
+                if self.keep_a_centered:
+                    A -= np.sum(A, axis=0, keepdims=True) / self.m
+                    A -= np.sum(A, axis=1, keepdims=True) / self.m
 
                 if self.kernel == 'linear':
                     K = A
                 elif self.kernel == 'nonlinear':
                     K = A @ self.C
                 A /= np.dot(K.T.ravel(), K.ravel()) ** .5
+
+                A = (A + A.T) / 2
         elif self.a_mode == 'diagonal':
             if initialization == 'zero':
                 A = np.zeros(self.m).reshape(self.m, 1)
@@ -634,7 +640,7 @@ class MLNNEngine:
         elif self.a_mode == 'decomposed':
             if d is None:
                 d = self.m
-            
+
             if initialization == 'random':
                 A = rng.standard_normal(d * self.m).reshape(d, self.m) / d ** .5
             elif initialization == 'pca':
@@ -646,6 +652,9 @@ class MLNNEngine:
                     kpca = KernelPCA(n_components=d, kernel='precomputed')
                     kpca.fit(self.C)
                     A = kpca.eigenvectors_.T / d ** .5
+
+            if self.keep_a_centered:
+                A -= np.sum(A, axis=1, keepdims=True) / self.m
 
             if self.kernel == 'linear':
                 K = A @ A.T
@@ -715,4 +724,3 @@ class MLNNEngine:
                 jac = np.append(jac, self.dFdE)
 
         return jac
-
