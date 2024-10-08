@@ -18,6 +18,7 @@ class MLNNEngine:
         self.keep_a_psd = True
         self.keep_a_centered = False
         self.keep_e_positive = None
+        self.check_array_equal = False
 
         if mlnn_params:
             self.apply_params(mlnn_params)
@@ -693,11 +694,11 @@ class MLNNEngine:
         if 'A' in arguments:
             A = x[0:self.A.size].reshape(self.A.shape)
             i = self.A.size
-            if not np.array_equal(A, self.A):
+            if not self.check_array_equal or not np.array_equal(A, self.A):
                 self.A = A
         if 'E' in arguments:
             E = x[i:].reshape(self.E.shape)
-            if not np.array_equal(E, self.E):
+            if not self.check_array_equal or not np.array_equal(E, self.E):
                 self.E = E
 
         return self.F
@@ -707,11 +708,11 @@ class MLNNEngine:
         if 'A' in arguments:
             A = x[0:self.A.size].reshape(self.A.shape)
             i = self.A.size
-            if not np.array_equal(A, self.A):
+            if not self.check_array_equal or not np.array_equal(A, self.A):
                 self.A = A
         if 'E' in arguments:
             E = x[i:].reshape(self.E.shape)
-            if not np.array_equal(E, self.E):
+            if not self.check_array_equal or not np.array_equal(E, self.E):
                 self.E = E
 
         jac = np.empty(0)
