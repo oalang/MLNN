@@ -121,7 +121,10 @@ class MLNNEngine:
 
     @A.setter
     def A(self, A):
-        self._A = A
+        if self.a_mode == 'full':
+            self._A = (A + A.T) / 2
+        else:
+            self._A = A
         self.J = None
         self.I = None
         self.A_is_psd = None
