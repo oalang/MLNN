@@ -18,6 +18,7 @@ class MLNNEngine:
         self.keep_a_psd = True
         self.keep_a_centered = False
         self.keep_e_positive = None
+        self.reduce_derivative_matrix = False
         self.check_array_equal = False
 
         if mlnn_params:
@@ -51,11 +52,13 @@ class MLNNEngine:
         assert self.N.shape[0] == self.n
         assert self.N.shape[1] == 1
 
+        self.C_equals_B = False
         if self.kernel == 'linear':
             assert C is None
         elif self.kernel == 'nonlinear':
             if C is None:
                 self.C = self.B
+                self.C_equals_B = True
             else:
                 self.C = C
 
@@ -86,7 +89,7 @@ class MLNNEngine:
     @B.setter
     def B(self, B):
         self._B = B
-        self.I = None
+        self.D = None
 
     @property
     def T(self):
@@ -127,7 +130,7 @@ class MLNNEngine:
         else:
             self._A = A
         self.J = None
-        self.I = None
+        self.D = None
         self.A_is_psd = None
         self.eigenvalues = None
         self.eigenvectors = None
@@ -210,6 +213,17 @@ class MLNNEngine:
     def S(self, S):
         self._S = S
         self.F = None
+
+    @property
+    def D(self):
+        if self._D is None:
+            self._compute_D()
+        return self._D
+
+    @D.setter
+    def D(self, D):
+        self._D = D
+        self.I = None
 
     @property
     def I(self):
@@ -440,16 +454,28 @@ class MLNNEngine:
     def _compute_S(self):
         self.S = self.s * .5 * np.sum((self.E - 1) ** 2)
 
-    def _compute_I(self):
+    def _compute_D(self):
         if self.a_mode == 'full':
-            P = self.B @ self.A @ self.B.T
+            if self.kernel == 'nonlinear' and self.C_equals_B:
+                P = self.B @ self.J
+            else:
+                P = self.B @ self.A @ self.B.T
         elif self.a_mode == 'diagonal':
-            P = self.B @ (self.A * self.B.T)
+            if self.kernel == 'nonlinear' and self.C_equals_B:
+                P = self.B @ self.J
+            else:
+                P = self.B @ (self.A * self.B.T)
         elif self.a_mode == 'decomposed':
-            Z = self.A @ self.B.T
-            P = Z.T @ Z
+            if self.kernel == 'nonlinear' and self.C_equals_B:
+                P = self.J.T @ self.J
+            else:
+                U = self.A @ self.B.T
+                P = U.T @ U
 
-        self.I = self.T * ((P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P) - self.E)
+        self.D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
+
+    def _compute_I(self):
+        self.I = self.T * (self.D - self.E)
 
     def _compute_O(self):
         if self.q == 1:
@@ -471,18 +497,23 @@ class MLNNEngine:
         self.F_count += 1
 
     def _compute_V(self):
-        V = self.l * self.inner_loss.grad(self.I) * self.T
+        V = self.inner_loss.grad(self.I) * self.T
         if self.outer_loss is not None:
             V *= self.outer_loss.grad(self.O)
         if self.q != 1:
             V *= self.Q
+
         is_active_row = np.any(V, axis=1)
         is_active_col = np.any(V, axis=0)
         is_active = np.logical_or(is_active_row, is_active_col)
         self.subset_active_rows = np.argwhere(is_active_row).flatten()
         self.subset_active_cols = np.argwhere(is_active_col).flatten()
         self.subset_active_data = np.argwhere(is_active).flatten()
-        self.V = V.take(self.subset_active_data, axis=0).take(self.subset_active_data, axis=1)
+
+        if self.reduce_derivative_matrix:
+            self.V = V.take(self.subset_active_data, axis=0).take(self.subset_active_data, axis=1)
+        else:
+            self.V = V
 
     def _compute_dRdA(self):
         if self.a_mode == 'full':
@@ -500,16 +531,19 @@ class MLNNEngine:
 
     def _compute_dLdA(self):
         if self.subset_active_data.size:
-            U = np.negative(self.V + self.V.T)
-            np.fill_diagonal(U, np.diagonal(U) - np.sum(U, axis=0))
-            B = self.B.take(self.subset_active_data, axis=0)
+            Y = np.negative(self.V + self.V.T)
+            np.fill_diagonal(Y, np.diagonal(Y) - np.sum(Y, axis=0))
+            if self.reduce_derivative_matrix:
+                B = self.B.take(self.subset_active_data, axis=0)
+            else:
+                B = self.B
 
             if self.a_mode == 'full':
-                self.dLdA = B.T @ U @ B
+                self.dLdA = self.l * (B.T @ Y @ B)
             elif self.a_mode == 'diagonal':
-                self.dLdA = np.sum(B.T * (U @ B).T, axis=1, keepdims=True)
+                self.dLdA = self.l * np.sum(B.T * (Y @ B).T, axis=1, keepdims=True)
             elif self.a_mode == 'decomposed':
-                self.dLdA = 2 * ((self.A @ B.T) @ U @ B)
+                self.dLdA = self.l * 2 * ((self.A @ B.T) @ Y @ B)
         else:
             self.dLdA = 0
 
@@ -529,10 +563,14 @@ class MLNNEngine:
     def _compute_dLdE(self):
         if self.subset_active_data.size:
             if self.e_mode == 'single':
-                self.dLdE = -np.sum(self.V, keepdims=True)
+                self.dLdE = self.l * -np.sum(self.V, keepdims=True)
             elif self.e_mode == 'multiple':
-                self.dLdE = np.zeros(self.n).reshape(self.n, 1)
-                self.dLdE[self.subset_active_data] = -np.sum(self.V, axis=1, keepdims=True)
+                if self.reduce_derivative_matrix:
+                    Z = np.zeros(self.n).reshape(self.n, 1)
+                    Z[self.subset_active_data] = -np.sum(self.V, axis=1, keepdims=True)
+                    self.dLdE = self.l * Z
+                else:
+                    self.dLdE = self.l * -np.sum(self.V, axis=1, keepdims=True)
         else:
             self.dLdE = 0
 
