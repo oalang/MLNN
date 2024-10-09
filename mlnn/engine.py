@@ -18,6 +18,8 @@ class MLNNEngine:
         self.keep_a_psd = True
         self.keep_a_centered = False
         self.keep_e_positive = None
+        self.reduce_derivative_matrix = False
+        self.check_array_equal = False
 
         if mlnn_params:
             self.apply_params(mlnn_params)
@@ -50,11 +52,13 @@ class MLNNEngine:
         assert self.N.shape[0] == self.n
         assert self.N.shape[1] == 1
 
+        self.C_equals_B = False
         if self.kernel == 'linear':
             assert C is None
         elif self.kernel == 'nonlinear':
             if C is None:
                 self.C = self.B
+                self.C_equals_B = True
             else:
                 self.C = C
 
@@ -85,7 +89,7 @@ class MLNNEngine:
     @B.setter
     def B(self, B):
         self._B = B
-        self.I = None
+        self.D = None
 
     @property
     def T(self):
@@ -104,7 +108,7 @@ class MLNNEngine:
     @N.setter
     def N(self, N):
         self._N = N
-        self.I = None
+        self.O = None
 
     @property
     def C(self):
@@ -121,9 +125,12 @@ class MLNNEngine:
 
     @A.setter
     def A(self, A):
-        self._A = A
-        self.I = None
+        if self.a_mode == 'full':
+            self._A = (A + A.T) / 2
+        else:
+            self._A = A
         self.J = None
+        self.D = None
         self.A_is_psd = None
         self.eigenvalues = None
         self.eigenvectors = None
@@ -206,6 +213,17 @@ class MLNNEngine:
     def S(self, S):
         self._S = S
         self.F = None
+
+    @property
+    def D(self):
+        if self._D is None:
+            self._compute_D()
+        return self._D
+
+    @D.setter
+    def D(self, D):
+        self._D = D
+        self.I = None
 
     @property
     def I(self):
@@ -295,8 +313,6 @@ class MLNNEngine:
     @subset_active_data.setter
     def subset_active_data(self, subset_active_data):
         self._subset_active_data = subset_active_data
-        self.dLdA = None
-        self.dLdE = None
 
     @property
     def dRdA(self):
@@ -436,18 +452,30 @@ class MLNNEngine:
         self.R = self.r * .5 * np.dot(self.K.T.ravel(), self.K.ravel())
 
     def _compute_S(self):
-        self.S = self.s * .5 * np.sum(np.square(self.E - 1))
+        self.S = self.s * .5 * np.sum((self.E - 1) ** 2)
+
+    def _compute_D(self):
+        if self.a_mode == 'full':
+            if self.kernel == 'nonlinear' and self.C_equals_B:
+                P = self.B @ self.J
+            else:
+                P = self.B @ self.A @ self.B.T
+        elif self.a_mode == 'diagonal':
+            if self.kernel == 'nonlinear' and self.C_equals_B:
+                P = self.B @ self.J
+            else:
+                P = self.B @ (self.A * self.B.T)
+        elif self.a_mode == 'decomposed':
+            if self.kernel == 'nonlinear' and self.C_equals_B:
+                P = self.J.T @ self.J
+            else:
+                U = self.A @ self.B.T
+                P = U.T @ U
+
+        self.D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
 
     def _compute_I(self):
-        if self.a_mode == 'full':
-            P = self.B @ self.A @ self.B.T
-        elif self.a_mode == 'diagonal':
-            P = self.B @ (self.A * self.B.T)
-        elif self.a_mode == 'decomposed':
-            Z = self.A @ self.B.T
-            P = Z.T @ Z
-
-        self.I = self.T * ((P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P) - self.E)
+        self.I = self.T * (self.D - self.E)
 
     def _compute_O(self):
         if self.q == 1:
@@ -469,18 +497,23 @@ class MLNNEngine:
         self.F_count += 1
 
     def _compute_V(self):
-        V = self.l * self.inner_loss.grad(self.I) * self.T
+        V = self.inner_loss.grad(self.I) * self.T
         if self.outer_loss is not None:
             V *= self.outer_loss.grad(self.O)
         if self.q != 1:
             V *= self.Q
+
         is_active_row = np.any(V, axis=1)
         is_active_col = np.any(V, axis=0)
         is_active = np.logical_or(is_active_row, is_active_col)
         self.subset_active_rows = np.argwhere(is_active_row).flatten()
         self.subset_active_cols = np.argwhere(is_active_col).flatten()
         self.subset_active_data = np.argwhere(is_active).flatten()
-        self.V = V.take(self.subset_active_data, axis=0).take(self.subset_active_data, axis=1)
+
+        if self.reduce_derivative_matrix:
+            self.V = V.take(self.subset_active_data, axis=0).take(self.subset_active_data, axis=1)
+        else:
+            self.V = V
 
     def _compute_dRdA(self):
         if self.a_mode == 'full':
@@ -498,16 +531,19 @@ class MLNNEngine:
 
     def _compute_dLdA(self):
         if self.subset_active_data.size:
-            Z = self.V + self.V.T
-            U = np.diag(np.sum(Z, axis=0)) - Z
-            B = self.B.take(self.subset_active_data, axis=0)
+            Y = np.negative(self.V + self.V.T)
+            np.fill_diagonal(Y, np.diagonal(Y) - np.sum(Y, axis=0))
+            if self.reduce_derivative_matrix:
+                B = self.B.take(self.subset_active_data, axis=0)
+            else:
+                B = self.B
 
             if self.a_mode == 'full':
-                self.dLdA = B.T @ U @ B
+                self.dLdA = self.l * (B.T @ Y @ B)
             elif self.a_mode == 'diagonal':
-                self.dLdA = np.sum(B.T * (U @ B).T, axis=1, keepdims=True)
+                self.dLdA = self.l * np.sum(B.T * (Y @ B).T, axis=1, keepdims=True)
             elif self.a_mode == 'decomposed':
-                self.dLdA = 2 * ((self.A @ B.T) @ U @ B)
+                self.dLdA = self.l * 2 * ((self.A @ B.T) @ Y @ B)
         else:
             self.dLdA = 0
 
@@ -527,10 +563,14 @@ class MLNNEngine:
     def _compute_dLdE(self):
         if self.subset_active_data.size:
             if self.e_mode == 'single':
-                self.dLdE = -np.sum(self.V, keepdims=True)
+                self.dLdE = self.l * -np.sum(self.V, keepdims=True)
             elif self.e_mode == 'multiple':
-                self.dLdE = np.zeros(self.n).reshape(self.n, 1)
-                self.dLdE[self.subset_active_data] = -np.sum(self.V, axis=1, keepdims=True)
+                if self.reduce_derivative_matrix:
+                    Z = np.zeros(self.n).reshape(self.n, 1)
+                    Z[self.subset_active_data] = -np.sum(self.V, axis=1, keepdims=True)
+                    self.dLdE = self.l * Z
+                else:
+                    self.dLdE = self.l * -np.sum(self.V, axis=1, keepdims=True)
         else:
             self.dLdE = 0
 
@@ -567,19 +607,23 @@ class MLNNEngine:
         if self.a_mode == 'full':
             if self.eigenvalues[-1] > tol:
                 i = np.argmax(self.eigenvalues > tol)
-                return (self.eigenvectors[:, i:] * self.eigenvalues[i:]) @ self.eigenvectors[:, i:].T
+                A = (self.eigenvectors[:, i:] * self.eigenvalues[i:]) @ self.eigenvectors[:, i:].T
+                A = (A + A.T) / 2
             else:
-                return np.zeros(self.A.shape)
+                A = np.zeros(self.A.shape)
         elif self.a_mode == 'diagonal':
-            return np.maximum(self.A, 0)
+            A = np.maximum(self.A, 0)
         elif self.a_mode == 'decomposed':
-            return self.A
+            A = self.A
+
+        return A
 
     def A_center_projection(self):
         A = self.A
         if self.a_mode == 'full':
             A -= np.sum(A, axis=0, keepdims=True) / self.m
             A -= np.sum(A, axis=1, keepdims=True) / self.m
+            A = (A + A.T) / 2
         elif self.a_mode == 'decomposed':
             A -= np.sum(A, axis=1, keepdims=True) / self.m
 
@@ -597,7 +641,7 @@ class MLNNEngine:
     def compute_A_0(self, initialization='random', d=None):
         if initialization == 'random':
             rng = np.random.Generator(np.random.PCG64(12345))
-            
+
         if self.a_mode == 'full':
             if initialization == 'zero':
                 A = np.zeros((self.m, self.m))
@@ -608,15 +652,19 @@ class MLNNEngine:
                 elif initialization == 'identity':
                     A = np.diag(np.ones(self.m) / self.m ** .5)
                 elif initialization == 'centered':
-                    U = np.identity(self.n) - 1 / self.n
-                    A = self.B.T @ U @ self.B
-                    A = (A + A.T) / 2
+                    A = self.B.T @ (np.identity(self.n) - 1 / self.n) @ self.B
+
+                if self.keep_a_centered:
+                    A -= np.sum(A, axis=0, keepdims=True) / self.m
+                    A -= np.sum(A, axis=1, keepdims=True) / self.m
 
                 if self.kernel == 'linear':
                     K = A
                 elif self.kernel == 'nonlinear':
                     K = A @ self.C
                 A /= np.dot(K.T.ravel(), K.ravel()) ** .5
+
+                A = (A + A.T) / 2
         elif self.a_mode == 'diagonal':
             if initialization == 'zero':
                 A = np.zeros(self.m).reshape(self.m, 1)
@@ -634,7 +682,7 @@ class MLNNEngine:
         elif self.a_mode == 'decomposed':
             if d is None:
                 d = self.m
-            
+
             if initialization == 'random':
                 A = rng.standard_normal(d * self.m).reshape(d, self.m) / d ** .5
             elif initialization == 'pca':
@@ -646,6 +694,9 @@ class MLNNEngine:
                     kpca = KernelPCA(n_components=d, kernel='precomputed')
                     kpca.fit(self.C)
                     A = kpca.eigenvectors_.T / d ** .5
+
+            if self.keep_a_centered:
+                A -= np.sum(A, axis=1, keepdims=True) / self.m
 
             if self.kernel == 'linear':
                 K = A @ A.T
@@ -681,11 +732,11 @@ class MLNNEngine:
         if 'A' in arguments:
             A = x[0:self.A.size].reshape(self.A.shape)
             i = self.A.size
-            if not np.array_equal(A, self.A):
+            if not self.check_array_equal or not np.array_equal(A, self.A):
                 self.A = A
         if 'E' in arguments:
             E = x[i:].reshape(self.E.shape)
-            if not np.array_equal(E, self.E):
+            if not self.check_array_equal or not np.array_equal(E, self.E):
                 self.E = E
 
         return self.F
@@ -695,11 +746,11 @@ class MLNNEngine:
         if 'A' in arguments:
             A = x[0:self.A.size].reshape(self.A.shape)
             i = self.A.size
-            if not np.array_equal(A, self.A):
+            if not self.check_array_equal or not np.array_equal(A, self.A):
                 self.A = A
         if 'E' in arguments:
             E = x[i:].reshape(self.E.shape)
-            if not np.array_equal(E, self.E):
+            if not self.check_array_equal or not np.array_equal(E, self.E):
                 self.E = E
 
         jac = np.empty(0)
@@ -715,4 +766,3 @@ class MLNNEngine:
                 jac = np.append(jac, self.dFdE)
 
         return jac
-
