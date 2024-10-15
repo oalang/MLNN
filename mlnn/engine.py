@@ -600,8 +600,17 @@ class MLNNEngine:
             self.A_is_psd = True
 
     def _compute_eigh(self):
-        self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.A)
-        self.eigh_count += 1
+        if self.a_mode == 'full':
+            self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.A)
+            self.eigh_count += 1
+        elif self.a_mode == 'diagonal':
+            G = self.A.flatten()
+            H = np.flip(np.argsort(G))
+            self.eigenvalues = G[H]
+            self.eigenvectors = np.identity(self.m)[:, H]
+        elif self.a_mode == 'decomposed':
+            self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.A.T @ self.A)
+            self.eigh_count += 1
 
     def A_psd_projection(self, tol=1e-10):
         if self.a_mode == 'full':
