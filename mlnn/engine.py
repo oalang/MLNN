@@ -566,7 +566,7 @@ class MLNNEngine:
                 self.dLdE = self.l * -np.sum(self.V, keepdims=True)
             elif self.e_mode == 'multiple':
                 if self.reduce_derivative_matrix:
-                    Z = np.zeros(self.n).reshape(self.n, 1)
+                    Z = np.zeros((self.n, 1))
                     Z[self.subset_active_data] = -np.sum(self.V, axis=1, keepdims=True)
                     self.dLdE = self.l * Z
                 else:
@@ -656,7 +656,7 @@ class MLNNEngine:
                 A = np.zeros((self.m, self.m))
             else:
                 if initialization == 'random':
-                    A = rng.standard_normal(self.m * self.m).reshape(self.m, self.m) / self.m ** .5
+                    A = rng.standard_normal((self.m, self.m)) / self.m ** .5
                     A = A.T @ A
                 elif initialization == 'identity':
                     A = np.diag(np.ones(self.m) / self.m ** .5)
@@ -676,12 +676,12 @@ class MLNNEngine:
                 A = (A + A.T) / 2
         elif self.a_mode == 'diagonal':
             if initialization == 'zero':
-                A = np.zeros(self.m).reshape(self.m, 1)
+                A = np.zeros((self.m, 1))
             else:
                 if initialization == 'random':
-                    A = rng.standard_normal(self.m).reshape(self.m, 1) ** 2
+                    A = rng.standard_normal((self.m, 1)) ** 2
                 elif initialization == 'identity':
-                    A = np.ones(self.m).reshape(self.m, 1) / self.m ** .5
+                    A = np.ones((self.m, 1)) / self.m ** .5
 
                 if self.kernel == 'linear':
                     K = A
@@ -693,7 +693,7 @@ class MLNNEngine:
                 d = self.m
 
             if initialization == 'random':
-                A = rng.standard_normal(d * self.m).reshape(d, self.m) / d ** .5
+                A = rng.standard_normal((d, self.m)) / d ** .5
             elif initialization == 'pca':
                 if self.kernel == 'linear':
                     pca = PCA(n_components=d)
@@ -728,11 +728,11 @@ class MLNNEngine:
                 E = 1
         elif self.e_mode == 'multiple':
             if initialization == 'zero':
-                E = np.zeros(self.n).reshape(self.n, 1)
+                E = np.zeros((self.n, 1))
             elif initialization == 'random':
-                E = rng.standard_normal(self.n).reshape(self.n, 1) ** 2
+                E = rng.standard_normal((self.n, 1)) ** 2
             elif initialization == 'centered' or initialization == 'identity' or initialization == 'pca':
-                E = np.ones(self.n).reshape(self.n, 1)
+                E = np.ones((self.n, 1))
 
         return np.atleast_2d(E)
 
@@ -794,6 +794,6 @@ class MLNNEngine:
         if n_components <= self.m:
             return M
         else:
-            Z = np.zeros(n_components, self.m)
+            Z = np.zeros((n_components, self.m))
             Z[:d, :] = M
             return M
