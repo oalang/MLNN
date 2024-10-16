@@ -136,11 +136,13 @@ class MLNNEngine:
         self.eigenvectors = None
 
         if self.keep_a_psd and not self.A_is_psd:
-            self._A = self.A_psd_projection()
+            self._A_psd_projection()
             self.A_is_psd = True
 
         if self.keep_a_centered:
-            self._A = self.A_center_projection()
+            self._A_center_projection()
+            self.eigenvalues = None
+            self.eigenvectors = None
 
     @property
     def E(self):
@@ -155,7 +157,7 @@ class MLNNEngine:
             self.dSdE = None
 
         if self.keep_e_positive:
-            self._E = self.E_positive_projection()
+            self._E_positive_projection()
 
     @property
     def Q(self):
@@ -612,22 +614,27 @@ class MLNNEngine:
             self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.A.T @ self.A)
             self.eigh_count += 1
 
-    def A_psd_projection(self, tol=1e-10):
+    def _A_psd_projection(self, tol=1e-10):
         if self.a_mode == 'full':
-            if self.eigenvalues[-1] > tol:
-                i = np.argmax(self.eigenvalues > tol)
-                A = (self.eigenvectors[:, i:] * self.eigenvalues[i:]) @ self.eigenvectors[:, i:].T
+            eigenvalues = self.eigenvalues
+            if eigenvalues[-1] > tol:
+                i = np.argmax(eigenvalues > tol)
+                eigenvalues[:i] = 0
+                A = (self.eigenvectors[:, i:] * eigenvalues[i:]) @ self.eigenvectors[:, i:].T
                 A = (A + A.T) / 2
             else:
+                eigenvalues = np.zeros(eigenvalues.shape)
                 A = np.zeros(self.A.shape)
+
+            self.eigenvalues = eigenvalues
         elif self.a_mode == 'diagonal':
             A = np.maximum(self.A, 0)
         elif self.a_mode == 'decomposed':
             A = self.A
 
-        return A
+        self._A = A
 
-    def A_center_projection(self):
+    def _A_center_projection(self):
         A = self.A
         if self.a_mode == 'full':
             A -= np.sum(A, axis=0, keepdims=True) / self.m
@@ -636,10 +643,10 @@ class MLNNEngine:
         elif self.a_mode == 'decomposed':
             A -= np.sum(A, axis=1, keepdims=True) / self.m
 
-        return A
+        self._A = A
 
-    def E_positive_projection(self):
-        return np.maximum(self.E, 0)
+    def _E_positive_projection(self):
+        self._E = np.maximum(self.E, 0)
 
     def update_A(self, A, alpha, dA):
         self.A = A - alpha * dA
@@ -796,4 +803,4 @@ class MLNNEngine:
         else:
             Z = np.zeros((n_components, self.m))
             Z[:d, :] = M
-            return M
+            return Z
