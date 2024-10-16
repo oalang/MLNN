@@ -605,7 +605,7 @@ class MLNNEngine:
             self.eigh_count += 1
         elif self.a_mode == 'diagonal':
             G = self.A.flatten()
-            H = np.flip(np.argsort(G))
+            H = np.argsort(G)
             self.eigenvalues = G[H]
             self.eigenvectors = np.identity(self.m)[:, H]
         elif self.a_mode == 'decomposed':
@@ -775,3 +775,25 @@ class MLNNEngine:
                 jac = np.append(jac, self.dFdE)
 
         return jac
+
+    def get_transformation_matrix(self, n_components=None):
+        if self.a_mode == 'decomposed':
+            if n_components is None:
+                n_components = self.A.size[0]
+
+            if n_components == self.A.size[0]:
+                return self.A.copy()
+
+        if n_components is None:
+            n_components = self.m
+
+        d = np.minimum(n_components, self.m)
+        M = (self.eigenvalues[self.m - d:].reshape(d, 1) ** .5
+             * self.eigenvectors[:, self.m - d:].T)
+
+        if n_components <= self.m:
+            return M
+        else:
+            Z = np.zeros(n_components, self.m)
+            Z[:d, :] = M
+            return M
