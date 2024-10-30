@@ -786,9 +786,9 @@ class MLNNEngine:
     def get_transformation_matrix(self, n_components=None):
         if self.a_mode == 'decomposed':
             if n_components is None:
-                n_components = self.A.size[0]
+                n_components = self.A.shape[0]
 
-            if n_components == self.A.size[0]:
+            if n_components == self.A.shape[0]:
                 return self.A.copy()
 
         if n_components is None:
