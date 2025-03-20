@@ -1,38 +1,38 @@
-B
-Y
-C
+| B
+| Y
+| C
 
-A
-E
+| A
+| E
 
-T
-N
-Q
-J
-K
-R
-S
-D
-I
-O
-L
-F
-V
+| T : Y
+| N : T
+| Q : T
+| J : A, C kernel == 'nonlinear'
+| K : J, A a_mode == 'decomposed'
+| R : K
+| S : E
+| D : B, J kernel == 'nonlinear' and C_equals_B, A else
+| I : T, D, E
+| O : I, Q q != 1, N outer_loss is not None
+| L : O
+| F : R, S, L
+| V : 
 
-subset_active_rows
-subset_active_cols
-subset_active_data
+| subset_active_rows :
+| subset_active_cols :
+| subset_active_data :
 
-dRdA
-dLdA
-dFdA
-phiA
+| dRdA :
+| dLdA :
+| dFdA :
+| phiA :
 
-dSdE
-dLdE
-dFdE
-phiE
+| dSdE :
+| dLdE :
+| dFdE :
+| phiE :
 
-A_is_psd
-eigenvalues
-eigenvectors
+| A_is_psd :
+| eigenvalues :
+| eigenvectors :
