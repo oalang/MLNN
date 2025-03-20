@@ -84,11 +84,7 @@ class MLNN:
             self.optimize_params['optimize_method'] = 'strong_wolfe'
 
     def fit(self, X, y):
-        B = X
-        T = np.where(np.equal(y.reshape(-1, 1), y.reshape(1, -1)), 1, -1)
-        N = np.sum(T == 1, axis=1, keepdims=True) - 1
-
-        mlnn = MLNNEngine(B, T, N, mlnn_params=self.mlnn_params)
+        mlnn = MLNNEngine(X, y, mlnn_params=self.mlnn_params)
 
         callback = None
         if self.verbose >= 2:

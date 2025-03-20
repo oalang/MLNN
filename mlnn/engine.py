@@ -5,7 +5,7 @@ from loss import ReLU
 
 
 class MLNNEngine:
-    def __init__(self, B, T, N, C=None, mlnn_params=None):
+    def __init__(self, B, Y, C=None, mlnn_params=None):
         self.r = 0
         self.s = 0
         self.l = 1
@@ -39,18 +39,15 @@ class MLNNEngine:
         assert self.q > 0
 
         self.B = B
-        self.T = T
-        self.N = self.q * N
+        self.Y = Y
 
         self.n = self.B.shape[0]
         self.m = self.B.shape[1]
 
         assert self.n > 1
         assert self.m > 0
-        assert self.T.shape[0] == self.n
-        assert self.T.shape[1] == self.n
-        assert self.N.shape[0] == self.n
-        assert self.N.shape[1] == 1
+        assert self.Y.size == self.n
+        assert self.Y.shape[0] == self.n
 
         self.C_equals_B = False
         if self.kernel == 'linear':
@@ -92,23 +89,13 @@ class MLNNEngine:
         self.D = None
 
     @property
-    def T(self):
-        return self._T
+    def Y(self):
+        return self._Y
 
-    @T.setter
-    def T(self, T):
-        self._T = T
-        self.Q = None
-        self.I = None
-
-    @property
-    def N(self):
-        return self._N
-
-    @N.setter
-    def N(self, N):
-        self._N = N
-        self.O = None
+    @Y.setter
+    def Y(self, Y):
+        self._Y = Y
+        self.T = None
 
     @property
     def C(self):
@@ -158,6 +145,30 @@ class MLNNEngine:
 
         if self.keep_e_positive:
             self._E = self._E_positive_projection()
+
+    @property
+    def T(self):
+        if self._T is None:
+            self._compute_T()
+        return self._T
+
+    @T.setter
+    def T(self, T):
+        self._T = T
+        self.N = None
+        self.Q = None
+        self.I = None
+
+    @property
+    def N(self):
+        if self._N is None:
+            self._compute_N()
+        return self._N
+
+    @N.setter
+    def N(self, N):
+        self._N = N
+        self.O = None
 
     @property
     def Q(self):
@@ -432,6 +443,12 @@ class MLNNEngine:
     def eigenvectors(self, eigenvectors):
         self._eigenvectors = eigenvectors
 
+    def _compute_T(self):
+        self.T = np.where(np.equal(self.Y.reshape(-1, 1), self.Y.reshape(1, -1)), 1, -1)
+
+    def _compute_N(self):
+        self.N = self.q * (np.sum(self.T == 1, axis=1, keepdims=True) - 1)
+
     def _compute_Q(self):
         self.Q = np.where(self.T == 1, self.q, 1)
 
@@ -533,19 +550,19 @@ class MLNNEngine:
 
     def _compute_dLdA(self):
         if self.subset_active_data.size:
-            Y = np.negative(self.V + self.V.T)
-            np.fill_diagonal(Y, np.diagonal(Y) - np.sum(Y, axis=0))
+            W = np.negative(self.V + self.V.T)
+            np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
             if self.reduce_derivative_matrix:
                 B = self.B.take(self.subset_active_data, axis=0)
             else:
                 B = self.B
 
             if self.a_mode == 'full':
-                self.dLdA = self.l * (B.T @ Y @ B)
+                self.dLdA = self.l * (B.T @ W @ B)
             elif self.a_mode == 'diagonal':
-                self.dLdA = self.l * np.sum(B.T * (Y @ B).T, axis=1, keepdims=True)
+                self.dLdA = self.l * np.sum(B.T * (W @ B).T, axis=1, keepdims=True)
             elif self.a_mode == 'decomposed':
-                self.dLdA = self.l * 2 * ((self.A @ B.T) @ Y @ B)
+                self.dLdA = self.l * 2 * ((self.A @ B.T) @ W @ B)
         else:
             self.dLdA = 0
 

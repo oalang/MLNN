@@ -1,4 +1,8 @@
+
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import ArtistAnimation
+from matplotlib.markers import MarkerStyle
 
 
 class MLNNCallback:
@@ -70,13 +74,39 @@ class MLNNCallback:
         pass
 
     def _show_figures_start(self):
-        pass
+        self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2)
+        self.artists = []
+
+        M = self.optimizer.mlnn.get_transformation_matrix(n_components=2)
+        self.M_prev = M
+        X = self.optimizer.mlnn.B
+        X = X @ M.T
+        active = np.full(X.shape[0], False)
+        active[self.optimizer.mlnn.subset_active_rows] = True
+        artist1 = self.ax1.scatter(X[~active, 0], X[~active, 1], c=np.ones(np.sum(~active)), marker=MarkerStyle('o', fillstyle='none'))
+        artist2 = self.ax1.scatter(X[active, 0], X[active, 1], c=np.ones(np.sum(active)), marker=MarkerStyle('o', fillstyle='full'))
+        artist3 = self.ax2.imshow(np.sign(self.optimizer.mlnn.V),
+                                cmap='gray', vmin=-1, vmax=1)
+        self.artists.append((artist1, artist2, artist3))
 
     def _show_figures_iterate(self):
-        pass
+        M = self.optimizer.mlnn.get_transformation_matrix(n_components=2)
+        S = np.sign(np.sum(M * self.M_prev, axis=1, keepdims=True))
+        #M *= np.where(S == 0, 1, S)
+        self.M_prev = M
+        X = self.optimizer.mlnn.B
+        X = X @ M.T
+        active = np.full(X.shape[0], False)
+        active[self.optimizer.mlnn.subset_active_rows] = True
+        artist1 = self.ax1.scatter(X[~active, 0], X[~active, 1], c=np.ones(np.sum(~active)), marker=MarkerStyle('o', fillstyle='none'))
+        artist2 = self.ax1.scatter(X[active, 0], X[active, 1], c=np.ones(np.sum(active)), marker=MarkerStyle('o', fillstyle='full'))
+        artist3 = self.ax2.imshow(np.sign(self.optimizer.mlnn.V),
+                                cmap='gray', vmin=-1, vmax=1)
+        self.artists.append((artist1, artist2, artist3))
 
     def _show_figures_end(self):
-        pass
+        self.ani = ArtistAnimation(fig=self.fig, artists=self.artists, interval=500)
+        plt.show()
 
     def _print_optimize_header(self):
         steps = f"{'step':^5s}"
@@ -101,7 +131,7 @@ class MLNNCallback:
         arguments = ((f"{self.optimizer.arguments:^4s}" if self.optimizer.arguments is not None else f"{'-':^4s}")
                      if hasattr(self.optimizer, 'arguments') else "")
         ls_iterations = ((f"{self.optimizer.ls_iterations:4d}" if self.optimizer.ls_iterations is not None else f"{'-':^4s}")
-                      if hasattr(self.optimizer, 'ls_iterations') else "")
+                         if hasattr(self.optimizer, 'ls_iterations') else "")
         alpha = ((f"{self.optimizer.alpha:10.3e}" if self.optimizer.alpha is not None else f"{'-':^10s}")
                  if hasattr(self.optimizer, 'alpha') else "" if hasattr(self.optimizer, 'alpha') else "")
         phi = ((f"{self.optimizer.phi:10.3e}" if self.optimizer.phi is not None else f"{'-':^10s}")
