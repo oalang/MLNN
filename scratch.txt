@@ -1,38 +1,38 @@
-| B
-| Y
-| C
+D | B
+T | Y
+J | C
 
-| A
-| E
+J, A_is_psd, eigenvalues, eigenvectors | A
+I, S dsdE if s | E
 
-| T : Y
-| N : T
-| Q : T
-| J : A, C kernel == 'nonlinear'
-| K : J, A a_mode == 'decomposed'
-| R : K
-| S : E
-| D : B, J kernel == 'nonlinear' and C_equals_B, A else
-| I : T, D, E
-| O : I, Q q != 1, N outer_loss is not None
-| L : O
+N, Q, I | T : Y
+O | N : T
+O | Q : T
+K | J : A, C kernel == 'nonlinear'
+R dRdA if r | K : J, A a_mode == 'decomposed'
+F | R : K
+F | S : E
+I | D : B, J kernel == 'nonlinear' and C_equals_B, A else
+O | I : T, D, E
+L, V | O : I, Q q != 1, N outer_loss is not None
+F | L : O
 | F : R, S, L
-| V : 
+dLdA, dLdE | V : I, T, O outer_loss is not None, Q q != 1
 
-| subset_active_rows :
-| subset_active_cols :
-| subset_active_data :
+| subset_active_rows : same as V
+| subset_active_cols : same as V
+| subset_active_data : same as V
 
-| dRdA :
-| dLdA :
-| dFdA :
-| phiA :
+dFdA | dRdA : K, C, J
+dFdA | dLdA : V, B, A
+phiA | dFdA : dRdA, dLdA
+| phiA : dFdA
 
-| dSdE :
-| dLdE :
-| dFdE :
-| phiE :
+dFdE | dSdE : E
+dFdE | dLdE : V
+phiE | dFdE : dSdE, dLdE
+| phiE : dFdE
 
-| A_is_psd :
-| eigenvalues :
-| eigenvectors :
+| A_is_psd : A
+| eigenvalues : A
+| eigenvectors : A
