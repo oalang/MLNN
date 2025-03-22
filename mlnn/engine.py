@@ -117,7 +117,6 @@ class MLNNEngine:
         else:
             self._A = A
         self.J = None
-        self.D = None
         self.A_is_psd = None
         self.eigenvalues = None
         self.eigenvectors = None
@@ -191,6 +190,7 @@ class MLNNEngine:
     def J(self, J):
         self._J = J
         self.K = None
+        self.D = None
 
     @property
     def K(self):
