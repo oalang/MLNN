@@ -259,7 +259,7 @@ class MLNNEngine:
     def O(self, O):
         self._O = O
         self.L = None
-        self.V = None
+        self.U = None
         self.subset_active_rows = None
         self.subset_active_cols = None
         self.subset_active_data = None
@@ -286,6 +286,50 @@ class MLNNEngine:
         self._F = F
 
     @property
+    def U(self):
+        if self._U is None:
+            self._compute_U()
+        return self._U
+
+    @U.setter
+    def U(self, U):
+        self._U = U
+        self.subset_active_rows = None
+        self.subset_active_cols = None
+        self.subset_active_data = None
+
+    @property
+    def subset_active_rows(self):
+        if self._subset_active_rows is None:
+            self._compute_subset_active()
+        return self._subset_active_rows
+
+    @subset_active_rows.setter
+    def subset_active_rows(self, subset_active_rows):
+        self._subset_active_rows = subset_active_rows
+
+    @property
+    def subset_active_cols(self):
+        if self._subset_active_cols is None:
+            self._compute_subset_active()
+        return self._subset_active_cols
+
+    @subset_active_cols.setter
+    def subset_active_cols(self, subset_active_cols):
+        self._subset_active_cols = subset_active_cols
+
+    @property
+    def subset_active_data(self):
+        if self._subset_active_data is None:
+            self._compute_subset_active()
+        return self._subset_active_data
+
+    @subset_active_data.setter
+    def subset_active_data(self, subset_active_data):
+        self._subset_active_data = subset_active_data
+        self.V = None
+
+    @property
     def V(self):
         if self._V is None:
             self._compute_V()
@@ -296,36 +340,6 @@ class MLNNEngine:
         self._V = V
         self.dLdA = None
         self.dLdE = None
-
-    @property
-    def subset_active_rows(self):
-        if self._subset_active_rows is None:
-            self._compute_V()
-        return self._subset_active_rows
-
-    @subset_active_rows.setter
-    def subset_active_rows(self, subset_active_rows):
-        self._subset_active_rows = subset_active_rows
-
-    @property
-    def subset_active_cols(self):
-        if self._subset_active_cols is None:
-            self._compute_V()
-        return self._subset_active_cols
-
-    @subset_active_cols.setter
-    def subset_active_cols(self, subset_active_cols):
-        self._subset_active_cols = subset_active_cols
-
-    @property
-    def subset_active_data(self):
-        if self._subset_active_data is None:
-            self._compute_V()
-        return self._subset_active_data
-
-    @subset_active_data.setter
-    def subset_active_data(self, subset_active_data):
-        self._subset_active_data = subset_active_data
 
     @property
     def dRdA(self):
@@ -488,8 +502,8 @@ class MLNNEngine:
             if self.kernel == 'nonlinear' and self.C_equals_B:
                 P = self.J.T @ self.J
             else:
-                U = self.A @ self.B.T
-                P = U.T @ U
+                X = self.A @ self.B.T
+                P = X.T @ X
 
         self.D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
 
@@ -515,24 +529,26 @@ class MLNNEngine:
         self.F = self.R + self.S + self.L
         self.F_count += 1
 
-    def _compute_V(self):
-        V = self.inner_loss.grad(self.I) * self.T
+    def _compute_U(self):
+        self.U = self.inner_loss.grad(self.I) * self.T
         if self.outer_loss is not None:
-            V *= self.outer_loss.grad(self.O)
+            self.U *= self.outer_loss.grad(self.O)
         if self.q != 1:
-            V *= self.Q
+            self.U *= self.Q
 
-        is_active_row = np.any(V, axis=1)
-        is_active_col = np.any(V, axis=0)
-        is_active = np.logical_or(is_active_row, is_active_col)
+    def _compute_subset_active(self):
+        is_active_row = np.any(self.U, axis=1)
+        is_active_col = np.any(self.U, axis=0)
+        is_active_all = np.logical_or(is_active_row, is_active_col)
         self.subset_active_rows = np.argwhere(is_active_row).flatten()
         self.subset_active_cols = np.argwhere(is_active_col).flatten()
-        self.subset_active_data = np.argwhere(is_active).flatten()
+        self.subset_active_data = np.argwhere(is_active_all).flatten()
 
+    def _compute_V(self):
         if self.reduce_derivative_matrix:
-            self.V = V.take(self.subset_active_data, axis=0).take(self.subset_active_data, axis=1)
+            self.V = self.U.take(self.subset_active_data, axis=0).take(self.subset_active_data, axis=1)
         else:
-            self.V = V
+            self.V = self.U
 
     def _compute_dRdA(self):
         if self.a_mode == 'full':

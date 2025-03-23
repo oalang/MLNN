@@ -14,14 +14,14 @@ J, A_is_psd, eigenvalues, eigenvectors | A
                                      F | S : E
                                      I | D : B, J kernel == 'nonlinear' and C_equals_B, A else
                                      O | I : T, D, E
-                                  L, V | O : I, Q q != 1, N outer_loss is not None
+                                  L, U | O : I, Q q != 1, N outer_loss is not None
                                      F | L : O
                                        | F : R, S, L
-                            dLdA, dLdE | V : I, T, O outer_loss is not None, Q q != 1
-
-                                       | subset_active_rows : same as V
-                                       | subset_active_cols : same as V
-                                       | subset_active_data : same as V
+                         subset_active | U : I, T, O outer_loss is not None, Q q != 1
+                                       | subset_active_rows : U
+                                       | subset_active_cols : U
+                                     V | subset_active_data : U
+                            dLdA, dLdE | V : U, subset_active_data
 
                                   dFdA | dRdA : K, C, J
                                   dFdA | dLdA : V, B, A
