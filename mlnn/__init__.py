@@ -81,7 +81,7 @@ class MLNN:
         if 'backtracking' in self.solver:
             self.line_search_params['line_search_method'] = 'backtracking'
         elif 'strong_wolfe' in self.solver:
-            self.optimize_params['optimize_method'] = 'strong_wolfe'
+            self.line_search_params['line_search_method'] = 'strong_wolfe'
 
     def fit(self, X, y):
         mlnn = MLNNEngine(X, y, mlnn_params=self.mlnn_params)
@@ -105,8 +105,8 @@ class MLNN:
         if self.verbose >= 1:
             optimizer.report()
 
-        self.transformer = LinearTransformation(optimizer.mlnn.A)
-        self.epsilon = np.mean(optimizer.mlnn.E)
+        self.transformer = LinearTransformation(mlnn.get_transformation_matrix(self.n_components))
+        self.epsilon = np.mean(mlnn.E)
 
         return self
 
