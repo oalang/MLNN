@@ -138,3 +138,9 @@ class RBFTransformation(Transformation):
 
         self.Z = Z
         self.sigma2 = sigma2
+
+    def transform(self, X):
+        D = 2 * X @ self.Z.T - np.sum(X ** 2, axis=1).reshape(-1, 1) - np.sum(self.Z ** 2, axis=1).reshape(1, -1)
+        B = np.exp(D / (2 * self.sigma2))
+
+        return B @ self.L.T

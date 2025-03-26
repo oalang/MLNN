@@ -93,8 +93,8 @@ class MLNNCallback:
 
     def _show_figures_iterate(self):
         M = self.mlnn.get_transformation_matrix(n_components=2)
-        S = np.sign(np.sum(M * self.M_prev, axis=1, keepdims=True))
-        #M *= np.where(S == 0, 1, S)
+        # S = np.sign(np.sum(M * self.M_prev, axis=1, keepdims=True))
+        # M *= np.where(S == 0, 1, S)
         self.M_prev = M
         X = self.mlnn.B
         X = X @ M.T
