@@ -12,14 +12,16 @@ class MLNNCallback:
         self.show_figures = show_figures
 
         self.optimizer = None
+        self.mlnn = None
         self.iter = None
         self.F_prev = None
         self.delta_F = None
 
     def start(self, optimizer):
         self.optimizer = optimizer
+        self.mlnn = optimizer.mlnn
         self.iter = 0
-        self.F_prev = self.optimizer.mlnn.F
+        self.F_prev = self.mlnn.F
 
         if self.print_stats:
             self._print_stats_start()
@@ -32,8 +34,8 @@ class MLNNCallback:
 
     def iterate(self, _=None):
         self.iter += 1
-        self.delta_F = self.F_prev - self.optimizer.mlnn.F
-        self.F_prev = self.optimizer.mlnn.F
+        self.delta_F = self.F_prev - self.mlnn.F
+        self.F_prev = self.mlnn.F
 
         if self.print_stats:
             self._print_stats_iterate()
@@ -77,30 +79,30 @@ class MLNNCallback:
         self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2)
         self.artists = []
 
-        M = self.optimizer.mlnn.get_transformation_matrix(n_components=2)
+        M = self.mlnn.get_transformation_matrix(n_components=2)
         self.M_prev = M
-        X = self.optimizer.mlnn.B
+        X = self.mlnn.B
         X = X @ M.T
         active = np.full(X.shape[0], False)
-        active[self.optimizer.mlnn.subset_active_rows] = True
+        active[self.mlnn.subset_active_rows] = True
         artist1 = self.ax1.scatter(X[~active, 0], X[~active, 1], c=np.ones(np.sum(~active)), marker=MarkerStyle('o', fillstyle='none'))
         artist2 = self.ax1.scatter(X[active, 0], X[active, 1], c=np.ones(np.sum(active)), marker=MarkerStyle('o', fillstyle='full'))
-        artist3 = self.ax2.imshow(np.sign(self.optimizer.mlnn.V),
+        artist3 = self.ax2.imshow(np.sign(self.mlnn.U),
                                 cmap='gray', vmin=-1, vmax=1)
         self.artists.append((artist1, artist2, artist3))
 
     def _show_figures_iterate(self):
-        M = self.optimizer.mlnn.get_transformation_matrix(n_components=2)
+        M = self.mlnn.get_transformation_matrix(n_components=2)
         S = np.sign(np.sum(M * self.M_prev, axis=1, keepdims=True))
         #M *= np.where(S == 0, 1, S)
         self.M_prev = M
-        X = self.optimizer.mlnn.B
+        X = self.mlnn.B
         X = X @ M.T
         active = np.full(X.shape[0], False)
-        active[self.optimizer.mlnn.subset_active_rows] = True
+        active[self.mlnn.subset_active_rows] = True
         artist1 = self.ax1.scatter(X[~active, 0], X[~active, 1], c=np.ones(np.sum(~active)), marker=MarkerStyle('o', fillstyle='none'))
         artist2 = self.ax1.scatter(X[active, 0], X[active, 1], c=np.ones(np.sum(active)), marker=MarkerStyle('o', fillstyle='full'))
-        artist3 = self.ax2.imshow(np.sign(self.optimizer.mlnn.V),
+        artist3 = self.ax2.imshow(np.sign(self.mlnn.U),
                                 cmap='gray', vmin=-1, vmax=1)
         self.artists.append((artist1, artist2, artist3))
 
@@ -137,16 +139,16 @@ class MLNNCallback:
         phi = ((f"{self.optimizer.phi:10.3e}" if self.optimizer.phi is not None else f"{'-':^10s}")
                if hasattr(self.optimizer, 'phi') else "")
         delta_F = f"{self.delta_F:10.3e}" if self.delta_F is not None else f"{'-':^10s}"
-        F = f"{self.optimizer.mlnn.F:10.3e}" if self.optimizer.mlnn.F is not None else f"{'-':^10s}"
-        R = f"{self.optimizer.mlnn.R:10.3e}" if self.optimizer.mlnn.R is not None else f"{'-':^10s}"
-        S = f"{self.optimizer.mlnn.S:10.3e}" if self.optimizer.mlnn.S is not None else f"{'-':^10s}"
-        L = f"{self.optimizer.mlnn.L:10.3e}" if self.optimizer.mlnn.L is not None else f"{'-':^10s}"
-        mean_E = f"{np.mean(self.optimizer.mlnn.E):10.3e}" if self.optimizer.mlnn.E is not None else f"{'-':^10s}"
-        actv_rows = (f"{self.optimizer.mlnn.subset_active_rows.size:9d}"
-                     if self.optimizer.mlnn.subset_active_rows.size is not None else f"{'-':^9s}")
-        actv_cols = (f"{self.optimizer.mlnn.subset_active_cols.size:9d}"
-                     if self.optimizer.mlnn.subset_active_cols.size is not None else f"{'-':^9s}")
-        actv_data = (f"{self.optimizer.mlnn.subset_active_data.size:9d}"
-                     if self.optimizer.mlnn.subset_active_data.size is not None else f"{'-':^9s}")
+        F = f"{self.mlnn.F:10.3e}" if self.mlnn.F is not None else f"{'-':^10s}"
+        R = f"{self.mlnn.R:10.3e}" if self.mlnn.R is not None else f"{'-':^10s}"
+        S = f"{self.mlnn.S:10.3e}" if self.mlnn.S is not None else f"{'-':^10s}"
+        L = f"{self.mlnn.L:10.3e}" if self.mlnn.L is not None else f"{'-':^10s}"
+        mean_E = f"{np.mean(self.mlnn.E):10.3e}" if self.mlnn.E is not None else f"{'-':^10s}"
+        actv_rows = (f"{self.mlnn.subset_active_rows.size:9d}"
+                     if self.mlnn.subset_active_rows.size is not None else f"{'-':^9s}")
+        actv_cols = (f"{self.mlnn.subset_active_cols.size:9d}"
+                     if self.mlnn.subset_active_cols.size is not None else f"{'-':^9s}")
+        actv_data = (f"{self.mlnn.subset_active_data.size:9d}"
+                     if self.mlnn.subset_active_data.size is not None else f"{'-':^9s}")
 
         print(" ".join((steps, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))

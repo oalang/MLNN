@@ -34,7 +34,7 @@ class MLNNOptimizer:
         for attr in params:
             if hasattr(self, attr):
                 setattr(self, attr, params[attr])
-    
+
     def initialize_args(self, A_0=None, E_0=None, n_components=None):
         if self.initialization is None:
             if self.mlnn.a_mode == 'full' or self.mlnn.a_mode == 'diagonal':
@@ -87,7 +87,7 @@ class MLNNOptimizer:
             threshold = f" (max_time = {self.max_time:f})"
         else:
             threshold = ""
-    
+
         print("")
         print(f"Termination: {self.termination}{threshold}")
         print(f"       F_0 = {self.F_0:f}")
