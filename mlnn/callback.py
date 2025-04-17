@@ -77,34 +77,18 @@ class MLNNCallback:
 
     def _show_figures_start(self):
         self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2)
+        self.ax1.set_aspect('equal')
+
         self.artists = []
 
-        M = self.mlnn.get_transformation_matrix(n_components=2)
-        self.M_prev = M
-        X = self.mlnn.B
-        X = X @ M.T
-        active = np.full(X.shape[0], False)
-        active[self.mlnn.subset_active_rows] = True
-        artist1 = self.ax1.scatter(X[~active, 0], X[~active, 1], c=np.ones(np.sum(~active)), marker=MarkerStyle('o', fillstyle='none'))
-        artist2 = self.ax1.scatter(X[active, 0], X[active, 1], c=np.ones(np.sum(active)), marker=MarkerStyle('o', fillstyle='full'))
-        artist3 = self.ax2.imshow(np.sign(self.mlnn.U),
-                                cmap='gray', vmin=-1, vmax=1)
-        self.artists.append((artist1, artist2, artist3))
+        frame_artists = self._scatter_plot_artists(self.ax1)
+        frame_artists.append(self.ax2.imshow(np.sign(self.mlnn.U), cmap='gray', vmin=-1, vmax=1))
+        self.artists.append(frame_artists)
 
     def _show_figures_iterate(self):
-        M = self.mlnn.get_transformation_matrix(n_components=2)
-        # S = np.sign(np.sum(M * self.M_prev, axis=1, keepdims=True))
-        # M *= np.where(S == 0, 1, S)
-        self.M_prev = M
-        X = self.mlnn.B
-        X = X @ M.T
-        active = np.full(X.shape[0], False)
-        active[self.mlnn.subset_active_rows] = True
-        artist1 = self.ax1.scatter(X[~active, 0], X[~active, 1], c=np.ones(np.sum(~active)), marker=MarkerStyle('o', fillstyle='none'))
-        artist2 = self.ax1.scatter(X[active, 0], X[active, 1], c=np.ones(np.sum(active)), marker=MarkerStyle('o', fillstyle='full'))
-        artist3 = self.ax2.imshow(np.sign(self.mlnn.U),
-                                cmap='gray', vmin=-1, vmax=1)
-        self.artists.append((artist1, artist2, artist3))
+        frame_artists = self._scatter_plot_artists(self.ax1)
+        frame_artists.append(self.ax2.imshow(np.sign(self.mlnn.U), cmap='gray', vmin=-1, vmax=1))
+        self.artists.append(frame_artists)
 
     def _show_figures_end(self):
         self.ani = ArtistAnimation(fig=self.fig, artists=self.artists, interval=500)
@@ -152,3 +136,22 @@ class MLNNCallback:
                      if self.mlnn.subset_active_data.size is not None else f"{'-':^9s}")
 
         print(" ".join((steps, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
+
+    def _scatter_plot_artists(self, axis):
+        M = self.mlnn.get_transformation_matrix(n_components=2)
+        X = self.mlnn.B @ M.T
+        Y = self.mlnn.Y
+        A = np.full(X.shape[0], False)
+        A[self.mlnn.subset_active_rows] = True
+
+        Y_unique = np.sort(np.unique(Y))
+        colors = plt.cm.tab10(np.linspace(0, 1, len(Y_unique)))
+
+        color_map = dict(zip(Y_unique, colors))
+        C = np.array([color_map[y] for y in Y])
+
+        title_artist = axis.text(0.5, 1.05, f"Iteration {self.iter}", horizontalalignment='center', transform=axis.transAxes)
+        active_artist = axis.scatter(X[A, 0], X[A, 1], c=C[A], marker=MarkerStyle('o', fillstyle='full'))
+        inactive_artist = axis.scatter(X[~A, 0], X[~A, 1], c=C[~A], marker=MarkerStyle('o', fillstyle='none'))
+
+        return [title_artist, active_artist, inactive_artist]

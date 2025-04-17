@@ -830,6 +830,5 @@ class MLNNEngine:
         d = np.minimum(n_components, self.m)
         M = (np.clip(self.eigenvalues[self.m - d:], 0).reshape(d, 1) ** .5
              * self.eigenvectors[:, self.m - d:].T)
-        # move to animation: M[M[np.arange(d), np.argmax(M != 0, axis=1)] < 0] *= -1
 
         return np.vstack((M, np.zeros((n_components - d, self.m))))
