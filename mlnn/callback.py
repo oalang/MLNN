@@ -76,14 +76,14 @@ class MLNNCallback:
 
     def _animate_start(self):
         gs_kw = dict(width_ratios=[1, 1], height_ratios=[1, 1])
-        self.fig, ((self.ax1, self.ax2), (self.ax3, self.ax4))  = plt.subplots(2, 2, figsize=(6, 6), gridspec_kw=gs_kw)
+        self.fig, ((self.ax1, self.ax2), (self.ax3, self.ax4)) = plt.subplots(2, 2, figsize=(6, 6), gridspec_kw=gs_kw)
         self.ax1.set_title("2D Projection", fontsize=12, family='monospace')
         self.ax1.xaxis.set_visible(False)
         self.ax1.yaxis.set_visible(False)
         self.ax1.set_aspect('equal', adjustable='box')
         self.ax1.set_xlim(-0.5, 0.5)
         self.ax1.set_ylim(-0.5, 0.5)
-        self.ax2.set_title("Activation", fontsize=12, family='monospace')
+        self.ax2.set_title("Activation Matrix", fontsize=12, family='monospace')
         self.ax2.xaxis.set_visible(False)
         self.ax2.yaxis.set_visible(False)
         self.ax2.set_aspect('equal', adjustable='box')
@@ -100,24 +100,24 @@ class MLNNCallback:
         self.fig.canvas.footer_visible = False
         self.fig.canvas.resizable = False
         self.fig.tight_layout()
-        self.fig.subplots_adjust(top=0.8)
+        self.fig.subplots_adjust(top=0.9)
 
         self.artists = []
 
         title_artists = self._figure_title_artists(self.fig)
         scatter_plot_artists = self._scatter_plot_artists(self.ax1)
-        activation_image_artists = self._activation_image_artists(self.ax2)
+        activation_matrix_artists = self._activation_matrix_artists(self.ax2)
         weight_matrix_artists = self._weight_matrix_artists(self.ax3)
         distance_matrix_artists = self._distance_matrix_artists(self.ax4)
-        self.artists.append(title_artists + scatter_plot_artists + activation_image_artists + weight_matrix_artists + distance_matrix_artists)
+        self.artists.append(title_artists + scatter_plot_artists + activation_matrix_artists + weight_matrix_artists + distance_matrix_artists)
 
     def _animate_iterate(self):
         title_artists = self._figure_title_artists(self.fig)
         scatter_plot_artists = self._scatter_plot_artists(self.ax1)
-        activation_image_artists = self._activation_image_artists(self.ax2)
+        activation_matrix_artists = self._activation_matrix_artists(self.ax2)
         weight_matrix_artists = self._weight_matrix_artists(self.ax3)
         distance_matrix_artists = self._distance_matrix_artists(self.ax4)
-        self.artists.append(title_artists + scatter_plot_artists + activation_image_artists + weight_matrix_artists + distance_matrix_artists)
+        self.artists.append(title_artists + scatter_plot_artists + activation_matrix_artists + weight_matrix_artists + distance_matrix_artists)
 
     def _animate_end(self):
         self.ani = ArtistAnimation(fig=self.fig, artists=self.artists, interval=500)
@@ -168,7 +168,7 @@ class MLNNCallback:
 
     def _figure_title_artists(self, fig):
         title = f"i = {self.iter:3d}, f = {self.mlnn.F:10.3f}"
-        title_artist = fig.text(0.5, 0.90, title, ha='center', va='bottom', fontsize=12, family='monospace')
+        title_artist = fig.text(0.5, 0.95, title, ha='center', va='bottom', fontsize=12, family='monospace')
 
         return [title_artist]
 
@@ -198,7 +198,7 @@ class MLNNCallback:
 
         return [inactive_artist, active_artist]
 
-    def _activation_image_artists(self, axis):
+    def _activation_matrix_artists(self, axis):
         image_artist = axis.imshow(np.sign(self.mlnn.U), cmap='gray', vmin=-1, vmax=1)
         return [image_artist]
 
