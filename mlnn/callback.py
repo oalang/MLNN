@@ -75,49 +75,39 @@ class MLNNCallback:
         pass
 
     def _animate_start(self):
-        gs_kw = dict(width_ratios=[1, 1], height_ratios=[1, 1])
-        self.fig, ((self.ax1, self.ax2), (self.ax3, self.ax4)) = plt.subplots(2, 2, figsize=(6, 6), gridspec_kw=gs_kw)
-        self.ax1.set_title("2D Projection", fontsize=12, family='monospace')
-        self.ax1.xaxis.set_visible(False)
-        self.ax1.yaxis.set_visible(False)
-        self.ax1.set_aspect('equal', adjustable='box')
-        self.ax1.set_xlim(-0.5, 0.5)
-        self.ax1.set_ylim(-0.5, 0.5)
-        self.ax2.set_title("Activation Matrix", fontsize=12, family='monospace')
-        self.ax2.xaxis.set_visible(False)
-        self.ax2.yaxis.set_visible(False)
-        self.ax2.set_aspect('equal', adjustable='box')
-        self.ax3.set_title("Weight Matrix", fontsize=12, family='monospace')
-        self.ax3.xaxis.set_visible(False)
-        self.ax3.yaxis.set_visible(False)
-        self.ax3.set_aspect('equal', adjustable='box')
-        self.ax4.set_title("Distance Matrix", fontsize=12, family='monospace')
-        self.ax4.xaxis.set_visible(False)
-        self.ax4.yaxis.set_visible(False)
-        self.ax4.set_aspect('equal', adjustable='box')
-        self.fig.canvas.toolbar_visible = False
-        self.fig.canvas.header_visible = False
-        self.fig.canvas.footer_visible = False
-        self.fig.canvas.resizable = False
-        self.fig.tight_layout()
-        self.fig.subplots_adjust(top=0.9)
+        if self.animate == 'projection':
+            fig, axes = plt.subplots(1, 1, figsize=(6, 6), squeeze=False)
+            axes = axes.flatten()
+        elif self.animate == 'all':
+            gs_kw = dict(width_ratios=[1, 1], height_ratios=[1, 1])
+            fig, axes = plt.subplots(2, 2, figsize=(6, 6), squeeze=False, gridspec_kw=gs_kw)
+            axes = axes.flatten()
 
+            axes[1].set_title("Activation Matrix", fontsize=12, family='monospace')
+            axes[2].set_title("Weight Matrix", fontsize=12, family='monospace')
+            axes[3].set_title("Distance Matrix", fontsize=12, family='monospace')
+
+        axes[0].set_title("2D Projection", fontsize=12, family='monospace')
+        axes[0].set_xlim(-0.5, 0.5)
+        axes[0].set_ylim(-0.5, 0.5)
+
+        for ax in axes:
+            ax.xaxis.set_visible(False)
+            ax.yaxis.set_visible(False)
+            ax.set_aspect('equal', adjustable='box')
+
+        fig.canvas.toolbar_visible = False
+        fig.canvas.header_visible = False
+        fig.canvas.footer_visible = False
+        fig.canvas.resizable = False
+
+        self.fig = fig
+        self.axes = axes
         self.artists = []
-
-        title_artists = self._figure_title_artists(self.fig)
-        scatter_plot_artists = self._scatter_plot_artists(self.ax1)
-        activation_matrix_artists = self._activation_matrix_artists(self.ax2)
-        weight_matrix_artists = self._weight_matrix_artists(self.ax3)
-        distance_matrix_artists = self._distance_matrix_artists(self.ax4)
-        self.artists.append(title_artists + scatter_plot_artists + activation_matrix_artists + weight_matrix_artists + distance_matrix_artists)
+        self._draw_new_frame()
 
     def _animate_iterate(self):
-        title_artists = self._figure_title_artists(self.fig)
-        scatter_plot_artists = self._scatter_plot_artists(self.ax1)
-        activation_matrix_artists = self._activation_matrix_artists(self.ax2)
-        weight_matrix_artists = self._weight_matrix_artists(self.ax3)
-        distance_matrix_artists = self._distance_matrix_artists(self.ax4)
-        self.artists.append(title_artists + scatter_plot_artists + activation_matrix_artists + weight_matrix_artists + distance_matrix_artists)
+        self._draw_new_frame()
 
     def _animate_end(self):
         self.ani = ArtistAnimation(fig=self.fig, artists=self.artists, interval=500)
@@ -166,13 +156,30 @@ class MLNNCallback:
 
         print(" ".join((steps, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
 
-    def _figure_title_artists(self, fig):
-        title = f"i = {self.iter:3d}, f = {self.mlnn.F:10.3f}"
+    def _draw_new_frame(self):
+        frame_artists = self._title_artists(self.fig)
+        frame_artists += self._projection_artists(self.axes[0])
+
+        if self.animate == 'all':
+            activation_matrix = np.sign(self.mlnn.U)
+            frame_artists += self._matrix_artists(self.axes[1], activation_matrix, -1, 1)
+
+            M = self.mlnn.get_transformation_matrix()
+            weight_matrix = M.T @ M
+            frame_artists += self._matrix_artists(self.axes[2], weight_matrix)
+
+            distance_matrix = self.mlnn.D ** .5
+            frame_artists += self._matrix_artists(self.axes[3], distance_matrix)
+
+        self.artists.append(frame_artists)
+
+    def _title_artists(self, fig):
+        title = f"i = {self.iter:4d}, f = {self.mlnn.F:12.4f}"
         title_artist = fig.text(0.5, 0.95, title, ha='center', va='bottom', fontsize=12, family='monospace')
 
         return [title_artist]
 
-    def _scatter_plot_artists(self, axis):
+    def _projection_artists(self, axis):
         M = self.mlnn.get_transformation_matrix(n_components=2)
         X = self.mlnn.B @ M.T
         Y = self.mlnn.Y
@@ -198,17 +205,6 @@ class MLNNCallback:
 
         return [inactive_artist, active_artist]
 
-    def _activation_matrix_artists(self, axis):
-        image_artist = axis.imshow(np.sign(self.mlnn.U), cmap='gray', vmin=-1, vmax=1)
-        return [image_artist]
-
-    def _weight_matrix_artists(self, axis):
-        M = self.mlnn.get_transformation_matrix()
-        W = M.T @ M
-        image_artist = axis.imshow(W, cmap='gray', vmin=W.min(), vmax=W.max())
-        return [image_artist]
-
-    def _distance_matrix_artists(self, axis):
-        D = self.mlnn.D ** .5
-        image_artist = axis.imshow(D, cmap='gray', vmin=D.min(), vmax=D.max())
-        return [image_artist]
+    def _matrix_artists(self, axis, matrix, vmin=None, vmax=None):
+        matrix_artist = axis.imshow(matrix, cmap='gray', vmin=vmin, vmax=vmax)
+        return [matrix_artist]
