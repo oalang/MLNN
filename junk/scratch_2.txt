@@ -1,0 +1,138 @@
+linear + full
+J = A
+K = J
+R = r * .5 * np.dot(K.T.ravel(), K.ravel())
+S = s * .5 * np.sum((E - 1) ** 2)
+P = B @ A @ B.T
+D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
+I = T * (D - E)
+O = np.sum(Q * inner_loss.func(I), axis=1, keepdims=True) - N
+L = l * np.sum(outer_loss.func(O))
+F = R + S + L
+V = inner_loss.grad(I) * T * outer_loss.grad(O) * Q
+dRdA = r * K
+W = np.negative(V + V.T)
+np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
+dLdA = l * (B.T @ W @ B)
+dFdA = dRdA + dLdA
+phiA = -np.dot(dFdA.ravel(), dFdA.ravel())
+dSdE = s * (E - 1)
+dLdE = l * -np.sum(V, keepdims=True)
+dFdE = dSdE + dLdE
+phiE = -np.dot(dFdE.ravel(), dFdE.ravel())
+
+linear + diagonal
+J = A
+K = J
+R = r * .5 * np.dot(K.T.ravel(), K.ravel())
+S = s * .5 * np.sum((E - 1) ** 2)
+P = B @ (A * B.T)
+D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
+I = T * (D - E)
+O = np.sum(Q * inner_loss.func(I), axis=1, keepdims=True) - N
+L = l * np.sum(outer_loss.func(O))
+F = R + S + L
+V = inner_loss.grad(I) * T * outer_loss.grad(O) * Q
+dRdA = r * K
+W = np.negative(V + V.T)
+np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
+dLdA = l * np.sum(B.T * (W @ B).T, axis=1, keepdims=True)
+dFdA = dRdA + dLdA
+phiA = -np.dot(dFdA.ravel(), dFdA.ravel())
+dSdE = s * (E - 1)
+dLdE = l * -np.sum(V, keepdims=True)
+dFdE = dSdE + dLdE
+phiE = -np.dot(dFdE.ravel(), dFdE.ravel())
+
+linear + decomposed
+J = A
+K = A @ J.T
+R = r * .5 * np.dot(K.T.ravel(), K.ravel())
+S = s * .5 * np.sum((E - 1) ** 2)
+X = A @ B.T
+P = X.T @ X
+D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
+I = T * (D - E)
+O = np.sum(Q * inner_loss.func(I), axis=1, keepdims=True) - N
+L = l * np.sum(outer_loss.func(O))
+F = R + S + L
+V = inner_loss.grad(I) * T * outer_loss.grad(O) * Q
+dRdA = r * 2 * K @ J
+W = np.negative(V + V.T)
+np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
+dLdA = l * 2 * ((A @ B.T) @ W @ B)
+dFdA = dRdA + dLdA
+phiA = -np.dot(dFdA.ravel(), dFdA.ravel())
+dSdE = s * (E - 1)
+dLdE = l * -np.sum(V, keepdims=True)
+dFdE = dSdE + dLdE
+phiE = -np.dot(dFdE.ravel(), dFdE.ravel())
+
+nonlinear + full
+J = A @ C
+K = J
+R = r * .5 * np.dot(K.T.ravel(), K.ravel())
+S = s * .5 * np.sum((E - 1) ** 2)
+P = B @ J
+D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
+I = T * (D - E)
+O = np.sum(Q * inner_loss.func(I), axis=1, keepdims=True) - N
+L = l * np.sum(outer_loss.func(O))
+F = R + S + L
+V = inner_loss.grad(I) * T * outer_loss.grad(O) * Q
+dRdA = r * C @ K
+W = np.negative(V + V.T)
+np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
+dLdA = l * (B.T @ W @ B)
+dFdA = dRdA + dLdA
+phiA = -np.dot(dFdA.ravel(), dFdA.ravel())
+dSdE = s * (E - 1)
+dLdE = l * -np.sum(V, keepdims=True)
+dFdE = dSdE + dLdE
+phiE = -np.dot(dFdE.ravel(), dFdE.ravel())
+
+nonlinear + diagonal
+J = A * C
+K = J
+R = r * .5 * np.dot(K.T.ravel(), K.ravel())
+S = s * .5 * np.sum((E - 1) ** 2)
+P = B @ J
+D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
+I = T * (D - E)
+O = np.sum(Q * inner_loss.func(I), axis=1, keepdims=True) - N
+L = l * np.sum(outer_loss.func(O))
+F = R + S + L
+V = inner_loss.grad(I) * T * outer_loss.grad(O) * Q
+dRdA = r * np.sum(C * K, axis=1, keepdims=True)
+W = np.negative(V + V.T)
+np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
+dLdA = l * np.sum(B.T * (W @ B).T, axis=1, keepdims=True)
+dFdA = dRdA + dLdA
+phiA = -np.dot(dFdA.ravel(), dFdA.ravel())
+dSdE = s * (E - 1)
+dLdE = l * -np.sum(V, keepdims=True)
+dFdE = dSdE + dLdE
+phiE = -np.dot(dFdE.ravel(), dFdE.ravel())
+
+nonlinear + decomposed
+J = A @ C
+K = A @ J.T
+R = r * .5 * np.dot(K.T.ravel(), K.ravel())
+S = s * .5 * np.sum((E - 1) ** 2)
+P = J.T @ J
+D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
+I = T * (D - E)
+O = np.sum(Q * inner_loss.func(I), axis=1, keepdims=True) - N
+L = l * np.sum(outer_loss.func(O))
+F = R + S + L
+V = inner_loss.grad(I) * T * outer_loss.grad(O) * Q
+dRdA = r * 2 * K @ J
+W = np.negative(V + V.T)
+np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
+dLdA = l * 2 * ((A @ B.T) @ W @ B)
+dFdA = dRdA + dLdA
+phiA = -np.dot(dFdA.ravel(), dFdA.ravel())
+dSdE = s * (E - 1)
+dLdE = l * -np.sum(V, keepdims=True)
+dFdE = dSdE + dLdE
+phiE = -np.dot(dFdE.ravel(), dFdE.ravel())
