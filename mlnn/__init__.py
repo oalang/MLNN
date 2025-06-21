@@ -1,6 +1,6 @@
 import numpy as np
 
-from loss import SmoothReLU
+from loss import SmoothReLU1
 from mlnn.engine import MLNNEngine
 from mlnn.callback import MLNNCallback
 from mlnn.optimize import MLNNSteepestDescent, MLNNBFGS
@@ -27,7 +27,7 @@ class MLNN:
         self.configure_params()
 
     def configure_params(self):
-        loss = SmoothReLU(.5)
+        loss = SmoothReLU1(.5)
 
         self.mlnn_params = {
             'r': 1,
