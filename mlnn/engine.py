@@ -639,7 +639,7 @@ class MLNNEngine:
             self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.A)
             self.eigh_count += 1
         elif self.a_mode == 'diagonal':
-            G = self.A.flatten()
+            G = self.A.ravel()
             H = np.argsort(G)
             self.eigenvalues = G[H]
             self.eigenvectors = np.identity(self.m)[:, H]
