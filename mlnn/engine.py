@@ -792,27 +792,30 @@ class MLNNEngine:
 
     def jac(self, x, arguments='AE'):
         i = 0
+        size = 0
         if 'A' in arguments:
-            A = x[0:self.A.size].reshape(self.A.shape)
             i = self.A.size
+            size += self.A.size
+            A = x[0:i].reshape(self.A.shape)
             if not self.check_array_equal or not np.array_equal(A, self.A):
                 self.A = A
         if 'E' in arguments:
+            size += self.E.size
             E = x[i:].reshape(self.E.shape)
             if not self.check_array_equal or not np.array_equal(E, self.E):
                 self.E = E
 
-        jac = np.empty(0)
+        jac = np.empty(size)
         if 'A' in arguments:
             if np.isscalar(self.dFdA):
-                jac = np.append(jac, np.zeros(self.A.size))
+                jac[0:i] = np.zeros(self.A.size)
             else:
-                jac = np.append(jac, self.dFdA)
+                jac[0:i] = self.dFdA.ravel()
         if 'E' in arguments:
             if np.isscalar(self.dFdE):
-                jac = np.append(jac, np.zeros(self.E.size))
+                jac[i:] = np.zeros(self.E.size)
             else:
-                jac = np.append(jac, self.dFdE)
+                jac[i:] = self.dFdE.ravel()
 
         return jac
 
