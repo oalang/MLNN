@@ -42,6 +42,8 @@ class MLNN:
             'keep_a_psd': False,
             'keep_a_centered': False,
             'keep_e_positive': False,
+            'reduce_derivative_matrix': False,
+            'check_array_equal': False,
         }
 
         self.optimize_params = {
