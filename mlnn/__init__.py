@@ -13,7 +13,7 @@ class MLNN:
         self.init = init
         self.max_iter = max_iter
         self.tol = tol
-        self.callback = callback
+        self.callback_fun = callback
         self.verbose = verbose
         self.random_state = random_state
         self.solver = solver
@@ -88,9 +88,10 @@ class MLNN:
     def fit(self, X, y):
         mlnn = MLNNEngine(X, y, mlnn_params=self.mlnn_params)
 
-        callback = None
+        callback = MLNNCallback()
         if self.verbose >= 2:
-            callback = MLNNCallback(print_stats=True)
+            callback.print_stats = True
+        callback.callback_fun = self.callback_fun
 
         optimizer = None
         if 'steepest' in self.solver:

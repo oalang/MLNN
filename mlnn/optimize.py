@@ -166,9 +166,9 @@ class MLNNSteepestDescent(MLNNOptimizer):
     def backtracking_line_search(self, F_prev, A_prev, E_prev, dA, dE, phi, alpha, arguments):
         # Take a step in the direction of steepest descent.
         if dA is not None:
-            self.mlnn.update_A(A_prev, alpha, dA)
+            self.mlnn.update_A(A_prev, dA, alpha)
         if dE is not None:
-            self.mlnn.update_E(E_prev, alpha, dE)
+            self.mlnn.update_E(E_prev, dE, alpha)
 
         iterations = 1
 
@@ -203,9 +203,9 @@ class MLNNSteepestDescent(MLNNOptimizer):
         # Take a step in the direction of steepest descent.
         F_old = self.mlnn.F
         if dA is not None:
-            self.mlnn.update_A(A_prev, alpha, dA)
+            self.mlnn.update_A(A_prev, dA, alpha)
         if dE is not None:
-            self.mlnn.update_E(E_prev, alpha, dE)
+            self.mlnn.update_E(E_prev, dE, alpha)
 
         iterations += 1
 
@@ -250,9 +250,9 @@ class MLNNSteepestDescent(MLNNOptimizer):
             # Take a step in the direction of steepest descent.
             F_old = self.mlnn.F
             if dA is not None:
-                self.mlnn.update_A(A_prev, alpha, dA)
+                self.mlnn.update_A(A_prev, dA, alpha)
             if dE is not None:
-                self.mlnn.update_E(E_prev, alpha, dE)
+                self.mlnn.update_E(E_prev, dE, alpha)
 
             iterations += 1
 
@@ -292,7 +292,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            alpha, fc, gc, new_fval, old_fval, new_slope = line_search(
+            alpha, fc, _, new_fval, _, new_slope = line_search(
                 self.mlnn.fun, self.mlnn.jac, xk, -gfk, gfk, F_prev, F_prev_prev,
                 (arguments,), self.armijo, self.wolfe, alpha, None, self.max_ls_iterations)
 
@@ -301,9 +301,9 @@ class MLNNSteepestDescent(MLNNOptimizer):
         if alpha is not None:
             # Take a step in the direction of steepest descent.
             if dA is not None:
-                self.mlnn.update_A(A_prev, alpha, dA)
+                self.mlnn.update_A(A_prev, dA, alpha)
             if dE is not None:
-                self.mlnn.update_E(E_prev, alpha, dE)
+                self.mlnn.update_E(E_prev, dE, alpha)
 
             self.mlnn.F = new_fval
 

@@ -681,10 +681,10 @@ class MLNNEngine:
     def _E_positive_projection(self):
         return np.maximum(self.E, 0)
 
-    def update_A(self, A, alpha, dA):
+    def update_A(self, A, dA, alpha):
         self.A = A - alpha * dA
 
-    def update_E(self, E, alpha, dE):
+    def update_E(self, E, dE, alpha):
         self.E = E - alpha * dE
 
     def compute_A_0(self, initialization='random', d=None):

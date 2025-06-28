@@ -5,16 +5,24 @@ from matplotlib.markers import MarkerStyle
 
 
 class MLNNCallback:
-    def __init__(self, print_stats=False, collect_stats=False, animate=False):
+    def __init__(self, print_stats=False, collect_stats=False, animate=False, callback_fun=None):
         self.print_stats = print_stats
         self.collect_stats = collect_stats
         self.animate = animate
+        self.callback_fun = callback_fun
 
         self.optimizer = None
         self.mlnn = None
         self.iter = None
         self.F_prev = None
         self.delta_F = None
+
+        self.stats = None
+
+        self.fig = None
+        self.axes = None
+        self.artists = None
+        self.ani = None
 
     def start(self, optimizer):
         self.optimizer = optimizer
@@ -31,6 +39,9 @@ class MLNNCallback:
         if self.animate:
             self._animate_start()
 
+        if self.callback_fun is not None:
+            self.callback_fun(self.optimizer, self.mlnn, self.iter)
+
     def iterate(self, _=None):
         self.iter += 1
         self.delta_F = self.F_prev - self.mlnn.F
@@ -44,6 +55,9 @@ class MLNNCallback:
 
         if self.animate:
             self._animate_iterate()
+
+        if self.callback_fun is not None:
+            self.callback_fun(self.optimizer, self.mlnn, self.iter)
 
     def end(self):
         if self.print_stats:
@@ -66,10 +80,11 @@ class MLNNCallback:
         pass
 
     def _collect_stats_start(self):
-        pass
+        self.stats = []
+        self.stats.append(self._stats_dict())
 
     def _collect_stats_iterate(self):
-        pass
+        self.stats.append(self._stats_dict())
 
     def _collect_stats_end(self):
         pass
@@ -77,11 +92,11 @@ class MLNNCallback:
     def _animate_start(self):
         if self.animate == 'projection':
             fig, axes = plt.subplots(1, 1, figsize=(6, 6), squeeze=False)
-            axes = axes.flatten()
+            axes = axes.ravel()
         elif self.animate == 'all':
             gs_kw = dict(width_ratios=[1, 1], height_ratios=[1, 1])
             fig, axes = plt.subplots(2, 2, figsize=(6, 6), squeeze=False, gridspec_kw=gs_kw)
-            axes = axes.flatten()
+            axes = axes.ravel()
 
             axes[1].set_title("Activation Matrix", fontsize=12, family='monospace')
             axes[2].set_title("Weight Matrix", fontsize=12, family='monospace')
@@ -114,7 +129,7 @@ class MLNNCallback:
         plt.show()
 
     def _print_optimize_header(self):
-        steps = f"{'step':^5s}"
+        step = f"{'step':^5s}"
         arguments = f"{'args':^4s}" if hasattr(self.optimizer, 'arguments') else ""
         ls_iterations = f"{'iter':^4s}" if hasattr(self.optimizer, 'ls_iterations') else ""
         alpha = f"{'alpha':^10s}" if hasattr(self.optimizer, 'alpha') else ""
@@ -129,10 +144,10 @@ class MLNNCallback:
         actv_cols = f"{'actv_cols':^9s}"
         actv_data = f"{'actv_data':^9s}"
 
-        print(" ".join((steps, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
+        print(" ".join((step, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
 
     def _print_optimize_row(self):
-        steps = f"{self.iter:5d}" if self.iter is not None else f"{'-':^5s}"
+        step = f"{self.iter:5d}"
         arguments = ((f"{self.optimizer.arguments:^4s}" if self.optimizer.arguments is not None else f"{'-':^4s}")
                      if hasattr(self.optimizer, 'arguments') else "")
         ls_iterations = ((f"{self.optimizer.ls_iterations:4d}" if self.optimizer.ls_iterations is not None else f"{'-':^4s}")
@@ -142,19 +157,40 @@ class MLNNCallback:
         phi = ((f"{self.optimizer.phi:10.3e}" if self.optimizer.phi is not None else f"{'-':^10s}")
                if hasattr(self.optimizer, 'phi') else "")
         delta_F = f"{self.delta_F:10.3e}" if self.delta_F is not None else f"{'-':^10s}"
-        F = f"{self.mlnn.F:10.3e}" if self.mlnn.F is not None else f"{'-':^10s}"
-        R = f"{self.mlnn.R:10.3e}" if self.mlnn.R is not None else f"{'-':^10s}"
-        S = f"{self.mlnn.S:10.3e}" if self.mlnn.S is not None else f"{'-':^10s}"
-        L = f"{self.mlnn.L:10.3e}" if self.mlnn.L is not None else f"{'-':^10s}"
-        mean_E = f"{np.mean(self.mlnn.E):10.3e}" if self.mlnn.E is not None else f"{'-':^10s}"
-        actv_rows = (f"{self.mlnn.subset_active_rows.size:9d}"
-                     if self.mlnn.subset_active_rows.size is not None else f"{'-':^9s}")
-        actv_cols = (f"{self.mlnn.subset_active_cols.size:9d}"
-                     if self.mlnn.subset_active_cols.size is not None else f"{'-':^9s}")
-        actv_data = (f"{self.mlnn.subset_active_data.size:9d}"
-                     if self.mlnn.subset_active_data.size is not None else f"{'-':^9s}")
+        F = f"{self.mlnn.F:10.3e}"
+        R = f"{self.mlnn.R:10.3e}"
+        S = f"{self.mlnn.S:10.3e}"
+        L = f"{self.mlnn.L:10.3e}"
+        mean_E = f"{np.mean(self.mlnn.E):10.3e}"
+        actv_rows = f"{self.mlnn.subset_active_rows.size:9d}"
+        actv_cols = f"{self.mlnn.subset_active_cols.size:9d}"
+        actv_data = f"{self.mlnn.subset_active_data.size:9d}"
 
-        print(" ".join((steps, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
+        print(" ".join((step, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
+
+    def _stats_dict(self):
+        stats_dict = {}
+        stats_dict['step'] = self.iter
+        if hasattr(self.optimizer, 'arguments'):
+            stats_dict['arguments'] = self.optimizer.arguments
+        if hasattr(self.optimizer, 'ls_iterations'):
+            stats_dict['ls_iterations'] = self.optimizer.ls_iterations
+        if hasattr(self.optimizer, 'alpha'):
+            stats_dict['alpha'] = self.optimizer.alpha
+        if hasattr(self.optimizer, 'phi'):
+            stats_dict['phi'] = self.optimizer.phi
+        stats_dict['delta_F'] = self.delta_F
+        stats_dict['F'] = self.mlnn.F
+        stats_dict['R'] = self.mlnn.R
+        stats_dict['S'] = self.mlnn.S
+        stats_dict['L'] = self.mlnn.L
+        stats_dict['mean_E'] = np.mean(self.mlnn.E)
+        stats_dict['actv_rows'] = self.mlnn.subset_active_rows.size
+        stats_dict['actv_cols'] = self.mlnn.subset_active_cols.size
+        stats_dict['actv_data'] = self.mlnn.subset_active_data.size
+        stats_dict['time'] = self.optimizer.time
+
+        return stats_dict
 
     def _draw_new_frame(self):
         frame_artists = self._title_artists(self.fig)
