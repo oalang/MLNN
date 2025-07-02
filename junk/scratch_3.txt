@@ -1,0 +1,141 @@
+Nonlinear without nonlinear regularization
+
+n_components=None,
+init='pca' | 'random', 'zero', 'identity', 'centered', 'pca
+max_iter=50,
+tol=1e-05,
+callback=None,
+verbose=0 | 0, 1, 2
+random_state=None,
+solver='steepest_fixed_backoff'
+
+n_components=None, *, init='pca', max_iter=50, tol=1e-05, callback=None, verbose=0,
+random_state=None, solver='steepest_fixed_backoff'
+
+        self.mlnn_params = {
+            'r': 1,
+            's': 0,
+            'l': 1,
+            'q': 1,
+            'inner_loss': loss,
+            'outer_loss': loss,
+            'kernel': 'linear',
+            'a_mode': 'decomposed',
+            'e_mode': 'single',
+            'keep_a_psd': False,
+            'keep_a_centered': False,
+            'keep_e_positive': False,
+            'reduce_derivative_matrix': False,
+            'check_array_equal': False,
+        }
+
+        self.optimize_params = {
+            'optimize_method': 'fixed',
+            'initialization': self.init,
+            'min_delta_F': self.tol,
+            'max_steps': self.max_iter,
+            'max_time': np.inf,
+            'fixed_arguments': 'AE',
+            'max_arg_steps': 5,
+            'maxcor': None,
+            'gtol': None,
+            'eps': None,
+            'maxfun': None,
+            'iprint': None,
+            'finite_diff_rel_step': None,
+            'optimize_verbose': False,
+        }
+
+        self.line_search_params = {
+            'line_search_method': 'backtracking',
+            'use_prev_f': False,
+            'alpha_0': 1e-3,
+            'armijo': 1e-06,
+            'wolfe': 0.9,
+            'rho_lo': 0.1,
+            'rho_hi': 0.9,
+            'max_ls_iterations': 20,
+            'line_search_verbose': False,
+        }
+
+class MLNNEngine:
+    def __init__(self, B, Y, C=None, mlnn_params=None):
+        self.r = 0
+        self.s = 0
+        self.l = 1
+        self.q = 1
+        self.inner_loss = ReLU(1)
+        self.outer_loss = ReLU(1)
+        self.kernel = None
+        self.a_mode = 'full'
+        self.e_mode = 'single'
+        self.keep_a_psd = True
+        self.keep_a_centered = False
+        self.keep_e_positive = None
+        self.reduce_derivative_matrix = False
+        self.check_array_equal = False
+
+class MLNNOptimizer:
+    def __init__(self, mlnn, callback):
+        self.mlnn = mlnn
+        self.callback = callback
+        self.A_0 = None
+        self.E_0 = None
+
+        self.initialization = None
+        self.min_delta_F = None
+        self.max_steps = None
+        self.max_time = None
+        self.delta_F = None
+        self.max_ls_iterations = None
+
+class MLNNSteepestDescent(MLNNOptimizer):
+    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, n_components=None,
+                 optimize_params=None, line_search_params=None):
+        super().__init__(mlnn, callback)
+
+        self.optimize_method = 'fixed'
+        self.initialization = None
+        self.min_delta_F = 1e-06
+        self.max_steps = 15000
+        self.max_time = np.inf
+        self.fixed_arguments = 'AE'
+        self.max_arg_steps = 5
+        self.optimize_verbose = False
+
+        self.line_search_method = 'backtracking'
+        self.use_prev_f = False
+        self.alpha_0 = 1e-06
+        self.armijo = 1e-04
+        self.wolfe = 0.9
+        self.rho_lo = 0.1
+        self.rho_hi = 0.9
+        self.max_ls_iterations = 20
+        self.line_search_verbose = False
+
+class MLNNBFGS(MLNNOptimizer):
+    def __init__(self, mlnn, callback=None, A_0=None, E_0=None, n_components=None,
+                 optimize_params=None, line_search_params=None):
+        super().__init__(mlnn, callback)
+
+        self.initialization = None
+        self.min_delta_F = 1e-09
+        self.max_steps = 15000
+        self.maxcor = None
+        self.gtol = None
+        self.eps = None
+        self.maxfun = None
+        self.iprint = None
+        self.finite_diff_rel_step = None
+        self.optimize_verbose = False
+
+        self.max_ls_iterations = 20
+
+class MLNNCallback:
+    def __init__(self, print_stats=False, collect_stats=False, animate=False, callback_fun=None):
+        self.print_stats = print_stats
+        self.collect_stats = collect_stats
+        self.animate = animate
+        self.callback_fun = callback_fun
+
+backend
