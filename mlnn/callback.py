@@ -40,7 +40,7 @@ class MLNNCallback:
             self._animate_start()
 
         if self.callback_fun is not None:
-            self.callback_fun(self.optimizer, self.mlnn, self.iter)
+            self.callback_fun(self.mlnn, self.optimizer, self.iter)
 
     def iterate(self, _=None):
         self.iter += 1
@@ -57,7 +57,7 @@ class MLNNCallback:
             self._animate_iterate()
 
         if self.callback_fun is not None:
-            self.callback_fun(self.optimizer, self.mlnn, self.iter)
+            self.callback_fun(self.mlnn, self.optimizer, self.iter)
 
     def end(self):
         if self.print_stats:
