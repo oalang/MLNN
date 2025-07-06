@@ -1,7 +1,7 @@
 import time
 import warnings
 import numpy as np
-from scipy.optimize import line_search, minimize, Bounds
+from scipy.optimize import line_search, minimize as scipy_minimize, Bounds
 
 from mlnn.callback import MLNNCallback
 
@@ -692,8 +692,8 @@ class MLNNBFGS(MLNNOptimizer):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.result = minimize(self.mlnn.fun, x0, (arguments,), 'L-BFGS-B', self.mlnn.jac,
-                                   bounds=self.bounds, options=self.options, callback=iterate)
+            self.result = scipy_minimize(self.mlnn.fun, x0, (arguments,), 'L-BFGS-B', self.mlnn.jac,
+                                         bounds=self.bounds, options=self.options, callback=iterate)
 
         self.run_time = self.time
 
