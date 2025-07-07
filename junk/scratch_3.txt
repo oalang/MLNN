@@ -1,26 +1,31 @@
-optimize.py line 687
-
 Nonlinear without nonlinear regularization
 Convex initialization PCA then decomposed optimization
-
+Replace self.iter with self.optimizer.steps
 
 n_components=None,
-init='pca' | 'random', 'zero', 'identity', 'centered', 'pca
-max_iter=50,
-tol=1e-05,
-callback=None,
+init='pca' | 'random', 'zero', 'identity', 'centered', 'pca', 'convex' ***
+max_iter=50
+tol=1e-05
+callback=None | f(MLNNEngine, MLNNOptimizer)
 verbose=0 | 0, 1, 2
-random_state=None,
-solver='steepest_fixed_backoff'
+random_state=None
+solver='steepest_fixed_backtracking' | 'steepest'/'bfgs', 'fixed'/'alternating', 'backtracking'/'strong_wolfe'
+
+
+
+collect_stats=False
+animate=False
+backend='numpy' | 'numpy', 'jax', 'cupy', 'numba'
 
 self.mlnn_params
-    'r': 1,
-    's': 0,
-    'l': 1,
-    'q': 1,
-    'inner_loss': loss,
-    'outer_loss': loss,
-    'kernel': 'linear',
+    'r': 1
+    's': 0
+    'l': 1
+    'q': 1
+    'inner_loss': loss
+    'outer_loss': loss
+    'kernel': 'linear' | 'linear', 'rbf',
+    'regularization': 'linear' | 'linear', 'nonlinear' ***
     'a_mode': 'decomposed',
     'e_mode': 'single',
     'keep_a_psd': False,
@@ -50,7 +55,3 @@ self.line_search_params
     'max_ls_iterations': 20,
     'line_search_verbose': False,
 
-self.collect_stats = collect_stats
-self.animate = animate
-
-backend
