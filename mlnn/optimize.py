@@ -684,11 +684,12 @@ class MLNNBFGS(MLNNOptimizer):
             self.callback.start(self)
             iterate = self.callback.iterate
 
-        x0 = np.empty(0)
+        x0_parts = []
         if 'A' in arguments:
-            x0 = np.append(x0, self.mlnn.A)
+            x0_parts.append(self.mlnn.A.ravel())
         if 'E' in arguments:
-            x0 = np.append(x0, self.mlnn.E)
+            x0_parts.append(self.mlnn.E.ravel())
+        x0 = np.concatenate(x0_parts)
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
