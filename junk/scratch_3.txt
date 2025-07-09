@@ -1,17 +1,15 @@
 Nonlinear without nonlinear regularization
-Convex initialization PCA then decomposed optimization
-Replace self.iter with self.optimizer.steps
+Add option for providing initial values
+Consolidate optimizer classes
 
 n_components=None,
 init='pca' | 'random', 'zero', 'identity', 'centered', 'pca', 'convex' ***
 max_iter=50
 tol=1e-05
-callback=None | f(MLNNEngine, MLNNOptimizer)
+callback=None | f(MLNNEngine, MLNNOptimizer, iter)
 verbose=0 | 0, 1, 2
 random_state=None
 solver='steepest_fixed_backtracking' | 'steepest'/'bfgs', 'fixed'/'alternating', 'backtracking'/'strong_wolfe'
-
-
 
 collect_stats=False
 animate=False

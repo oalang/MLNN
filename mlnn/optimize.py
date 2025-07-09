@@ -273,20 +273,28 @@ class MLNNSteepestDescent(MLNNOptimizer):
                 return False
 
     def strong_wolfe_line_search(self, F_prev, A_prev, E_prev, dA, dE, phi, alpha, F_prev_prev, arguments):
-        xk = np.empty(0)
-        gfk = np.empty(0)
+        i = 0
+        size = 0
         if 'A' in arguments:
-            xk = np.append(xk, A_prev)
-            if dA is None:
-                gfk = np.append(gfk, np.zeros(A_prev.size))
-            else:
-                gfk = np.append(gfk, dA)
+            i = A_prev.size
+            size += A_prev.size
         if 'E' in arguments:
-            xk = np.append(xk, E_prev)
-            if dE is None:
-                gfk = np.append(gfk, np.zeros(E_prev.size))
+            size += E_prev.size
+
+        xk = np.empty(size)
+        gfk = np.empty(size)
+        if 'A' in arguments:
+            xk[0:i] = A_prev.ravel()
+            if dA is None:
+                gfk[0:i] = np.zeros(A_prev.size)
             else:
-                gfk = np.append(gfk, dE)
+                gfk[0:i] = dA.ravel()
+        if 'E' in arguments:
+            xk[i:] = E_prev.ravel()
+            if dE is None:
+                gfk[i:] = np.zeros(E_prev.size)
+            else:
+                gfk[i:] = dE.ravel()
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -610,28 +618,33 @@ class MLNNBFGS(MLNNOptimizer):
             self.options['maxls'] = self.max_ls_iterations
 
     def set_bounds(self, arguments):
-        lb = np.empty(0)
+        i = 0
+        size = 0
+        if 'A' in arguments:
+            i = self.A_0.size
+            size += self.A_0.size
+        if 'E' in arguments:
+            size += self.E_0.size
 
+        lb = np.empty(size)
         if 'A' in arguments:
             if self.mlnn.keep_a_psd:
                 if self.mlnn.a_mode == 'full':
-                    raise RuntimeError('L-BFGS-B cannot impose a PSD constraint on a full matrix')
+                    raise RuntimeError('L-BFGS-B cannot impose the PSD constraint on a full matrix')
                 elif self.mlnn.a_mode == 'diagonal':
-                    lb = np.append(lb, np.zeros(self.A_0.size))
+                    lb[0:i] = np.zeros(self.A_0.size)
                 elif self.mlnn.a_mode == 'decomposed':
-                    lb = np.append(lb, np.full(self.A_0.size, -np.inf))
+                    lb[0:i] = np.full(self.A_0.size, -np.inf)
             else:
-                lb = np.append(lb, np.full(self.A_0.size, -np.inf))
-
+                lb[0:i] = np.full(self.A_0.size, -np.inf)
             if self.mlnn.keep_a_centered:
-                if self.mlnn.a_mode == 'full' or self.mlnn.a_mode == 'decomposed':
-                    raise RuntimeError('L-BFGS-B cannot impose centering constraint')
-
+                if self.mlnn.a_mode in ('full', 'decomposed'):
+                    raise RuntimeError('L-BFGS-B cannot impose the centering constraint')
         if 'E' in arguments:
             if self.mlnn.keep_e_positive:
-                lb = np.append(lb, np.zeros(self.E_0.size))
+                lb[i:] = np.zeros(self.E_0.size)
             else:
-                lb = np.append(lb, np.full(self.E_0.size, -np.inf))
+                lb[i:] = np.full(self.E_0.size, -np.inf)
 
         self.bounds = Bounds(lb, np.inf)
         self.mlnn.keep_a_psd = False
