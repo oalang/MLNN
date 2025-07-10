@@ -1,7 +1,7 @@
 import time
 import warnings
 import numpy as np
-from scipy.optimize import line_search, minimize as scipy_minimize, Bounds
+from scipy.optimize import line_search as scipy_line_search, minimize as scipy_minimize, Bounds
 
 from mlnn.callback import MLNNCallback
 
@@ -10,21 +10,22 @@ class MLNNOptimizer:
     def __init__(self, mlnn, callback):
         self.mlnn = mlnn
         self.callback = callback
-        self.A_0 = None
-        self.E_0 = None
 
         self.initialization = None
         self.min_delta_F = None
         self.max_steps = None
         self.max_time = None
-        self.delta_F = None
         self.max_ls_iterations = None
 
         self.time_0 = None
         self.run_time = None
         self.steps = None
-        self.F_0 = None
         self.termination = None
+        self.delta_F = None
+
+        self.A_0 = None
+        self.E_0 = None
+        self.F_0 = None
 
     @property
     def time(self):
@@ -73,6 +74,21 @@ class MLNNOptimizer:
         elif self.mlnn.e_mode == 'multiple':
             assert self.E_0.shape[0] == self.mlnn.n
             assert self.E_0.shape[1] == 1
+
+    def initialize_optimizer(self):
+        self.time_0 = time.perf_counter()
+        self.run_time = None
+        self.steps = 0
+        self.termination = None
+
+        self.mlnn.F_count = 0
+        self.mlnn.dFdA_count = 0
+        self.mlnn.dFdE_count = 0
+        self.mlnn.eigh_count = 0
+
+        self.mlnn.A = self.A_0
+        self.mlnn.E = self.E_0
+        self.F_0 = self.mlnn.F
 
     def report(self):
         if self.termination == 'max_ls_iterations':
@@ -136,30 +152,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
         self.arguments = None
         self.phi = None
         self.alpha = None
-        self.delta_F = None
         self.ls_iterations = None
 
-    def initialize(self):
-        self.time_0 = time.perf_counter()
-        self.run_time = None
-
-        self.steps = 0
-        self.mlnn.F_count = 0
-        self.mlnn.dFdA_count = 0
-        self.mlnn.dFdE_count = 0
-        self.mlnn.eigh_count = 0
-
-        self.F_0 = None
-        self.delta_F = None
-
-        self.arguments = None
-        self.phi = None
-        self.alpha = None
-        self.ls_iterations = None
-        self.termination = None
-
-        self.mlnn.A = self.A_0
-        self.mlnn.E = self.E_0
 
     def backtracking_line_search(self, F_prev, A_prev, E_prev, dA, dE, phi, alpha, arguments):
         # Take a step in the direction of steepest descent.
@@ -176,8 +170,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
             self.phi = phi
             self.alpha = alpha
             self.ls_iterations = iterations
-            self.termination = None
             self.steps += 1
+            self.termination = None
             return True
 
         # If the maximum number of ls_iterations have been performed, return without taking a step.
@@ -213,8 +207,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
             self.phi = phi
             self.alpha = alpha
             self.ls_iterations = iterations
-            self.termination = None
             self.steps += 1
+            self.termination = None
             return True
 
         # If the maximum number of ls_iterations have been performed, return without taking a step.
@@ -260,8 +254,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
                 self.phi = phi
                 self.alpha = alpha
                 self.ls_iterations = iterations
-                self.termination = None
                 self.steps += 1
+                self.termination = None
                 return True
 
             # If the maximum number of ls_iterations have been performed, return without taking a step.
@@ -298,7 +292,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            alpha, fc, _, new_fval, _, new_slope = line_search(
+            alpha, fc, _, new_fval, _, new_slope = scipy_line_search(
                 self.mlnn.fun, self.mlnn.jac, xk, -gfk, gfk, F_prev, F_prev_prev,
                 (arguments,), self.armijo, self.wolfe, alpha, None, self.max_ls_iterations)
 
@@ -324,8 +318,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
             self.phi = phi
             self.alpha = alpha
             self.ls_iterations = fc
-            self.termination = None
             self.steps += 1
+            self.termination = None
             return True
         else:
             self.mlnn.A = A_prev
@@ -435,12 +429,18 @@ class MLNNSteepestDescent(MLNNOptimizer):
                 self.callback = MLNNCallback()
             self.callback.print_stats = True
 
-        self.initialize()
+        self.initialize_optimizer()
 
         if self.callback is not None:
             self.callback.start(self)
 
-        self.F_0 = F_prev = self.mlnn.F
+        self.arguments = None
+        self.phi = None
+        self.alpha = None
+        self.ls_iterations = None
+        self.delta_F = None
+
+        F_prev = self.mlnn.F
         F_prev_prev = None
 
         while self.take_step(arguments, alpha_0, F_prev_prev):
@@ -490,17 +490,23 @@ class MLNNSteepestDescent(MLNNOptimizer):
                 self.callback = MLNNCallback()
             self.callback.print_stats = True
 
-        self.initialize()
+        self.initialize_optimizer()
 
         if self.callback is not None:
             self.callback.start(self)
+
+        self.arguments = None
+        self.phi = None
+        self.alpha = None
+        self.ls_iterations = None
+        self.delta_F = None
 
         arguments = 'AE'
         arg_alpha_0 = {'AE': alpha_0, 'A': alpha_0, 'E': alpha_0}
         arg_terminated = {'AE': False, 'A': False, 'E': False}
         arg_steps = 0
 
-        self.F_0 = F_prev = self.mlnn.F
+        F_prev = self.mlnn.F
         F_prev_prev = None
 
         while True:
@@ -651,21 +657,6 @@ class MLNNBFGS(MLNNOptimizer):
         self.mlnn.keep_a_centered = False
         self.mlnn.keep_e_positive = False
 
-    def initialize(self):
-        self.time_0 = time.perf_counter()
-        self.run_time = None
-
-        self.mlnn.A = self.A_0
-        self.mlnn.E = self.E_0
-        self.F_0 = self.mlnn.F
-
-        self.steps = 0
-        self.mlnn.F_count = 0
-        self.mlnn.dFdA_count = 0
-        self.mlnn.dFdE_count = 0
-
-        self.termination = None
-
     def read_result(self, arguments):
         i = 0
         if 'A' in arguments:
@@ -690,7 +681,7 @@ class MLNNBFGS(MLNNOptimizer):
 
         self.set_options()
         self.set_bounds(arguments)
-        self.initialize()
+        self.initialize_optimizer()
 
         iterate = None
         if self.callback is not None:
