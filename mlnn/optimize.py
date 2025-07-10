@@ -383,31 +383,6 @@ class MLNNSteepestDescent(MLNNOptimizer):
         elif method == 'strong_wolfe':
             return self.strong_wolfe_line_search(F_prev, A_prev, E_prev, dA, dE, phi, alpha, F_prev_prev, arguments)
 
-    def minimize(self, method=None, **kwargs):
-        if method is None:
-            method = self.optimize_method
-
-        alpha_0 = kwargs['alpha_0'] if 'alpha_0' in kwargs else None
-        min_delta_F = kwargs['min_delta_F'] if 'min_delta_F' in kwargs else None
-        max_steps = kwargs['max_steps'] if 'max_steps' in kwargs else None
-        max_time = kwargs['max_time'] if 'max_time' in kwargs else None
-        verbose = kwargs['verbose'] if 'verbose' in kwargs else None
-
-        if method == 'fixed':
-            arguments = kwargs['arguments'] if 'arguments' in kwargs else self.fixed_arguments
-
-            self.optimize_fixed(
-                arguments=arguments, alpha_0=alpha_0, min_delta_F=min_delta_F,
-                max_steps=max_steps, max_time=max_time, verbose=verbose
-            )
-        elif method == 'alternating':
-            max_arg_steps = kwargs['max_arg_steps'] if 'max_arg_steps' in kwargs else self.max_arg_steps
-
-            self.optimize_alternating(
-                max_arg_steps=max_arg_steps, alpha_0=alpha_0, min_delta_F=min_delta_F,
-                max_steps=max_steps, max_time=max_time, verbose=verbose
-            )
-
     def optimize_fixed(self, arguments='AE', alpha_0=None, min_delta_F=None, max_steps=None, max_time=None, verbose=None):
         if alpha_0 is None:
             alpha_0 = self.alpha_0
@@ -556,6 +531,31 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
         if self.callback is not None:
             self.callback.end()
+
+    def minimize(self, method=None, **kwargs):
+        if method is None:
+            method = self.optimize_method
+
+        alpha_0 = kwargs['alpha_0'] if 'alpha_0' in kwargs else None
+        min_delta_F = kwargs['min_delta_F'] if 'min_delta_F' in kwargs else None
+        max_steps = kwargs['max_steps'] if 'max_steps' in kwargs else None
+        max_time = kwargs['max_time'] if 'max_time' in kwargs else None
+        verbose = kwargs['verbose'] if 'verbose' in kwargs else None
+
+        if method == 'fixed':
+            arguments = kwargs['arguments'] if 'arguments' in kwargs else self.fixed_arguments
+
+            self.optimize_fixed(
+                arguments=arguments, alpha_0=alpha_0, min_delta_F=min_delta_F,
+                max_steps=max_steps, max_time=max_time, verbose=verbose
+            )
+        elif method == 'alternating':
+            max_arg_steps = kwargs['max_arg_steps'] if 'max_arg_steps' in kwargs else self.max_arg_steps
+
+            self.optimize_alternating(
+                max_arg_steps=max_arg_steps, alpha_0=alpha_0, min_delta_F=min_delta_F,
+                max_steps=max_steps, max_time=max_time, verbose=verbose
+            )
 
 
 class MLNNBFGS(MLNNOptimizer):
