@@ -674,9 +674,9 @@ class MLNNBFGS(MLNNOptimizer):
             self.result = scipy_minimize(self.mlnn.fun, x0, (arguments,), 'L-BFGS-B', self.mlnn.jac,
                                          bounds=self.bounds, options=self.options, callback=self.callback.iterate)
 
-        self.run_time = self.time
-
         self.read_result(arguments)
+
+        self.run_time = self.time
 
         if self.callback is not None:
             self.callback.end()
