@@ -319,7 +319,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
             self.mlnn.E = E_prev
             self.mlnn.F = F_prev
             self.ls_iterations = fc
-            self.termination = 'line_search() did not converge'
+            self.termination = 'scipy_line_search() did not converge'
             return False
 
     def take_step(self, arguments='AE', alpha_0=None, F_prev_prev=None, method=None):
