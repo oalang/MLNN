@@ -58,7 +58,6 @@ class MLNN:
             'gtol': None,
             'eps': None,
             'maxfun': None,
-            'iprint': None,
             'finite_diff_rel_step': None,
             'optimize_verbose': False,
         }
@@ -72,7 +71,6 @@ class MLNN:
             'rho_lo': 0.1,
             'rho_hi': 0.9,
             'max_ls_iterations': 20,
-            'line_search_verbose': False,
         }
 
         if 'fixed' in self.solver:

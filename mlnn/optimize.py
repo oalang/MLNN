@@ -12,10 +12,11 @@ class MLNNOptimizer:
         self.callback = callback
 
         self.initialization = None
-        self.min_delta_F = None
-        self.max_steps = None
-        self.max_time = None
-        self.max_ls_iterations = None
+        self.min_delta_F = 1e-06
+        self.max_steps = 1000
+        self.max_time = np.inf
+        self.optimize_verbose = False
+        self.max_ls_iterations = 20
 
         self.time_0 = None
         self.run_time = None
@@ -106,8 +107,7 @@ class MLNNOptimizer:
         print(f"Termination: {self.termination}{threshold}")
         print(f"       F_0 = {self.F_0:f}")
         print(f"         F = {self.mlnn.F:f}")
-        if self.delta_F is not None:
-            print(f"   delta_F = {self.delta_F:e}")
+        print(f"   delta_F = {self.delta_F:e}")
         print(f"     steps = {self.steps:d}")
         print(f"  run_time = {self.run_time:f} seconds")
         print("")
@@ -124,13 +124,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
         super().__init__(mlnn, callback)
 
         self.optimize_method = 'fixed'
-        self.initialization = None
-        self.min_delta_F = 1e-06
-        self.max_steps = 15000
-        self.max_time = np.inf
         self.fixed_arguments = 'AE'
         self.max_arg_steps = 5
-        self.optimize_verbose = False
 
         self.line_search_method = 'backtracking'
         self.use_prev_f = False
@@ -139,8 +134,6 @@ class MLNNSteepestDescent(MLNNOptimizer):
         self.wolfe = 0.9
         self.rho_lo = 0.1
         self.rho_hi = 0.9
-        self.max_ls_iterations = 20
-        self.line_search_verbose = False
 
         if optimize_params:
             self.apply_params(optimize_params)
@@ -329,15 +322,12 @@ class MLNNSteepestDescent(MLNNOptimizer):
             self.termination = 'line_search() did not converge'
             return False
 
-    def take_step(self, arguments='AE', alpha_0=None, F_prev_prev=None, method=None, verbose=None):
-        if method is None:
-            method = self.line_search_method
-
+    def take_step(self, arguments='AE', alpha_0=None, F_prev_prev=None, method=None):
         if alpha_0 is None:
             alpha_0 = self.alpha_0
 
-        if verbose is None:
-            verbose = self.line_search_verbose
+        if method is None:
+            method = self.line_search_method
 
         A_prev = self.mlnn.A
         E_prev = self.mlnn.E
@@ -476,13 +466,13 @@ class MLNNSteepestDescent(MLNNOptimizer):
         self.ls_iterations = None
         self.delta_F = None
 
+        F_prev = self.mlnn.F
+        F_prev_prev = None
+
         arguments = 'AE'
         arg_alpha_0 = {'AE': alpha_0, 'A': alpha_0, 'E': alpha_0}
         arg_terminated = {'AE': False, 'A': False, 'E': False}
         arg_steps = 0
-
-        F_prev = self.mlnn.F
-        F_prev_prev = None
 
         while True:
             if self.take_step(arguments, arg_alpha_0[arguments], F_prev_prev):
@@ -522,7 +512,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
                     arguments = 'A'
                 elif arguments == 'A':
                     arguments = 'E'
-                else:
+                elif arguments == 'E':
                     arguments = 'AE'
 
                 arg_steps = 0
@@ -532,26 +522,23 @@ class MLNNSteepestDescent(MLNNOptimizer):
         if self.callback is not None:
             self.callback.end()
 
-    def minimize(self, method=None, **kwargs):
+    def minimize(self, method=None, arguments=None, max_arg_steps=None,
+                 alpha_0=None, min_delta_F=None, max_steps=None, max_time=None, verbose=None):
         if method is None:
             method = self.optimize_method
 
-        alpha_0 = kwargs['alpha_0'] if 'alpha_0' in kwargs else None
-        min_delta_F = kwargs['min_delta_F'] if 'min_delta_F' in kwargs else None
-        max_steps = kwargs['max_steps'] if 'max_steps' in kwargs else None
-        max_time = kwargs['max_time'] if 'max_time' in kwargs else None
-        verbose = kwargs['verbose'] if 'verbose' in kwargs else None
+        if arguments is None:
+            arguments = self.fixed_arguments
+
+        if max_arg_steps is None:
+            max_arg_steps = self.max_arg_steps
 
         if method == 'fixed':
-            arguments = kwargs['arguments'] if 'arguments' in kwargs else self.fixed_arguments
-
             self.optimize_fixed(
                 arguments=arguments, alpha_0=alpha_0, min_delta_F=min_delta_F,
                 max_steps=max_steps, max_time=max_time, verbose=verbose
             )
         elif method == 'alternating':
-            max_arg_steps = kwargs['max_arg_steps'] if 'max_arg_steps' in kwargs else self.max_arg_steps
-
             self.optimize_alternating(
                 max_arg_steps=max_arg_steps, alpha_0=alpha_0, min_delta_F=min_delta_F,
                 max_steps=max_steps, max_time=max_time, verbose=verbose
@@ -563,18 +550,11 @@ class MLNNBFGS(MLNNOptimizer):
                  optimize_params=None, line_search_params=None):
         super().__init__(mlnn, callback)
 
-        self.initialization = None
-        self.min_delta_F = 1e-09
-        self.max_steps = 15000
         self.maxcor = None
         self.gtol = None
         self.eps = None
         self.maxfun = None
-        self.iprint = None
         self.finite_diff_rel_step = None
-        self.optimize_verbose = False
-
-        self.max_ls_iterations = 20
 
         if optimize_params:
             self.apply_params(optimize_params)
@@ -596,12 +576,6 @@ class MLNNBFGS(MLNNOptimizer):
         if self.min_delta_F is not None:
             self.options['ftol'] = self.min_delta_F
 
-        if self.optimize_verbose is not None:
-            if self.optimize_verbose:
-                self.options['disp'] = 1
-            else:
-                self.options['disp'] = 0
-
         if self.maxcor is not None:
             self.options['maxcor'] = self.maxcor
 
@@ -613,9 +587,6 @@ class MLNNBFGS(MLNNOptimizer):
 
         if self.maxfun is not None:
             self.options['maxfun'] = self.maxfun
-
-        if self.iprint is not None:
-            self.options['iprint'] = self.iprint
 
         if self.finite_diff_rel_step is not None:
             self.options['finite_diff_rel_step'] = self.finite_diff_rel_step
@@ -668,6 +639,7 @@ class MLNNBFGS(MLNNOptimizer):
         self.mlnn.F = self.result.fun
         self.steps = self.result.nit
         self.termination = self.result.message
+        self.delta_F = self.callback.delta_F
 
     def minimize(self, arguments='AE', min_delta_F=None, max_steps=None, verbose=None):
         if min_delta_F is not None:
@@ -676,17 +648,19 @@ class MLNNBFGS(MLNNOptimizer):
         if max_steps is not None:
             self.max_steps = max_steps
 
-        if verbose is not None:
-            self.optimize_verbose = verbose
+        if verbose is None:
+            verbose = self.optimize_verbose
+
+        if self.callback is None:
+            self.callback = MLNNCallback()
+
+        if verbose:
+            self.callback.print_stats = True
 
         self.set_options()
         self.set_bounds(arguments)
         self.initialize_optimizer()
-
-        iterate = None
-        if self.callback is not None:
-            self.callback.start(self)
-            iterate = self.callback.iterate
+        self.callback.start(self)
 
         x0_parts = []
         if 'A' in arguments:
@@ -698,7 +672,7 @@ class MLNNBFGS(MLNNOptimizer):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.result = scipy_minimize(self.mlnn.fun, x0, (arguments,), 'L-BFGS-B', self.mlnn.jac,
-                                         bounds=self.bounds, options=self.options, callback=iterate)
+                                         bounds=self.bounds, options=self.options, callback=self.callback.iterate)
 
         self.run_time = self.time
 

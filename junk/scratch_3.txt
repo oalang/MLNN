@@ -1,6 +1,6 @@
 Nonlinear without nonlinear regularization
 Add option for providing initial values
-Consolidate optimizer classes
+Compare fixed and alternating (alpha_0)
 
 n_components=None,
 init='pca' | 'random', 'zero', 'identity', 'centered', 'pca', 'convex' ***
@@ -38,7 +38,6 @@ self.optimize_params
     'gtol': None,
     'eps': None,
     'maxfun': None,
-    'iprint': None,
     'finite_diff_rel_step': None,
     'optimize_verbose': False,
 
@@ -51,5 +50,4 @@ self.line_search_params
     'rho_lo': 0.1,
     'rho_hi': 0.9,
     'max_ls_iterations': 20,
-    'line_search_verbose': False,
 
