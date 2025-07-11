@@ -470,9 +470,9 @@ class MLNNSteepestDescent(MLNNOptimizer):
         F_prev_prev = None
 
         arguments = 'AE'
+        arg_steps = 0
         arg_alpha_0 = {'AE': alpha_0, 'A': alpha_0, 'E': alpha_0}
         arg_terminated = {'AE': False, 'A': False, 'E': False}
-        arg_steps = 0
 
         while True:
             if self.take_step(arguments, arg_alpha_0[arguments], F_prev_prev):
