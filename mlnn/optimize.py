@@ -476,12 +476,12 @@ class MLNNSteepestDescent(MLNNOptimizer):
 
         while True:
             if self.take_step(arguments, arg_alpha_0[arguments], F_prev_prev):
-                arg_alpha_0[arguments] = self.alpha
-                if self.use_prev_f:
-                    F_prev_prev = F_prev
                 arg_steps += 1
+                arg_alpha_0[arguments] = self.alpha
 
                 self.delta_F = F_prev - self.mlnn.F
+                if self.use_prev_f:
+                    F_prev_prev = F_prev
                 F_prev = self.mlnn.F
 
                 if self.callback is not None:
