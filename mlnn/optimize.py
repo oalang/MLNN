@@ -259,7 +259,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
                 self.termination = 'max_ls_iterations'
                 return False
 
-    def strong_wolfe_line_search(self, arguments, F_prev, A_prev, E_prev, dA, dE, phi, alpha, F_prev_prev):
+    def strong_wolfe_line_search(self, arguments, F_prev, A_prev, E_prev, dA, dE, phi, alpha, F_prev_prev=None):
         i = 0
         size = 0
         if 'A' in arguments:
