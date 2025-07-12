@@ -148,7 +148,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
         self.ls_iterations = None
 
 
-    def backtracking_line_search(self, F_prev, A_prev, E_prev, dA, dE, phi, alpha, arguments):
+    def backtracking_line_search(self, arguments, F_prev, A_prev, E_prev, dA, dE, phi, alpha):
         # Take a step in the direction of steepest descent.
         if dA is not None:
             self.mlnn.update_A(A_prev, dA, alpha)
@@ -259,7 +259,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
                 self.termination = 'max_ls_iterations'
                 return False
 
-    def strong_wolfe_line_search(self, F_prev, A_prev, E_prev, dA, dE, phi, alpha, F_prev_prev, arguments):
+    def strong_wolfe_line_search(self, arguments, F_prev, A_prev, E_prev, dA, dE, phi, alpha, F_prev_prev):
         i = 0
         size = 0
         if 'A' in arguments:
@@ -369,9 +369,9 @@ class MLNNSteepestDescent(MLNNOptimizer):
             alpha = alpha_0
 
         if method == 'backtracking':
-            return self.backtracking_line_search(F_prev, A_prev, E_prev, dA, dE, phi, alpha, arguments)
+            return self.backtracking_line_search(arguments, F_prev, A_prev, E_prev, dA, dE, phi, alpha)
         elif method == 'strong_wolfe':
-            return self.strong_wolfe_line_search(F_prev, A_prev, E_prev, dA, dE, phi, alpha, F_prev_prev, arguments)
+            return self.strong_wolfe_line_search(arguments, F_prev, A_prev, E_prev, dA, dE, phi, alpha, F_prev_prev)
 
     def optimize_fixed(self, arguments='AE', alpha_0=None, min_delta_F=None, max_steps=None, max_time=None, verbose=None):
         if alpha_0 is None:
