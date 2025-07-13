@@ -1,6 +1,6 @@
 Nonlinear without nonlinear regularization
 Add option for providing initial values
-Compare fixed and alternating (alpha_0)
+Add unit test for different modes of opperation
 
 n_components=None,
 init='pca' | 'random', 'zero', 'identity', 'centered', 'pca', 'convex' ***

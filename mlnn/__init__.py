@@ -94,12 +94,12 @@ class MLNN:
         optimizer = None
         if 'steepest' in self.solver:
             optimizer = MLNNSteepestDescent(mlnn, callback, n_components=self.n_components,
-                                            line_search_params=self.line_search_params,
-                                            optimize_params=self.optimize_params)
+                                            optimize_params=self.optimize_params,
+                                            line_search_params=self.line_search_params)
         elif 'bfgs' in self.solver:
             optimizer = MLNNBFGS(mlnn, callback, n_components=self.n_components,
-                                 line_search_params=self.line_search_params,
-                                 optimize_params=self.optimize_params)
+                                 optimize_params=self.optimize_params,
+                                 line_search_params=self.line_search_params)
 
         optimizer.minimize()
 
