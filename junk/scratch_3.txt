@@ -1,5 +1,5 @@
 Nonlinear without nonlinear regularization
-Add option for providing initial values
+func v grad shared computation
 Add unit test for different modes of opperation
 
 n_components=None,

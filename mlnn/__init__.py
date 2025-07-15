@@ -8,7 +8,7 @@ from mlnn.optimize import MLNNSteepestDescent, MLNNBFGS
 
 class MLNN:
     def __init__(self, n_components=None, *, init='pca', max_iter=50, tol=1e-05, callback=None, verbose=0,
-                 random_state=None, solver='steepest_fixed_backtracking'):
+                 random_state=None, solver='steepest_fixed_backtracking', A_0=None, E_0=None):
         self.n_components = n_components
         self.init = init
         self.max_iter = max_iter
@@ -17,6 +17,8 @@ class MLNN:
         self.verbose = verbose
         self.random_state = random_state
         self.solver = solver
+        self.A_0 = A_0
+        self.E_0 = E_0
 
         self.mlnn_params = None
         self.optimize_params = None
@@ -93,13 +95,13 @@ class MLNN:
 
         optimizer = None
         if 'steepest' in self.solver:
-            optimizer = MLNNSteepestDescent(mlnn, callback, n_components=self.n_components,
-                                            optimize_params=self.optimize_params,
-                                            line_search_params=self.line_search_params)
+            optimizer = MLNNSteepestDescent(
+                mlnn, callback, self.A_0, self.E_0, self.n_components,
+                self.optimize_params, self.line_search_params)
         elif 'bfgs' in self.solver:
-            optimizer = MLNNBFGS(mlnn, callback, n_components=self.n_components,
-                                 optimize_params=self.optimize_params,
-                                 line_search_params=self.line_search_params)
+            optimizer = MLNNBFGS(
+                mlnn, callback, self.A_0, self.E_0, self.n_components,
+                self.optimize_params, self.line_search_params)
 
         optimizer.minimize()
 

@@ -147,7 +147,6 @@ class MLNNSteepestDescent(MLNNOptimizer):
         self.alpha = None
         self.ls_iterations = None
 
-
     def backtracking_line_search(self, arguments, F_prev, A_prev, E_prev, dA, dE, phi, alpha):
         # Take a step in the direction of steepest descent.
         if dA is not None:
