@@ -7,9 +7,12 @@ from mlnn.optimize import MLNNSteepestDescent, MLNNBFGS
 
 
 class MLNN:
-    def __init__(self, n_components=None, *, init='pca', max_iter=50, tol=1e-05, callback=None, verbose=0,
-                 random_state=None, solver='steepest_fixed_backtracking', A_0=None, E_0=None):
+    def __init__(self, n_components=None, *, kernel='linear', regularization='auto', init='pca',
+                 max_iter=50, tol=1e-05, callback=None, verbose=0, random_state=None,
+                 solver='steepest_fixed_backtracking', A_0=None, E_0=None):
         self.n_components = n_components
+        self.kernel = kernel
+        self.regularization = regularization
         self.init = init
         self.max_iter = max_iter
         self.tol = tol

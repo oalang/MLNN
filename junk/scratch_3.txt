@@ -1,8 +1,20 @@
 Nonlinear without nonlinear regularization
-func v grad shared computation
 Add unit test for different modes of opperation
+Add all options
+
+func v grad shared computation
+base class
+intr(self, X)
+func(self, X, I=None, full_output=False)
+grad(self, X, I=None, full_output=False)
+_intr()
+_func()
+_grad()
+
 
 n_components=None,
+kernel='linear' | 'linear', 'rbf'
+regularization='auto' | 'auto', 'unweighted'
 init='pca' | 'random', 'zero', 'identity', 'centered', 'pca', 'convex' ***
 max_iter=50
 tol=1e-05
@@ -10,6 +22,8 @@ callback=None | f(MLNNEngine, MLNNOptimizer, iter)
 verbose=0 | 0, 1, 2
 random_state=None
 solver='steepest_fixed_backtracking' | 'steepest'/'bfgs', 'fixed'/'alternating', 'backtracking'/'strong_wolfe'
+A_0=None
+E_0=None
 
 collect_stats=False
 animate=False
@@ -22,7 +36,6 @@ self.mlnn_params
     'q': 1
     'inner_loss': loss
     'outer_loss': loss
-    'kernel': 'linear' | 'linear', 'rbf',
     'regularization': 'linear' | 'linear', 'nonlinear' ***
     'a_mode': 'decomposed',
     'e_mode': 'single',
