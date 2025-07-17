@@ -15,7 +15,7 @@ class MLNNOptimizer:
         self.min_delta_F = 1e-06
         self.max_steps = 1000
         self.max_time = np.inf
-        self.optimize_verbose = False
+        self.verbose = False
         self.max_ls_iterations = 20
 
         self.time_0 = None
@@ -386,7 +386,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
             max_time = self.max_time
 
         if verbose is None:
-            verbose = self.optimize_verbose
+            verbose = self.verbose
 
         if verbose:
             if self.callback is None:
@@ -447,7 +447,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
             max_time = self.max_time
 
         if verbose is None:
-            verbose = self.optimize_verbose
+            verbose = self.verbose
 
         if verbose:
             if self.callback is None:
@@ -648,7 +648,7 @@ class MLNNBFGS(MLNNOptimizer):
             self.max_steps = max_steps
 
         if verbose is None:
-            verbose = self.optimize_verbose
+            verbose = self.verbose
 
         if self.callback is None:
             self.callback = MLNNCallback()

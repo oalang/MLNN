@@ -7,15 +7,15 @@ base class
 intr(self, X)
 func(self, X, I=None, full_output=False)
 grad(self, X, I=None, full_output=False)
-_intr()
-_func()
-_grad()
+_intr(self, X)
+_func(self, X, I)
+_grad(self, X, I)
 
 
 n_components=None,
 kernel='linear' | 'linear', 'rbf'
 regularization='auto' | 'auto', 'unweighted'
-init='pca' | 'random', 'zero', 'identity', 'centered', 'pca', 'convex' ***
+init='pca' | 'random', 'zero', 'identity', 'centered', 'pca'
 max_iter=50
 tol=1e-05
 callback=None | f(MLNNEngine, MLNNOptimizer, iter)
@@ -36,7 +36,6 @@ self.mlnn_params
     'q': 1
     'inner_loss': loss
     'outer_loss': loss
-    'regularization': 'linear' | 'linear', 'nonlinear' ***
     'a_mode': 'decomposed',
     'e_mode': 'single',
     'keep_a_psd': False,
@@ -52,15 +51,14 @@ self.optimize_params
     'eps': None,
     'maxfun': None,
     'finite_diff_rel_step': None,
-    'optimize_verbose': False,
 
 
 self.line_search_params
+    'max_ls_iterations': 20,
     'use_prev_f': False,
     'alpha_0': 1e-3,
     'armijo': 1e-06,
     'wolfe': 0.9,
     'rho_lo': 0.1,
     'rho_hi': 0.9,
-    'max_ls_iterations': 20,
 

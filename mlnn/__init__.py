@@ -52,11 +52,11 @@ class MLNN:
         }
 
         self.optimize_params = {
-            'optimize_method': 'fixed',
             'initialization': self.init,
             'min_delta_F': self.tol,
             'max_steps': self.max_iter,
             'max_time': np.inf,
+            'optimize_method': 'fixed',
             'fixed_arguments': 'AE',
             'max_arg_steps': 5,
             'maxcor': None,
@@ -64,10 +64,10 @@ class MLNN:
             'eps': None,
             'maxfun': None,
             'finite_diff_rel_step': None,
-            'optimize_verbose': False,
         }
 
         self.line_search_params = {
+            'max_ls_iterations': 20,
             'line_search_method': 'backtracking',
             'use_prev_f': False,
             'alpha_0': 1e-3,
@@ -75,7 +75,6 @@ class MLNN:
             'wolfe': 0.9,
             'rho_lo': 0.1,
             'rho_hi': 0.9,
-            'max_ls_iterations': 20,
         }
 
         if 'fixed' in self.solver:
