@@ -124,16 +124,16 @@ class MLNNSteepestDescent(MLNNOptimizer):
         super().__init__(mlnn, callback)
 
         self.optimize_method = 'fixed'
-        self.fixed_arguments = 'AE'
+        self.opt_arguments = 'AE'
         self.max_arg_steps = 5
 
         self.line_search_method = 'backtracking'
-        self.use_prev_f = False
         self.alpha_0 = 1e-06
         self.armijo = 1e-04
-        self.wolfe = 0.9
         self.rho_lo = 0.1
         self.rho_hi = 0.9
+        self.wolfe = 0.9
+        self.use_prev_f = False
 
         if optimize_params:
             self.apply_params(optimize_params)
@@ -527,7 +527,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
             method = self.optimize_method
 
         if arguments is None:
-            arguments = self.fixed_arguments
+            arguments = self.opt_arguments
 
         if max_arg_steps is None:
             max_arg_steps = self.max_arg_steps
