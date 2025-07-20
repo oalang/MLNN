@@ -14,6 +14,8 @@ class MLNN:
             kernel='linear',
             sigma2='auto',
             regularization='auto',
+            n_landmarks=100,
+            landmark_selection='random',
             init='pca',
             max_iter=50,
             max_time=np.inf,
@@ -60,6 +62,8 @@ class MLNN:
         #self.kernel = kernel
         #self.sigma2 = sigma2
         #self.regularization = regularization
+        #self.n_landmarks = n_landmarks
+        #self.landmark_selection = landmark_selection
         self.init = init
         self.max_iter = max_iter
         self.max_time = max_time
