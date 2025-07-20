@@ -12,6 +12,7 @@ class MLNN:
             n_components=None,
             *,
             kernel='linear',
+            sigma2='auto',
             regularization='auto',
             init='pca',
             max_iter=50,
@@ -25,7 +26,10 @@ class MLNN:
             mlnn_beta=0,
             mlnn_gamma=1,
             mlnn_delta=1,
-            mlnn_loss='smooth_relu2',
+            mlnn_inner_loss='smooth_relu2',
+            mlnn_outer_loss='smooth_relu2',
+            mlnn_inner_offset=1,
+            mlnn_outer_offset=1,
             mlnn_leaky_slope=1e-2,
             mlnn_matrix_mode='decomposed',
             mlnn_matrix_psd=False,
@@ -54,6 +58,7 @@ class MLNN:
     ):
         self.n_components = n_components
         #self.kernel = kernel
+        #self.sigma2 = sigma2
         #self.regularization = regularization
         self.init = init
         self.max_iter = max_iter
@@ -67,7 +72,10 @@ class MLNN:
         self.mlnn_beta = mlnn_beta
         self.mlnn_gamma = mlnn_gamma
         self.mlnn_delta = mlnn_delta
-        #self.mlnn_loss = mlnn_loss
+        #self.mlnn_inner_loss = mlnn_inner_loss
+        #self.mlnn_outer_loss = mlnn_outer_loss
+        #self.mlnn_inner_offset = mlnn_inner_offset
+        #self.mlnn_outer_offset = mlnn_outer_offset
         #self.mlnn_leaky_slope = mlnn_leaky_slope
         self.mlnn_matrix_mode = mlnn_matrix_mode
         self.mlnn_matrix_psd = mlnn_matrix_psd
