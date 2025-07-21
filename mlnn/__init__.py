@@ -12,10 +12,10 @@ class MLNN:
             n_components=None,
             *,
             kernel='linear',
-            sigma2='auto',
+            rbf_sigma2='auto',
             regularization='auto',
+            landmark_selection=None,
             n_landmarks=100,
-            landmark_selection='random',
             init='pca',
             max_iter=50,
             max_time=np.inf,
@@ -60,7 +60,7 @@ class MLNN:
     ):
         self.n_components = n_components
         #self.kernel = kernel
-        #self.sigma2 = sigma2
+        #self.rbf_sigma2 = rbf_sigma2
         #self.regularization = regularization
         #self.n_landmarks = n_landmarks
         #self.landmark_selection = landmark_selection
@@ -69,7 +69,7 @@ class MLNN:
         self.max_time = max_time
         self.tol = tol
         self.callback_fun = callback
-        self.random_state = random_state
+        #self.random_state = random_state
         self.solver = solver
         #self.backend = backend
         self.mlnn_alpha = mlnn_alpha
