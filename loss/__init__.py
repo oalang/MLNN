@@ -84,8 +84,8 @@ class LeakySmoothReLU2:
 
         self.offset = offset
         self.alpha = alpha
-        self.a = (.5 * alpha) ** .5 - .5
-        self.b = .5 * alpha - 2 ** .5 / 3 * alpha ** 1.5
+        self.a = np.sqrt(.5 * alpha) - .5
+        self.b = .5 * alpha - np.sqrt(2) / 3 * alpha ** 1.5
 
     def func(self, X):
         Xo = X + self.offset
@@ -121,8 +121,8 @@ class LeakySmoothReLU3:
 
         self.offset = offset
         self.alpha = alpha
-        self.a = (2 * alpha) ** .5 - 1
-        self.b = alpha - 2 / 3 * 2 ** .5 * alpha ** 1.5
+        self.a = np.sqrt(2 * alpha) - 1
+        self.b = alpha - 2 / 3 * np.sqrt(2) * alpha ** (3 / 2)
 
     def func(self, X):
         Xo = X + self.offset
@@ -291,12 +291,12 @@ class LeakySigmoid:
         self.offset = offset
         self.alpha = alpha
         self.beta = beta
-        self.a = -np.inf if alpha == 0 else np.log((-alpha - 2 * (1 - alpha) ** .5 + 2) / alpha)
-        self.b = 0 if alpha == 0 else 1 - (1 / (1 - alpha / (alpha - 2 * (1 - alpha) ** .5 - 2)) -
-                                           .25 * alpha * np.log((-alpha + 2 * (1 - alpha) ** .5 + 2) / alpha))
-        self.c = np.inf if beta == 0 else np.log((-beta + 2 * (1 - beta) ** .5 + 2) / beta)
-        self.d = 1 if beta == 0 else (1 / (1 - beta / (beta - 2 * (1 - beta) ** .5 - 2)) -
-                                      .25 * beta * np.log((-beta + 2 * (1 - beta) ** .5 + 2) / beta))
+        self.a = -np.inf if alpha == 0 else np.log((-alpha - 2 * np.sqrt(1 - alpha) + 2) / alpha)
+        self.b = 0 if alpha == 0 else 1 - (1 / (1 - alpha / (alpha - 2 * np.sqrt(1 - alpha) - 2)) -
+                                           .25 * alpha * np.log((-alpha + 2 * np.sqrt(1 - alpha) + 2) / alpha))
+        self.c = np.inf if beta == 0 else np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta)
+        self.d = 1 if beta == 0 else (1 / (1 - beta / (beta - 2 * np.sqrt(1 - beta) - 2)) -
+                                      .25 * beta * np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta))
 
     def func(self, X):
         Xo = 4 * (X + self.offset)
