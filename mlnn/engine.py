@@ -831,7 +831,7 @@ class MLNNEngine:
             n_components = self.m
 
         d = np.minimum(n_components, self.m)
-        M = (np.clip(self.eigenvalues[self.m - d:], 0).reshape(d, 1) ** .5
+        M = (np.sqrt(np.clip(self.eigenvalues[self.m - d:], 0).reshape(d, 1))
              * self.eigenvectors[:, self.m - d:].T)
 
         return np.vstack((M, np.zeros((n_components - d, self.m))))
