@@ -470,13 +470,13 @@ class MLNNEngine:
         if self.kernel == 'linear':
             self.J = self.A
         elif self.kernel == 'nonlinear':
-            if self.a_mode == 'full' or self.a_mode == 'decomposed':
+            if self.a_mode in ('full', 'decomposed'):
                 self.J = self.A @ self.C
             elif self.a_mode == 'diagonal':
                 self.J = self.A * self.C
 
     def _compute_K(self):
-        if self.a_mode == 'full' or self.a_mode == 'diagonal':
+        if self.a_mode in ('full', 'diagonal'):
             self.K = self.J
         elif self.a_mode == 'decomposed':
             self.K = self.A @ self.J.T
@@ -764,14 +764,14 @@ class MLNNEngine:
                 E = 0
             elif initialization == 'random':
                 E = rng.standard_normal(1).item() ** 2
-            elif initialization == 'centered' or initialization == 'identity' or initialization == 'pca':
+            elif initialization in ('centered', 'identity', 'pca'):
                 E = 1
         elif self.e_mode == 'multiple':
             if initialization == 'zero':
                 E = np.zeros((self.n, 1))
             elif initialization == 'random':
                 E = rng.standard_normal((self.n, 1)) ** 2
-            elif initialization == 'centered' or initialization == 'identity' or initialization == 'pca':
+            elif initialization in ('centered', 'identity', 'pca'):
                 E = np.ones((self.n, 1))
 
         return np.atleast_2d(E)

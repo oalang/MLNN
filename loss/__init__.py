@@ -228,8 +228,8 @@ class LeakySELU:
 
         self.offset = offset
         self.alpha = alpha
-        self.a = self.a = -np.inf if alpha == 0 else np.log(alpha) + 1
-        self.b = self.b = 0 if alpha == 0 else -alpha * np.log(alpha)
+        self.a = -np.inf if alpha == 0 else np.log(alpha) + 1
+        self.b = 0 if alpha == 0 else -alpha * np.log(alpha)
 
     def func(self, X):
         Xo = X + self.offset

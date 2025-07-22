@@ -39,7 +39,7 @@ class MLNNOptimizer:
 
     def initialize_args(self, A_0=None, E_0=None, n_components=None):
         if self.initialization is None:
-            if self.mlnn.a_mode == 'full' or self.mlnn.a_mode == 'diagonal':
+            if self.mlnn.a_mode in ('full', 'diagonal'):
                 self.initialization = 'zero'
             elif self.mlnn.a_mode == 'decomposed':
                 self.initialization = 'pca'
