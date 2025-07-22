@@ -696,10 +696,10 @@ class MLNNEngine:
                 A = np.zeros((self.m, self.m))
             else:
                 if initialization == 'random':
-                    A = rng.standard_normal((self.m, self.m)) / self.m ** .5
+                    A = rng.standard_normal((self.m, self.m)) / np.sqrt(self.m)
                     A = A.T @ A
                 elif initialization == 'identity':
-                    A = np.diag(np.ones(self.m) / self.m ** .5)
+                    A = np.diag(np.ones(self.m) / np.sqrt(self.m))
                 elif initialization == 'centered':
                     A = self.B.T @ (np.identity(self.n) - 1 / self.n) @ self.B
 
@@ -711,7 +711,7 @@ class MLNNEngine:
                     K = A
                 elif self.kernel == 'nonlinear':
                     K = A @ self.C
-                A /= np.dot(K.T.ravel(), K.ravel()) ** .5
+                A /= np.sqrt(np.dot(K.T.ravel(), K.ravel()))
 
                 A = (A + A.T) / 2
         elif self.a_mode == 'diagonal':
@@ -721,28 +721,28 @@ class MLNNEngine:
                 if initialization == 'random':
                     A = rng.standard_normal((self.m, 1)) ** 2
                 elif initialization == 'identity':
-                    A = np.ones((self.m, 1)) / self.m ** .5
+                    A = np.ones((self.m, 1)) / np.sqrt(self.m)
 
                 if self.kernel == 'linear':
                     K = A
                 elif self.kernel == 'nonlinear':
                     K = A * self.C
-                A /= np.dot(K.T.ravel(), K.ravel()) ** .5
+                A /= np.sqrt(np.dot(K.T.ravel(), K.ravel()))
         elif self.a_mode == 'decomposed':
             if d is None:
                 d = self.m
 
             if initialization == 'random':
-                A = rng.standard_normal((d, self.m)) / d ** .5
+                A = rng.standard_normal((d, self.m)) / np.sqrt(d)
             elif initialization == 'pca':
                 if self.kernel == 'linear':
                     pca = PCA(n_components=d)
                     pca.fit(self.B)
-                    A = pca.components_ / d ** .5
+                    A = pca.components_ / np.sqrt(d)
                 elif self.kernel == 'nonlinear':
                     kpca = KernelPCA(n_components=d, kernel='precomputed')
                     kpca.fit(self.C)
-                    A = kpca.eigenvectors_.T / d ** .5
+                    A = kpca.eigenvectors_.T / np.sqrt(d)
 
             if self.keep_a_centered:
                 A -= np.sum(A, axis=1, keepdims=True) / self.m
