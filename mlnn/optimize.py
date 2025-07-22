@@ -107,7 +107,8 @@ class MLNNOptimizer:
         print(f"Termination: {self.termination}{threshold}")
         print(f"       F_0 = {self.F_0:f}")
         print(f"         F = {self.mlnn.F:f}")
-        print(f"   delta_F = {self.delta_F:e}")
+        if self.delta_F is not None:
+            print(f"   delta_F = {self.delta_F:e}")
         print(f"     steps = {self.steps:d}")
         print(f"  run_time = {self.run_time:f} seconds")
         print("")
