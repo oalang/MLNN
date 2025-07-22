@@ -32,13 +32,13 @@ class SmoothReLU1:
 
     def func(self, X):
         Xo = X + self.offset
-        return np.where(Xo > .5, Xo,
-                        np.where(Xo > -.5, .5 * (Xo + .5) ** 2, 0))
+        return np.where(Xo > 0.5, Xo,
+                        np.where(Xo > -0.5, 0.5 * (Xo + 0.5) ** 2, 0))
 
     def grad(self, X):
         Xo = X + self.offset
-        return np.where(Xo > .5, 1,
-                        np.where(Xo > -.5, Xo + .5, 0))
+        return np.where(Xo > 0.5, 1,
+                        np.where(Xo > -0.5, Xo + 0.5, 0))
 
 
 class LeakySmoothReLU1:
@@ -47,18 +47,18 @@ class LeakySmoothReLU1:
 
         self.offset = offset
         self.alpha = alpha
-        self.a = alpha - .5
-        self.b = .5 * (alpha - alpha ** 2)
+        self.a = alpha - 0.5
+        self.b = 0.5 * (alpha - alpha ** 2)
 
     def func(self, X):
         Xo = X + self.offset
-        return np.where(Xo > .5, Xo,
-                        np.where(Xo > self.a, .5 * (Xo + .5) ** 2, self.alpha * Xo + self.b))
+        return np.where(Xo > 0.5, Xo,
+                        np.where(Xo > self.a, 0.5 * (Xo + 0.5) ** 2, self.alpha * Xo + self.b))
 
     def grad(self, X):
         Xo = X + self.offset
-        return np.where(Xo > .5, 1,
-                        np.where(Xo > self.a, Xo + .5, self.alpha))
+        return np.where(Xo > 0.5, 1,
+                        np.where(Xo > self.a, Xo + 0.5, self.alpha))
 
 
 class SmoothReLU2:
@@ -67,37 +67,37 @@ class SmoothReLU2:
 
     def func(self, X):
         Xo = X + self.offset
-        return np.where(Xo > .5, Xo,
-                        np.where(Xo > 0, -2 / 3 * (Xo + .5) ** 3 + 2 * (Xo + .5) ** 2 - Xo - 1 / 3,
-                                 np.where(Xo > -.5, 2 / 3 * (Xo + .5) ** 3, 0)))
+        return np.where(Xo > 0.5, Xo,
+                        np.where(Xo > 0, -2 / 3 * (Xo + 0.5) ** 3 + 2 * (Xo + 0.5) ** 2 - Xo - 1 / 3,
+                                 np.where(Xo > -0.5, 2 / 3 * (Xo + 0.5) ** 3, 0)))
 
     def grad(self, X):
         Xo = X + self.offset
-        return np.where(Xo > .5, 1,
-                        np.where(Xo > 0, 1 - 2 * (Xo - .5) ** 2,
-                                 np.where(Xo > -.5, 2 * (Xo + .5) ** 2, 0)))
+        return np.where(Xo > 0.5, 1,
+                        np.where(Xo > 0, 1 - 2 * (Xo - 0.5) ** 2,
+                                 np.where(Xo > -0.5, 2 * (Xo + 0.5) ** 2, 0)))
 
 
 class LeakySmoothReLU2:
     def __init__(self, offset=0, alpha=1e-2):
-        assert 0 <= alpha <= .5
+        assert 0 <= alpha <= 0.5
 
         self.offset = offset
         self.alpha = alpha
-        self.a = np.sqrt(.5 * alpha) - .5
-        self.b = .5 * alpha - np.sqrt(2) / 3 * alpha ** 1.5
+        self.a = np.sqrt(0.5 * alpha) - 0.5
+        self.b = 0.5 * alpha - np.sqrt(2) / 3 * alpha ** (3 / 2)
 
     def func(self, X):
         Xo = X + self.offset
-        return np.where(Xo > .5, Xo,
-                        np.where(Xo > 0, -2 / 3 * (Xo + .5) ** 3 + 2 * (Xo + .5) ** 2 - Xo - 1 / 3,
-                                 np.where(Xo > self.a, 2 / 3 * (Xo + .5) ** 3, self.alpha * Xo + self.b)))
+        return np.where(Xo > 0.5, Xo,
+                        np.where(Xo > 0, -2 / 3 * (Xo + 0.5) ** 3 + 2 * (Xo + 0.5) ** 2 - Xo - 1 / 3,
+                                 np.where(Xo > self.a, 2 / 3 * (Xo + 0.5) ** 3, self.alpha * Xo + self.b)))
 
     def grad(self, X):
         Xo = X + self.offset
-        return np.where(Xo > .5, 1,
-                        np.where(Xo > 0, 1 - 2 * (Xo - .5) ** 2,
-                                 np.where(Xo > self.a, 2 * (Xo + .5) ** 2, self.alpha)))
+        return np.where(Xo > 0.5, 1,
+                        np.where(Xo > 0, 1 - 2 * (Xo - 0.5) ** 2,
+                                 np.where(Xo > self.a, 2 * (Xo + 0.5) ** 2, self.alpha)))
 
 
 class SmoothReLU3:
@@ -117,7 +117,7 @@ class SmoothReLU3:
 
 class LeakySmoothReLU3:
     def __init__(self, offset=0, alpha=1e-2):
-        assert 0 <= alpha <= .5
+        assert 0 <= alpha <= 0.5
 
         self.offset = offset
         self.alpha = alpha
@@ -142,7 +142,7 @@ class Logistic:
     def func(self, X):
         Xo = 4 * (X + self.offset)
         Y = np.exp(Xo)
-        return .25 * np.where(np.isposinf(Y), Xo, np.log1p(Y))
+        return 0.25 * np.where(np.isposinf(Y), Xo, np.log1p(Y))
 
     def grad(self, X):
         Xo = 4 * (X + self.offset)
@@ -162,7 +162,7 @@ class LeakyLogistic:
     def func(self, X):
         Xo = 4 * (X + self.offset)
         Y = np.exp(Xo)
-        return .25 * np.where(Xo > self.a,
+        return 0.25 * np.where(Xo > self.a,
                               np.where(np.isposinf(Y), Xo, np.log1p(Y)), self.alpha * Xo + self.b)
 
     def grad(self, X):
@@ -259,8 +259,8 @@ class LeakyQuadratic:
     def __init__(self, offset=0, alpha=1e-2):
         self.offset = offset
         self.alpha = alpha
-        self.a = .5 * alpha
-        self.b = -((.5 * alpha) ** 2)
+        self.a = 0.5 * alpha
+        self.b = -((0.5 * alpha) ** 2)
 
     def func(self, X):
         Xo = X + self.offset
@@ -293,15 +293,15 @@ class LeakySigmoid:
         self.beta = beta
         self.a = -np.inf if alpha == 0 else np.log((-alpha - 2 * np.sqrt(1 - alpha) + 2) / alpha)
         self.b = 0 if alpha == 0 else 1 - (1 / (1 - alpha / (alpha - 2 * np.sqrt(1 - alpha) - 2)) -
-                                           .25 * alpha * np.log((-alpha + 2 * np.sqrt(1 - alpha) + 2) / alpha))
+                                           0.25 * alpha * np.log((-alpha + 2 * np.sqrt(1 - alpha) + 2) / alpha))
         self.c = np.inf if beta == 0 else np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta)
         self.d = 1 if beta == 0 else (1 / (1 - beta / (beta - 2 * np.sqrt(1 - beta) - 2)) -
-                                      .25 * beta * np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta))
+                                      0.25 * beta * np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta))
 
     def func(self, X):
         Xo = 4 * (X + self.offset)
-        return np.where(Xo > self.c, .25 * self.beta * Xo + self.d,
-                        np.where(Xo > self.a, 1 / (1 + np.exp(-Xo)), .25 * self.alpha * Xo + self.b))
+        return np.where(Xo > self.c, 0.25 * self.beta * Xo + self.d,
+                        np.where(Xo > self.a, 1 / (1 + np.exp(-Xo)), 0.25 * self.alpha * Xo + self.b))
 
     def grad(self, X):
         Xo = 4 * (X + self.offset)

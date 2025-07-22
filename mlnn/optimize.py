@@ -1,7 +1,9 @@
 import time
 import warnings
 import numpy as np
-from scipy.optimize import line_search as scipy_line_search, minimize as scipy_minimize, Bounds
+from scipy.optimize import line_search as scipy_line_search
+from scipy.optimize import minimize as scipy_minimize
+from scipy.optimize import Bounds
 
 from mlnn.callback import MLNNCallback
 
