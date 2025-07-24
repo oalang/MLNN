@@ -10,8 +10,8 @@ class MLNNEngine:
         self.s = 0
         self.l = 1
         self.q = 1
-        self.inner_loss = ReLU(1)
-        self.outer_loss = ReLU(1)
+        self.inner_loss = None
+        self.outer_loss = None
         self.kernel = None
         self.a_mode = 'full'
         self.e_mode = 'single'
@@ -20,6 +20,11 @@ class MLNNEngine:
         self.keep_e_positive = None
         self.reduce_derivative_matrix = False
         self.check_array_equal = False
+
+        if 'inner_loss' not in mlnn_params:
+            self.inner_loss = ReLU(1)
+        if 'outer_loss' not in mlnn_params:
+            self.outer_loss = self.inner_loss
 
         if mlnn_params:
             self.apply_params(mlnn_params)

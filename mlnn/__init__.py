@@ -202,9 +202,7 @@ class MLNN:
         return self.transformer.transform(X)
 
     def fit_transform(self, X, y):
-        self.fit(X, y)
-
-        return self.transform(X)
+        return self.fit(X, y).transform(X)
 
 
 class Transformation:
