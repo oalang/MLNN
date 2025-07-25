@@ -1,6 +1,7 @@
 Nonlinear without nonlinear regularization
 Add unit test for different modes of opperation
 Add all options
+np.square() and np.pow()
 
 func v grad shared computation
 base class

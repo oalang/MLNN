@@ -1,0 +1,48 @@
+ReLU
+X + self.offset
+
+LeakyReLU
+X + self.offset
+
+SmoothReLU1
+Xo = X + self.offset
+Xo + 0.5
+
+LeakySmoothReLU1
+
+SmoothReLU2
+
+LeakySmoothReLU2
+
+SmoothReLU3
+
+LeakySmoothReLU3
+
+Logistic
+
+LeakyLogistic
+
+Softplus
+
+LeakySoftplus
+
+SELU
+
+LeakySELU
+
+Quadratic
+
+LeakyQuadratic
+
+Sigmoid
+
+LeakySigmoid
+
+SiLU
+Xo = X + self.offset
+Y = np.exp(-Xo)
+Z = 1 + Y
+
+GELU
+Xo = X + self.offset
+norm.cdf(Xo)
