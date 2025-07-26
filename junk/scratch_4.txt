@@ -1,12 +1,11 @@
 ReLU
-X + self.offset
+A = X + self.offset
 
 LeakyReLU
-X + self.offset
+A = X + self.offset
 
 SmoothReLU1
-Xo = X + self.offset
-Xo + 0.5
+A = X + self.offset + 0.5
 
 LeakySmoothReLU1
 
@@ -39,10 +38,10 @@ Sigmoid
 LeakySigmoid
 
 SiLU
-Xo = X + self.offset
-Y = np.exp(-Xo)
-Z = 1 + Y
+A = X + self.offset
+B = np.exp(-A)
+C = 1 + B
 
 GELU
-Xo = X + self.offset
-norm.cdf(Xo)
+A = X + self.offset
+B = norm.cdf(A)
