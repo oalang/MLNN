@@ -1,16 +1,16 @@
 Nonlinear without nonlinear regularization
 Add unit test for different modes of opperation
 Add all options
-np.square() and np.pow()
+Make functions composable for jax/jit
 
 func v grad shared computation
 base class
 intr(self, X)
 func(self, X, I=None, full_output=False)
 grad(self, X, I=None, full_output=False)
-_intr(self, X)
-_func(self, X, I)
-_grad(self, X, I)
+_intr(X, params)
+_func(X, I, params)
+_grad(X, I, params)
 
 
 kernel='linear' | 'linear', 'rbf'
