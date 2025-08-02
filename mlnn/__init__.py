@@ -6,6 +6,14 @@ from mlnn.callback import MLNNCallback
 from mlnn.optimize import MLNNSteepestDescent, MLNNBFGS
 
 
+def pairwise_squared_distance(X, Z=None):
+    if Z is None:
+        P = X @ X.T
+        return P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
+    else:
+        return np.sum(np.square(X), axis=1).reshape(-1, 1) + np.sum(np.square(Z), axis=1).reshape(1, -1) - 2 * X @ Z.T
+
+
 class MLNN:
     def __init__(
             self,
@@ -59,7 +67,7 @@ class MLNN:
             verbose=0,
     ):
         self.n_components = n_components
-        #self.kernel = kernel
+        self.kernel = kernel
         #self.rbf_sigma2 = rbf_sigma2
         #self.regularization = regularization
         #self.n_landmarks = n_landmarks
@@ -117,6 +125,11 @@ class MLNN:
     def configure_params(self):
         loss = SmoothReLU1(.5)
 
+        if self.kernel == 'linear':
+            kernel = 'linear'
+        elif self.kernel == 'rbf':
+            kernel = 'nonlinear'
+
         self.mlnn_params = {
             'r': self.mlnn_alpha,
             's': self.mlnn_beta,
@@ -124,7 +137,7 @@ class MLNN:
             'q': self.mlnn_delta,
             'inner_loss': loss,
             'outer_loss': loss,
-            'kernel': 'linear',
+            'kernel': kernel,
             'a_mode': self.mlnn_matrix_mode,
             'e_mode': self.mlnn_epsilon_mode,
             'keep_a_psd': self.mlnn_matrix_psd,
@@ -171,7 +184,10 @@ class MLNN:
             self.line_search_params['line_search_method'] = 'strong_wolfe'
 
     def fit(self, X, y):
-        mlnn = MLNNEngine(X, y, mlnn_params=self.mlnn_params)
+        if self.kernel == 'linear':
+            mlnn = MLNNEngine(X, y, mlnn_params=self.mlnn_params)
+        elif self.kernel == 'rbf':
+            pass
 
         callback = MLNNCallback()
         if self.verbose >= 2:
@@ -220,7 +236,7 @@ class RBFTransformation:
         self.sigma2 = sigma2
 
     def transform(self, X):
-        D = 2 * X @ self.Z.T - np.sum(np.square(X), axis=1).reshape(-1, 1) - np.sum(np.square(self.Z), axis=1).reshape(1, -1)
-        B = np.exp(D / (2 * self.sigma2))
+        D = pairwise_squared_distance(X, self.Z)
+        B = np.exp(-D / (2 * self.sigma2))
 
         return B @ self.L.T
