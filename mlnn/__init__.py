@@ -205,28 +205,22 @@ class MLNN:
         return self.fit(X, y).transform(X)
 
 
-class Transformation:
+class LinearTransformation:
     def __init__(self, L):
         self.L = L
-
-
-class LinearTransformation(Transformation):
-    def __init__(self, L):
-        super().__init__(L)
 
     def transform(self, X):
         return X @ self.L.T
 
 
-class RBFTransformation(Transformation):
+class RBFTransformation:
     def __init__(self, L, Z, sigma2):
-        super().__init__(L)
-
+        self.L = L
         self.Z = Z
         self.sigma2 = sigma2
 
     def transform(self, X):
-        D = 2 * X @ self.Z.T - np.sum(X ** 2, axis=1).reshape(-1, 1) - np.sum(self.Z ** 2, axis=1).reshape(1, -1)
+        D = 2 * X @ self.Z.T - np.sum(np.square(X), axis=1).reshape(-1, 1) - np.sum(np.square(self.Z), axis=1).reshape(1, -1)
         B = np.exp(D / (2 * self.sigma2))
 
         return B @ self.L.T
