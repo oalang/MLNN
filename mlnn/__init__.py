@@ -1,4 +1,9 @@
+from functools import partial
+
 import numpy as np
+
+from sklearn.cluster import KMeans
+from scipy.optimize import bracket, minimize_scalar
 
 from loss import SmoothReLU1
 from mlnn.engine import MLNNEngine
@@ -12,6 +17,45 @@ def pairwise_squared_distance(X, Z=None):
         return P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
     else:
         return np.sum(np.square(X), axis=1).reshape(-1, 1) + np.sum(np.square(Z), axis=1).reshape(1, -1) - 2 * X @ Z.T
+
+
+def generate_landmarks(X, n_landmarks, method='kmeans'):
+    if method == 'kmeans':
+        kmeans = KMeans(n_landmarks)
+        kmeans.fit(X)
+        return kmeans.cluster_centers_
+    elif method == 'random':
+        return X[np.random.choice(X.shape[0], size=n_landmarks, replace=False)]
+
+
+def negative_kernel_entropy(sigma2, squared_distances, n_bins=10):
+    K = np.exp(-squared_distances / (2 * sigma2))
+    H, _ = np.histogram(K, bins=n_bins, range=(0, 1))
+    H = H / H.sum()
+    return np.sum(H * np.log(H + 1e-10))
+
+
+def maximize_kernel_entropy(squared_distances, n_bins=10):
+    fun = partial(negative_kernel_entropy, squared_distances=squared_distances, n_bins=n_bins)
+    xa_0 = 1e-10
+    xb_0 = np.mean(squared_distances)
+
+    try:
+        xa, xb, xc, _, _, _, funcalls = bracket(fun, xa_0, xb_0)
+    except:
+        print("Kernel entropy maximization: Failed to bracket local maximum.")
+    else:
+        result = minimize_scalar(fun, bracket=(xa, xb, xc))
+        if result.success:
+            funcalls += result.nfev
+            return result.x, -result.fun, funcalls
+        else:
+            print("Kernel entropy maximization: Optimization failed.")
+
+    print("Setting sigma2 to the mean squared distance.")
+    sigma2 = xb_0
+    kernel_entropy = -negative_kernel_entropy(sigma2, squared_distances, n_bins)
+    return sigma2, kernel_entropy, None
 
 
 class MLNN:
@@ -68,10 +112,10 @@ class MLNN:
     ):
         self.n_components = n_components
         self.kernel = kernel
-        #self.rbf_sigma2 = rbf_sigma2
-        #self.regularization = regularization
-        #self.n_landmarks = n_landmarks
-        #self.landmark_selection = landmark_selection
+        self.rbf_sigma2 = rbf_sigma2
+        self.regularization = regularization
+        self.n_landmarks = n_landmarks
+        self.landmark_selection = landmark_selection
         self.init = init
         self.max_iter = max_iter
         self.max_time = max_time
@@ -187,7 +231,27 @@ class MLNN:
         if self.kernel == 'linear':
             mlnn = MLNNEngine(X, y, mlnn_params=self.mlnn_params)
         elif self.kernel == 'rbf':
-            pass
+            if self.landmark_selection is None:
+                Z = None
+                D = pairwise_squared_distance(X)
+            else:
+                Z = generate_landmarks(X, self.n_landmarks, method=self.landmark_selection)
+                D = pairwise_squared_distance(X, Z)
+
+            if self.rbf_sigma2 == 'auto':
+                sigma2, _, _ = maximize_kernel_entropy(D)
+            else:
+                sigma2 = self.rbf_sigma2
+
+            K = np.exp(-D / (2 * sigma2))
+
+            if self.regularization == 'auto':
+                pass
+            elif self.regularization == 'unweighted':
+                pass
+
+            if Z is None:
+                Z = X
 
         callback = MLNNCallback()
         if self.verbose >= 2:
@@ -209,7 +273,12 @@ class MLNN:
         if self.verbose >= 1:
             optimizer.report()
 
-        self.transformer = LinearTransformation(mlnn.get_transformation_matrix(self.n_components))
+        L = mlnn.get_transformation_matrix(self.n_components)
+        if self.kernel == 'linear':
+            self.transformer = LinearTransformation(L)
+        elif self.kernel == 'rbf':
+            self.transformer = RBFTransformation(L, Z, sigma2)
+
         self.epsilon = np.mean(mlnn.E)
 
         return self
