@@ -3,7 +3,11 @@ Add unit test for different modes of opperation
 Add all options
 Make functions composable for jax/jit
 Initialize decomposed with max_x iterations of full
-kernel=None | None, 'rbf'
+kernel=None | None, 'rbf', 'linear'
+
+kernel -> kernelized: True/False
+regularization: auto/weighted/unweighted
+initialization = random/zero/identity/centered/pca/kpca
 
 func v grad shared computation
 base class

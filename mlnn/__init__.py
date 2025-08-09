@@ -42,7 +42,7 @@ def maximize_kernel_entropy(squared_distances, n_bins=10):
 
     try:
         xa, xb, xc, _, _, _, funcalls = bracket(fun, xa_0, xb_0)
-    except:
+    except Exception:
         print("Kernel entropy maximization: Failed to bracket local maximum.")
     else:
         result = minimize_scalar(fun, bracket=(xa, xb, xc))
