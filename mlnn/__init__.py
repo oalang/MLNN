@@ -63,7 +63,7 @@ class MLNN:
             self,
             n_components=None,
             *,
-            kernel='linear',
+            kernel=None,
             rbf_sigma2='auto',
             regularization='auto',
             landmark_selection=None,
@@ -169,10 +169,10 @@ class MLNN:
     def configure_params(self):
         loss = SmoothReLU1(.5)
 
-        if self.kernel == 'linear':
-            kernel = 'linear'
+        if self.kernel is None:
+            x_mode = 'raw'
         elif self.kernel == 'rbf':
-            kernel = 'nonlinear'
+            x_mode = 'kernel'
 
         self.mlnn_params = {
             'r': self.mlnn_alpha,
@@ -181,7 +181,7 @@ class MLNN:
             'q': self.mlnn_delta,
             'inner_loss': loss,
             'outer_loss': loss,
-            'kernel': kernel,
+            'x_mode': x_mode,
             'a_mode': self.mlnn_matrix_mode,
             'e_mode': self.mlnn_epsilon_mode,
             'keep_a_psd': self.mlnn_matrix_psd,
@@ -228,7 +228,7 @@ class MLNN:
             self.line_search_params['line_search_method'] = 'strong_wolfe'
 
     def fit(self, X, y):
-        if self.kernel == 'linear':
+        if self.kernel is None:
             mlnn = MLNNEngine(X, y, mlnn_params=self.mlnn_params)
         elif self.kernel == 'rbf':
             if self.landmark_selection is None:
@@ -274,7 +274,7 @@ class MLNN:
             optimizer.report()
 
         L = mlnn.get_transformation_matrix(self.n_components)
-        if self.kernel == 'linear':
+        if self.kernel is None:
             self.transformer = LinearTransformation(L)
         elif self.kernel == 'rbf':
             self.transformer = RBFTransformation(L, Z, sigma2)
