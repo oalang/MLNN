@@ -740,14 +740,19 @@ class MLNNEngine:
             if initialization == 'random':
                 A = rng.standard_normal((d, self.m)) / np.sqrt(d)
             elif initialization == 'pca':
+                pca = PCA(n_components=d)
+                pca.fit(self.X)
+                A = pca.components_ / np.sqrt(d)
+            elif initialization == 'kpca':
                 if self.x_mode == 'raw':
-                    pca = PCA(n_components=d)
-                    pca.fit(self.X)
-                    A = pca.components_ / np.sqrt(d)
+                    Z = self.X
+                    assert np.array_equal(Z, Z.T)
                 elif self.x_mode == 'kernel':
-                    kpca = KernelPCA(n_components=d, kernel='precomputed')
-                    kpca.fit(self.Z)
-                    A = kpca.eigenvectors_.T / np.sqrt(d)
+                    Z = self.Z
+
+                kpca = KernelPCA(n_components=d, kernel='precomputed')
+                kpca.fit(Z)
+                A = kpca.eigenvectors_.T / np.sqrt(d)
 
             if self.keep_a_centered:
                 A -= np.sum(A, axis=1, keepdims=True) / self.m
