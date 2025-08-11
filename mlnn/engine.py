@@ -774,14 +774,14 @@ class MLNNEngine:
                 E = 0
             elif initialization == 'random':
                 E = rng.standard_normal(1).item() ** 2
-            elif initialization in ('centered', 'identity', 'pca'):
+            elif initialization in ('identity', 'centered', 'pca', 'kpca'):
                 E = 1
         elif self.e_mode == 'multiple':
             if initialization == 'zero':
                 E = np.zeros((self.n, 1))
             elif initialization == 'random':
                 E = rng.standard_normal((self.n, 1)) ** 2
-            elif initialization in ('centered', 'identity', 'pca'):
+            elif initialization in ('identity', 'centered', 'pca', 'kpca'):
                 E = np.ones((self.n, 1))
 
         return np.atleast_2d(E)

@@ -68,7 +68,7 @@ class MLNN:
             regularization='auto',
             landmark_selection=None,
             n_landmarks=100,
-            init='pca',
+            init='auto',
             max_iter=50,
             max_time=np.inf,
             tol=1e-05,
@@ -192,7 +192,7 @@ class MLNN:
         }
 
         self.optimize_params = {
-            'initialization': self.init,
+            'initialization': None if self.init == 'auto' else self.init,
             'min_delta_F': self.tol,
             'max_steps': self.max_iter,
             'max_time': np.inf,

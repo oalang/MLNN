@@ -44,14 +44,17 @@ class MLNNOptimizer:
             if self.mlnn.a_mode in ('full', 'diagonal'):
                 self.initialization = 'zero'
             elif self.mlnn.a_mode == 'decomposed':
-                self.initialization = 'pca'
+                if self.mlnn.x_mode == 'raw':
+                    self.initialization = 'pca'
+                elif self.mlnn.x_mode == 'kernel':
+                    self.initialization = 'kpca'
 
         if self.mlnn.a_mode == 'full':
             assert (self.initialization in ('random', 'zero', 'identity', 'centered'))
         elif self.mlnn.a_mode == 'diagonal':
             assert (self.initialization in ('random', 'zero', 'identity'))
         elif self.mlnn.a_mode == 'decomposed':
-            assert (self.initialization in ('random', 'pca'))
+            assert (self.initialization in ('random', 'pca', 'kpca'))
 
         if A_0 is None:
             self.A_0 = self.mlnn.compute_A_0(self.initialization, n_components)
