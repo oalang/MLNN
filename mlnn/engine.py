@@ -12,7 +12,7 @@ class MLNNEngine:
         self.q = 1
         self.inner_loss = None
         self.outer_loss = None
-        self.kernel = None
+        self.x_mode = None
         self.a_mode = 'full'
         self.e_mode = 'single'
         self.keep_a_psd = True
@@ -29,11 +29,11 @@ class MLNNEngine:
         if mlnn_params:
             self.apply_params(mlnn_params)
 
-        if self.kernel is None:
+        if self.x_mode is None:
             if C is None:
-                self.kernel = 'linear'
+                self.x_mode = 'raw'
             else:
-                self.kernel = 'nonlinear'
+                self.x_mode = 'kernel'
 
         if self.keep_e_positive is None:
             self.keep_e_positive = self.keep_a_psd
@@ -55,9 +55,9 @@ class MLNNEngine:
         assert self.Y.shape[0] == self.n
 
         self.C_equals_B = False
-        if self.kernel == 'linear':
+        if self.x_mode == 'raw':
             assert C is None
-        elif self.kernel == 'nonlinear':
+        elif self.x_mode == 'kernel':
             if C is None:
                 self.C = self.B
                 self.C_equals_B = True
@@ -472,9 +472,9 @@ class MLNNEngine:
         self.Q = np.where(self.T == 1, self.q, 1)
 
     def _compute_J(self):
-        if self.kernel == 'linear':
+        if self.x_mode == 'raw':
             self.J = self.A
-        elif self.kernel == 'nonlinear':
+        elif self.x_mode == 'kernel':
             if self.a_mode in ('full', 'decomposed'):
                 self.J = self.A @ self.C
             elif self.a_mode == 'diagonal':
@@ -494,17 +494,17 @@ class MLNNEngine:
 
     def _compute_D(self):
         if self.a_mode == 'full':
-            if self.kernel == 'nonlinear' and self.C_equals_B:
+            if self.C_equals_B:
                 P = self.B @ self.J
             else:
                 P = self.B @ self.A @ self.B.T
         elif self.a_mode == 'diagonal':
-            if self.kernel == 'nonlinear' and self.C_equals_B:
+            if self.C_equals_B:
                 P = self.B @ self.J
             else:
                 P = self.B @ (self.A * self.B.T)
         elif self.a_mode == 'decomposed':
-            if self.kernel == 'nonlinear' and self.C_equals_B:
+            if self.C_equals_B:
                 P = self.J.T @ self.J
             else:
                 X = self.A @ self.B.T
@@ -557,14 +557,14 @@ class MLNNEngine:
 
     def _compute_dRdA(self):
         if self.a_mode == 'full':
-            if self.kernel == 'linear':
+            if self.x_mode == 'raw':
                 self.dRdA = self.r * self.K
-            elif self.kernel == 'nonlinear':
+            elif self.x_mode == 'kernel':
                 self.dRdA = self.r * self.C @ self.K
         elif self.a_mode == 'diagonal':
-            if self.kernel == 'linear':
+            if self.x_mode == 'raw':
                 self.dRdA = self.r * self.K
-            elif self.kernel == 'nonlinear':
+            elif self.x_mode == 'kernel':
                 self.dRdA = self.r * np.sum(self.C * self.K, axis=1, keepdims=True)
         elif self.a_mode == 'decomposed':
             self.dRdA = self.r * 2 * self.K @ self.J
@@ -712,9 +712,9 @@ class MLNNEngine:
                     A -= np.sum(A, axis=0, keepdims=True) / self.m
                     A -= np.sum(A, axis=1, keepdims=True) / self.m
 
-                if self.kernel == 'linear':
+                if self.x_mode == 'raw':
                     K = A
-                elif self.kernel == 'nonlinear':
+                elif self.x_mode == 'kernel':
                     K = A @ self.C
                 A /= np.sqrt(np.dot(K.T.ravel(), K.ravel()))
 
@@ -728,9 +728,9 @@ class MLNNEngine:
                 elif initialization == 'identity':
                     A = np.ones((self.m, 1)) / np.sqrt(self.m)
 
-                if self.kernel == 'linear':
+                if self.x_mode == 'raw':
                     K = A
-                elif self.kernel == 'nonlinear':
+                elif self.x_mode == 'kernel':
                     K = A * self.C
                 A /= np.sqrt(np.dot(K.T.ravel(), K.ravel()))
         elif self.a_mode == 'decomposed':
@@ -740,11 +740,11 @@ class MLNNEngine:
             if initialization == 'random':
                 A = rng.standard_normal((d, self.m)) / np.sqrt(d)
             elif initialization == 'pca':
-                if self.kernel == 'linear':
+                if self.x_mode == 'raw':
                     pca = PCA(n_components=d)
                     pca.fit(self.B)
                     A = pca.components_ / np.sqrt(d)
-                elif self.kernel == 'nonlinear':
+                elif self.x_mode == 'kernel':
                     kpca = KernelPCA(n_components=d, kernel='precomputed')
                     kpca.fit(self.C)
                     A = kpca.eigenvectors_.T / np.sqrt(d)
@@ -752,9 +752,9 @@ class MLNNEngine:
             if self.keep_a_centered:
                 A -= np.sum(A, axis=1, keepdims=True) / self.m
 
-            if self.kernel == 'linear':
+            if self.x_mode == 'raw':
                 K = A @ A.T
-            elif self.kernel == 'nonlinear':
+            elif self.x_mode == 'kernel':
                 K = A @ self.C @ A.T
             A /= np.dot(K.T.ravel(), K.ravel()) ** .25
 
