@@ -5,7 +5,7 @@ from loss import ReLU
 
 
 class MLNNEngine:
-    def __init__(self, B, Y, C=None, mlnn_params=None):
+    def __init__(self, X, Y, Z=None, mlnn_params=None):
         self.r = 0
         self.s = 0
         self.l = 1
@@ -30,7 +30,7 @@ class MLNNEngine:
             self.apply_params(mlnn_params)
 
         if self.x_mode is None:
-            if C is None:
+            if Z is None:
                 self.x_mode = 'raw'
             else:
                 self.x_mode = 'kernel'
@@ -43,29 +43,29 @@ class MLNNEngine:
         assert self.l > 0
         assert self.q > 0
 
-        self.B = B
+        self.X = X
         self.Y = Y
 
-        self.n = self.B.shape[0]
-        self.m = self.B.shape[1]
+        self.n = self.X.shape[0]
+        self.m = self.X.shape[1]
 
         assert self.n > 1
         assert self.m > 0
         assert self.Y.size == self.n
         assert self.Y.shape[0] == self.n
 
-        self.C_equals_B = False
+        self.Z_equals_X = False
         if self.x_mode == 'raw':
-            assert C is None
+            assert Z is None
         elif self.x_mode == 'kernel':
-            if C is None:
-                self.C = self.B
-                self.C_equals_B = True
+            if Z is None:
+                self.Z = self.X
+                self.Z_equals_X = True
             else:
-                self.C = C
+                self.Z = Z
 
-            assert self.C.shape[0] == self.m
-            assert np.array_equal(self.C, self.C.T)
+            assert self.Z.shape[0] == self.m
+            assert np.array_equal(self.Z, self.Z.T)
 
         if not self.r:
             self.R = 0
@@ -85,12 +85,12 @@ class MLNNEngine:
                 setattr(self, attr, params[attr])
 
     @property
-    def B(self):
-        return self._B
+    def X(self):
+        return self._X
 
-    @B.setter
-    def B(self, B):
-        self._B = B
+    @X.setter
+    def X(self, X):
+        self._X = X
         self.D = None
 
     @property
@@ -103,12 +103,12 @@ class MLNNEngine:
         self.T = None
 
     @property
-    def C(self):
-        return self._C
+    def Z(self):
+        return self._Z
 
-    @C.setter
-    def C(self, C):
-        self._C = C
+    @Z.setter
+    def Z(self, Z):
+        self._Z = Z
         self.J = None
 
     @property
@@ -476,9 +476,9 @@ class MLNNEngine:
             self.J = self.A
         elif self.x_mode == 'kernel':
             if self.a_mode in ('full', 'decomposed'):
-                self.J = self.A @ self.C
+                self.J = self.A @ self.Z
             elif self.a_mode == 'diagonal':
-                self.J = self.A * self.C
+                self.J = self.A * self.Z
 
     def _compute_K(self):
         if self.a_mode in ('full', 'diagonal'):
@@ -494,21 +494,21 @@ class MLNNEngine:
 
     def _compute_D(self):
         if self.a_mode == 'full':
-            if self.C_equals_B:
-                P = self.B @ self.J
+            if self.Z_equals_X:
+                P = self.X @ self.J
             else:
-                P = self.B @ self.A @ self.B.T
+                P = self.X @ self.A @ self.X.T
         elif self.a_mode == 'diagonal':
-            if self.C_equals_B:
-                P = self.B @ self.J
+            if self.Z_equals_X:
+                P = self.X @ self.J
             else:
-                P = self.B @ (self.A * self.B.T)
+                P = self.X @ (self.A * self.X.T)
         elif self.a_mode == 'decomposed':
-            if self.C_equals_B:
+            if self.Z_equals_X:
                 P = self.J.T @ self.J
             else:
-                X = self.A @ self.B.T
-                P = X.T @ X
+                B = self.A @ self.X.T
+                P = B.T @ B
 
         self.D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
 
@@ -560,12 +560,12 @@ class MLNNEngine:
             if self.x_mode == 'raw':
                 self.dRdA = self.r * self.K
             elif self.x_mode == 'kernel':
-                self.dRdA = self.r * self.C @ self.K
+                self.dRdA = self.r * self.Z @ self.K
         elif self.a_mode == 'diagonal':
             if self.x_mode == 'raw':
                 self.dRdA = self.r * self.K
             elif self.x_mode == 'kernel':
-                self.dRdA = self.r * np.sum(self.C * self.K, axis=1, keepdims=True)
+                self.dRdA = self.r * np.sum(self.Z * self.K, axis=1, keepdims=True)
         elif self.a_mode == 'decomposed':
             self.dRdA = self.r * 2 * self.K @ self.J
 
@@ -574,16 +574,16 @@ class MLNNEngine:
             W = np.negative(self.V + self.V.T)
             np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
             if self.reduce_derivative_matrix:
-                B = self.B.take(self.subset_active_data, axis=0)
+                X = self.X.take(self.subset_active_data, axis=0)
             else:
-                B = self.B
+                X = self.X
 
             if self.a_mode == 'full':
-                self.dLdA = self.l * (B.T @ W @ B)
+                self.dLdA = self.l * (X.T @ W @ X)
             elif self.a_mode == 'diagonal':
-                self.dLdA = self.l * np.sum(B.T * (W @ B).T, axis=1, keepdims=True)
+                self.dLdA = self.l * np.sum(X.T * (W @ X).T, axis=1, keepdims=True)
             elif self.a_mode == 'decomposed':
-                self.dLdA = self.l * 2 * ((self.A @ B.T) @ W @ B)
+                self.dLdA = self.l * 2 * ((self.A @ X.T) @ W @ X)
         else:
             self.dLdA = 0
 
@@ -606,9 +606,9 @@ class MLNNEngine:
                 self.dLdE = self.l * -np.sum(self.V, keepdims=True)
             elif self.e_mode == 'multiple':
                 if self.reduce_derivative_matrix:
-                    Z = np.zeros((self.n, 1))
-                    Z[self.subset_active_data] = -np.sum(self.V, axis=1, keepdims=True)
-                    self.dLdE = self.l * Z
+                    C = np.zeros((self.n, 1))
+                    C[self.subset_active_data] = -np.sum(self.V, axis=1, keepdims=True)
+                    self.dLdE = self.l * C
                 else:
                     self.dLdE = self.l * -np.sum(self.V, axis=1, keepdims=True)
         else:
@@ -706,7 +706,7 @@ class MLNNEngine:
                 elif initialization == 'identity':
                     A = np.diag(np.ones(self.m) / np.sqrt(self.m))
                 elif initialization == 'centered':
-                    A = self.B.T @ (np.identity(self.n) - 1 / self.n) @ self.B
+                    A = self.X.T @ (np.identity(self.n) - 1 / self.n) @ self.X
 
                 if self.keep_a_centered:
                     A -= np.sum(A, axis=0, keepdims=True) / self.m
@@ -715,7 +715,7 @@ class MLNNEngine:
                 if self.x_mode == 'raw':
                     K = A
                 elif self.x_mode == 'kernel':
-                    K = A @ self.C
+                    K = A @ self.Z
                 A /= np.sqrt(np.dot(K.T.ravel(), K.ravel()))
 
                 A = (A + A.T) / 2
@@ -731,7 +731,7 @@ class MLNNEngine:
                 if self.x_mode == 'raw':
                     K = A
                 elif self.x_mode == 'kernel':
-                    K = A * self.C
+                    K = A * self.Z
                 A /= np.sqrt(np.dot(K.T.ravel(), K.ravel()))
         elif self.a_mode == 'decomposed':
             if d is None:
@@ -742,11 +742,11 @@ class MLNNEngine:
             elif initialization == 'pca':
                 if self.x_mode == 'raw':
                     pca = PCA(n_components=d)
-                    pca.fit(self.B)
+                    pca.fit(self.X)
                     A = pca.components_ / np.sqrt(d)
                 elif self.x_mode == 'kernel':
                     kpca = KernelPCA(n_components=d, kernel='precomputed')
-                    kpca.fit(self.C)
+                    kpca.fit(self.Z)
                     A = kpca.eigenvectors_.T / np.sqrt(d)
 
             if self.keep_a_centered:
@@ -755,7 +755,7 @@ class MLNNEngine:
             if self.x_mode == 'raw':
                 K = A @ A.T
             elif self.x_mode == 'kernel':
-                K = A @ self.C @ A.T
+                K = A @ self.Z @ A.T
             A /= np.dot(K.T.ravel(), K.ravel()) ** .25
 
         return A
