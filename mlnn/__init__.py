@@ -59,6 +59,27 @@ def maximize_kernel_entropy(squared_distances, n_bins=10):
     return sigma2, kernel_entropy, None
 
 
+class LinearTransformation:
+    def __init__(self, B):
+        self.B = B
+
+    def transform(self, X):
+        return X @ self.B.T
+
+
+class RBFTransformation:
+    def __init__(self, B, L, sigma2):
+        self.B = B
+        self.L = L
+        self.sigma2 = sigma2
+
+    def transform(self, X):
+        D = pairwise_squared_distance(X, self.L)
+        K = np.exp(-D / (2 * self.sigma2))
+
+        return K @ self.B.T
+
+
 class MLNN:
     def __init__(
             self,
@@ -235,32 +256,40 @@ class MLNN:
 
         if self.kernel is None:
             mlnn = MLNNEngine(X, Y, mlnn_params=self.mlnn_params)
-        elif self.kernel == 'rbf':
+        else:
+            Z = None
+
             if self.landmark_selection is None:
                 L = None
-                D = pairwise_squared_distance(X)
             else:
                 L = generate_landmarks(X, self.n_landmarks, method=self.landmark_selection)
+
+            if self.kernel == 'rbf':
                 D = pairwise_squared_distance(X, L)
 
-            if self.rbf_sigma2 == 'auto':
-                sigma2, _, _ = maximize_kernel_entropy(D)
-            else:
-                sigma2 = self.rbf_sigma2
-
-            K = np.exp(-D / (2 * sigma2))
-
-            if self.regularization == 'auto':
-                if L is None:
-                    Z = None
+                if self.rbf_sigma2 == 'auto':
+                    sigma2, _, _ = maximize_kernel_entropy(D)
                 else:
+                    sigma2 = self.rbf_sigma2
+
+                K = np.exp(-D / (2 * sigma2))
+
+                if self.regularization == 'auto' and L is not None:
                     Z = np.exp(-pairwise_squared_distance(L) / (2 * sigma2))
-            elif self.regularization == 'unweighted':
-                self.mlnn_params['x_mode'] = 'raw'
-                Z = None
+            elif self.kernel == 'linear':
+                if L is None:
+                    K = X @ X.T
+                else:
+                    K = X @ L.T
+
+                if self.regularization == 'auto' and L is not None:
+                    Z = L @ L.T
 
             if L is None:
                 L = X
+
+            if self.regularization == 'unweighted':
+                self.mlnn_params['x_mode'] = 'raw'
 
             mlnn = MLNNEngine(K, Y, Z, mlnn_params=self.mlnn_params)
 
@@ -289,6 +318,8 @@ class MLNN:
             self.transformer = LinearTransformation(B)
         elif self.kernel == 'rbf':
             self.transformer = RBFTransformation(B, L, sigma2)
+        elif self.kernel == 'linear':
+            self.transformer = LinearTransformation(B @ L)
 
         self.epsilon = np.mean(mlnn.E)
 
@@ -299,24 +330,3 @@ class MLNN:
 
     def fit_transform(self, X, y):
         return self.fit(X, y).transform(X)
-
-
-class LinearTransformation:
-    def __init__(self, B):
-        self.B = B
-
-    def transform(self, X):
-        return X @ self.B.T
-
-
-class RBFTransformation:
-    def __init__(self, B, L, sigma2):
-        self.B = B
-        self.L = L
-        self.sigma2 = sigma2
-
-    def transform(self, X):
-        D = pairwise_squared_distance(X, self.L)
-        K = np.exp(-D / (2 * self.sigma2))
-
-        return K @ self.B.T
