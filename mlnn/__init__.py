@@ -176,13 +176,15 @@ class MLNN:
         self.ls_wolfe = ls_wolfe
         self.ls_rho_lo = ls_rho_lo
         self.ls_rho_hi = ls_rho_hi
-        #self.collect_stats = collect_stats
-        #self.animate = animate
+        self.collect_stats = collect_stats
+        self.animate = animate
         self.verbose = verbose
 
         self.mlnn_params = None
         self.optimize_params = None
         self.line_search_params = None
+        self.stats = None
+        self.animation = None
         self.transformer = None
         self.epsilon = None
 
@@ -193,7 +195,7 @@ class MLNN:
 
         if self.kernel is None:
             x_mode = 'raw'
-        elif self.kernel == 'rbf':
+        else:
             x_mode = 'kernel'
 
         self.mlnn_params = {
@@ -294,9 +296,13 @@ class MLNN:
             mlnn = MLNNEngine(K, Y, Z, mlnn_params=self.mlnn_params)
 
         callback = MLNNCallback()
+        callback.callback_fun = self.callback_fun
+        if self.collect_stats:
+            callback.collect_stats = True
+        if self.animate:
+            callback.animate = True
         if self.verbose >= 2:
             callback.print_stats = True
-        callback.callback_fun = self.callback_fun
 
         optimizer = None
         if 'steepest' in self.solver:
@@ -310,6 +316,10 @@ class MLNN:
 
         optimizer.minimize()
 
+        if self.collect_stats:
+            self.stats = callback.stats
+        if self.animate:
+            self.animation = callback.ani
         if self.verbose >= 1:
             optimizer.report()
 
