@@ -11,12 +11,12 @@ from mlnn.callback import MLNNCallback
 from mlnn.optimize import MLNNSteepestDescent, MLNNBFGS
 
 
-def pairwise_squared_distance(X, Z=None):
-    if Z is None:
+def pairwise_squared_distance(X, L=None):
+    if L is None:
         P = X @ X.T
         return P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
     else:
-        return np.sum(np.square(X), axis=1).reshape(-1, 1) + np.sum(np.square(Z), axis=1).reshape(1, -1) - 2 * X @ Z.T
+        return np.sum(np.square(X), axis=1).reshape(-1, 1) + np.sum(np.square(L), axis=1).reshape(1, -1) - 2 * X @ L.T
 
 
 def generate_landmarks(X, n_landmarks, method='kmeans'):
@@ -42,8 +42,9 @@ def maximize_kernel_entropy(squared_distances, n_bins=10):
 
     try:
         xa, xb, xc, _, _, _, funcalls = bracket(fun, xa_0, xb_0)
-    except Exception:
+    except Exception as e:
         print("Kernel entropy maximization: Failed to bracket local maximum.")
+        print(f"Exception details: {e}")
     else:
         result = minimize_scalar(fun, bracket=(xa, xb, xc))
         if result.success:
@@ -191,8 +192,10 @@ class MLNN:
             'check_array_equal': False,
         }
 
+        initialization = None if self.init == 'auto' else self.init
+
         self.optimize_params = {
-            'initialization': None if self.init == 'auto' else self.init,
+            'initialization': initialization,
             'min_delta_F': self.tol,
             'max_steps': self.max_iter,
             'max_time': np.inf,
@@ -228,15 +231,17 @@ class MLNN:
             self.line_search_params['line_search_method'] = 'strong_wolfe'
 
     def fit(self, X, y):
+        Y = y.reshape(-1, 1)
+
         if self.kernel is None:
-            mlnn = MLNNEngine(X, y, mlnn_params=self.mlnn_params)
+            mlnn = MLNNEngine(X, Y, mlnn_params=self.mlnn_params)
         elif self.kernel == 'rbf':
             if self.landmark_selection is None:
-                Z = None
+                L = None
                 D = pairwise_squared_distance(X)
             else:
-                Z = generate_landmarks(X, self.n_landmarks, method=self.landmark_selection)
-                D = pairwise_squared_distance(X, Z)
+                L = generate_landmarks(X, self.n_landmarks, method=self.landmark_selection)
+                D = pairwise_squared_distance(X, L)
 
             if self.rbf_sigma2 == 'auto':
                 sigma2, _, _ = maximize_kernel_entropy(D)
@@ -246,12 +251,18 @@ class MLNN:
             K = np.exp(-D / (2 * sigma2))
 
             if self.regularization == 'auto':
-                pass
+                if L is None:
+                    Z = None
+                else:
+                    Z = np.exp(-pairwise_squared_distance(L) / (2 * sigma2))
             elif self.regularization == 'unweighted':
-                pass
+                self.mlnn_params['x_mode'] = 'raw'
+                Z = None
 
-            if Z is None:
-                Z = X
+            if L is None:
+                L = X
+
+            mlnn = MLNNEngine(K, Y, Z, mlnn_params=self.mlnn_params)
 
         callback = MLNNCallback()
         if self.verbose >= 2:
@@ -273,11 +284,11 @@ class MLNN:
         if self.verbose >= 1:
             optimizer.report()
 
-        L = mlnn.get_transformation_matrix(self.n_components)
+        B = mlnn.get_transformation_matrix(self.n_components)
         if self.kernel is None:
-            self.transformer = LinearTransformation(L)
+            self.transformer = LinearTransformation(B)
         elif self.kernel == 'rbf':
-            self.transformer = RBFTransformation(L, Z, sigma2)
+            self.transformer = RBFTransformation(B, L, sigma2)
 
         self.epsilon = np.mean(mlnn.E)
 
@@ -291,21 +302,21 @@ class MLNN:
 
 
 class LinearTransformation:
-    def __init__(self, L):
-        self.L = L
+    def __init__(self, B):
+        self.B = B
 
     def transform(self, X):
-        return X @ self.L.T
+        return X @ self.B.T
 
 
 class RBFTransformation:
-    def __init__(self, L, Z, sigma2):
+    def __init__(self, B, L, sigma2):
+        self.B = B
         self.L = L
-        self.Z = Z
         self.sigma2 = sigma2
 
     def transform(self, X):
-        D = pairwise_squared_distance(X, self.Z)
-        B = np.exp(-D / (2 * self.sigma2))
+        D = pairwise_squared_distance(X, self.L)
+        K = np.exp(-D / (2 * self.sigma2))
 
-        return B @ self.L.T
+        return K @ self.B.T
