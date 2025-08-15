@@ -2,6 +2,9 @@ Add unit test for different modes of opperation
 Add all options
 Make functions composable for jax/jit
 Initialize decomposed with max_x iterations of full
+Output/input config dictionary
+* or / in args
+match statement
 
 func v grad shared computation
 base class
