@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.decomposition import PCA, KernelPCA
 
-from loss import ReLU
+from activation import ReLU
 
 
 class MLNNEngine:

@@ -336,3 +336,49 @@ class GELU:
     def grad(self, X):
         Xo = X + self.offset
         return Xo * norm.pdf(Xo) + norm.cdf(Xo)
+
+
+def get_activation_function(type='smooth_relu2', offset=1, slope=1e-2):
+    match type:
+        case 'relu':
+            return ReLU(offset)
+        case 'leaky_relu':
+            return LeakyReLU(offset, slope)
+        case 'smooth_relu1':
+            return SmoothReLU1(offset)
+        case 'leaky_smooth_relu1':
+            return LeakySmoothReLU1(offset, slope)
+        case 'smooth_relu2':
+            return SmoothReLU2(offset)
+        case 'leaky_smooth_relu2':
+            return LeakySmoothReLU2(offset, slope)
+        case 'smooth_relu3':
+            return SmoothReLU3(offset)
+        case 'leaky_smooth_relu3':
+            return LeakySmoothReLU3(offset, slope)
+        case 'logisic':
+            return Logistic(offset)
+        case 'leaky_logistic':
+            return LeakyLogistic(offset, slope)
+        case 'softplus':
+            return Softplus(offset)
+        case 'leaky_softplus':
+            return LeakySoftplus(offset, slope)
+        case 'selu':
+            return SELU(offset)
+        case 'leaky_selu':
+            return LeakySELU(offset, slope)
+        case 'quadratic':
+            return Quadratic(offset)
+        case 'leaky_quadratic':
+            return LeakyQuadratic(offset, slope)
+        case 'sigmoid':
+            return Sigmoid(offset)
+        case 'leaky_sigmoid':
+            return LeakySigmoid(offset, slope, slope)
+        case 'silu':
+            return SiLU(offset)
+        case 'gelu':
+            return GELU(offset)
+        case _:
+            raise ValueError(f"{type} is not a supported activation function")

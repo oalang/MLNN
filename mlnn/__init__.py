@@ -5,8 +5,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from scipy.optimize import bracket, minimize_scalar
 
-import loss
-
+from activation import get_activation_function
 from mlnn.engine import MLNNEngine
 from mlnn.callback import MLNNCallback
 from mlnn.optimize import MLNNSteepestDescent, MLNNBFGS
@@ -58,51 +57,6 @@ def maximize_kernel_entropy(squared_distances, n_bins=10):
     sigma2 = xb_0
     kernel_entropy = -negative_kernel_entropy(sigma2, squared_distances, n_bins)
     return sigma2, kernel_entropy, None
-
-
-def get_loss_function(func='smooth_relu2', offset=1, slope=1e-2):
-    if func == 'relu':
-        return loss.ReLU(offset)
-    elif func == 'leaky_relu':
-        return loss.LeakyReLU(offset, slope)
-    elif func == 'smooth_relu1':
-        return loss.SmoothReLU1(offset)
-    elif func == 'leaky_smooth_relu1':
-        return loss.LeakySmoothReLU1(offset, slope)
-    elif func == 'smooth_relu2':
-        return loss.SmoothReLU2(offset)
-    elif func == 'leaky_smooth_relu2':
-        return loss.LeakySmoothReLU2(offset, slope)
-    elif func == 'smooth_relu3':
-        return loss.SmoothReLU3(offset)
-    elif func == 'leaky_smooth_relu3':
-        return loss.LeakySmoothReLU3(offset, slope)
-    elif func == 'logisic':
-        return loss.Logistic(offset)
-    elif func == 'leaky_logistic':
-        return loss.LeakyLogistic(offset, slope)
-    elif func == 'softplus':
-        return loss.Softplus(offset)
-    elif func == 'leaky_softplus':
-        return loss.LeakySoftplus(offset, slope)
-    elif func == 'selu':
-        return loss.SELU(offset)
-    elif func == 'leaky_selu':
-        return loss.LeakySELU(offset, slope)
-    elif func == 'quadratic':
-        return loss.Quadratic(offset)
-    elif func == 'leaky_quadratic':
-        return loss.LeakyQuadratic(offset, slope)
-    elif func == 'sigmoid':
-        return loss.Sigmoid(offset)
-    elif func == 'leaky_sigmoid':
-        return loss.LeakySigmoid(offset, slope, slope)
-    elif func == 'silu':
-        return loss.SiLU(offset)
-    elif func == 'gelu':
-        return loss.GELU(offset)
-    else:
-        raise ValueError(f"{loss} is not a supported loss function")
 
 
 class LinearTransformation:
@@ -242,8 +196,16 @@ class MLNN:
         else:
             x_mode = 'kernel'
 
-        inner_loss = get_loss_function(self.mlnn_inner_loss, self.mlnn_inner_offset, self.mlnn_leaky_slope)
-        outer_loss = get_loss_function(self.mlnn_outer_loss, self.mlnn_outer_offset, self.mlnn_leaky_slope)
+        inner_loss = get_activation_function(
+            self.mlnn_inner_loss,
+            self.mlnn_inner_offset,
+            self.mlnn_leaky_slope
+        )
+        outer_loss = get_activation_function(
+            self.mlnn_outer_loss,
+            self.mlnn_outer_offset,
+            self.mlnn_leaky_slope
+        )
 
         self.mlnn_params = {
             'r': self.mlnn_alpha,

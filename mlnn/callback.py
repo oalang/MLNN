@@ -200,8 +200,8 @@ class MLNNCallback:
             activation_matrix = np.sign(self.mlnn.U)
             frame_artists += self._matrix_artists(self.axes[1], activation_matrix, -1, 1)
 
-            M = self.mlnn.get_transformation_matrix()
-            weight_matrix = M.T @ M
+            B = self.mlnn.get_transformation_matrix()
+            weight_matrix = B.T @ B
             frame_artists += self._matrix_artists(self.axes[2], weight_matrix)
 
             distance_matrix = self.mlnn.D ** .5
@@ -216,8 +216,8 @@ class MLNNCallback:
         return [title_artist]
 
     def _projection_artists(self, axis):
-        M = self.mlnn.get_transformation_matrix(n_components=2)
-        X = self.mlnn.B @ M.T
+        B = self.mlnn.get_transformation_matrix(n_components=2)
+        X = self.mlnn.X @ B.T
         Y = self.mlnn.Y
         A = np.full(X.shape[0], False)
         A[self.mlnn.subset_active_rows] = True
