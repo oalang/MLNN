@@ -692,9 +692,9 @@ class MLNNEngine:
     def update_E(self, E, dE, alpha):
         self.E = E - alpha * dE
 
-    def compute_A_0(self, initialization='random', d=None):
+    def compute_A_0(self, initialization='random', d=None, seed=None):
         if initialization == 'random':
-            rng = np.random.Generator(np.random.PCG64(12345))
+            rng = np.random.Generator(np.random.PCG64(seed))
 
         if self.a_mode == 'full':
             if initialization == 'zero':
@@ -765,9 +765,9 @@ class MLNNEngine:
 
         return A
 
-    def compute_E_0(self, initialization='random'):
+    def compute_E_0(self, initialization='random', seed=None):
         if initialization == 'random':
-            rng = np.random.Generator(np.random.PCG64(12345))
+            rng = np.random.Generator(np.random.PCG64(seed))
 
         if self.e_mode == 'single':
             if initialization == 'zero':

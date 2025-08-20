@@ -14,6 +14,7 @@ class MLNNOptimizer:
         self.callback = callback
 
         self.initialization = None
+        self.random_state = None
         self.min_delta_F = 1e-06
         self.max_steps = 1000
         self.max_time = np.inf
@@ -56,8 +57,15 @@ class MLNNOptimizer:
         elif self.mlnn.a_mode == 'decomposed':
             assert (self.initialization in ('random', 'pca', 'kpca'))
 
+        seed_a = None
+        seed_e = None
+        if self.initialization == 'random':
+            seeds = np.random.SeedSequence(self.random_state).spawn(2)
+            seed_a = seeds[0]
+            seed_e = seeds[1]
+
         if A_0 is None:
-            self.A_0 = self.mlnn.compute_A_0(self.initialization, n_components)
+            self.A_0 = self.mlnn.compute_A_0(self.initialization, n_components, seed_a)
         else:
             self.A_0 = A_0
 
@@ -71,7 +79,7 @@ class MLNNOptimizer:
             assert self.A_0.shape[1] == self.mlnn.m
 
         if E_0 is None:
-            self.E_0 = self.mlnn.compute_E_0(self.initialization)
+            self.E_0 = self.mlnn.compute_E_0(self.initialization, seed_e)
         else:
             self.E_0 = np.atleast_2d(E_0)
 

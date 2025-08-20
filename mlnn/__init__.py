@@ -143,7 +143,7 @@ class MLNN:
         self.max_time = max_time
         self.tol = tol
         self.callback_fun = callback
-        #self.random_state = random_state
+        self.random_state = random_state
         self.solver = solver
         #self.backend = backend
         self.mlnn_alpha = mlnn_alpha
@@ -228,6 +228,7 @@ class MLNN:
 
         self.optimize_params = {
             'initialization': initialization,
+            'random_state': self.random_state,
             'min_delta_F': self.tol,
             'max_steps': self.max_iter,
             'max_time': np.inf,
