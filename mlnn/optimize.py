@@ -65,7 +65,7 @@ class MLNNOptimizer:
             seed_e = seeds[1]
 
         if A_0 is None:
-            self.A_0 = self.mlnn.compute_A_0(self.initialization, n_components, seed_a)
+            self.A_0 = self.mlnn.compute_A_0(self.initialization, seed_a, n_components)
         else:
             self.A_0 = A_0
 
