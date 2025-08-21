@@ -163,7 +163,7 @@ class LeakyLogistic:
         Xo = 4 * (X + self.offset)
         Y = np.exp(Xo)
         return 0.25 * np.where(Xo > self.a,
-                              np.where(np.isposinf(Y), Xo, np.log1p(Y)), self.alpha * Xo + self.b)
+                               np.where(np.isposinf(Y), Xo, np.log1p(Y)), self.alpha * Xo + self.b)
 
     def grad(self, X):
         Xo = 4 * (X + self.offset)
