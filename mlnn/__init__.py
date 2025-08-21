@@ -268,7 +268,9 @@ class MLNN:
         Y = y.reshape(-1, 1)
         Z = None
 
-        if self.kernel is not None:
+        if self.kernel is None:
+            K = X
+        else:
             if self.landmark_selection is None:
                 L = None
             else:
