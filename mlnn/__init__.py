@@ -201,6 +201,7 @@ class MLNN:
             self.mlnn_inner_offset,
             self.mlnn_leaky_slope
         )
+
         outer_loss = get_activation_function(
             self.mlnn_outer_loss,
             self.mlnn_outer_offset,
@@ -224,7 +225,12 @@ class MLNN:
             'check_array_equal': False,
         }
 
-        initialization = None if self.init == 'auto' else self.init
+        initialization = None if self.init == 'auto' or isinstance(self.init, int) else self.init
+
+        if 'fixed' in self.solver:
+            optimize_method = 'fixed'
+        elif 'alternating' in self.solver:
+            optimize_method = 'alternating'
 
         self.optimize_params = {
             'initialization': initialization,
@@ -232,7 +238,7 @@ class MLNN:
             'min_delta_F': self.tol,
             'max_steps': self.max_iter,
             'max_time': np.inf,
-            'optimize_method': 'fixed',
+            'optimize_method': optimize_method,
             'opt_arguments': self.opt_arguments,
             'max_arg_steps': self.opt_max_arg_steps,
             'maxcor': self.opt_maxcor,
@@ -242,9 +248,14 @@ class MLNN:
             'finite_diff_rel_step': self.opt_finite_diff_rel_step,
         }
 
+        if 'backtracking' in self.solver:
+            line_search_method = 'backtracking'
+        elif 'strong_wolfe' in self.solver:
+            line_search_method = 'strong_wolfe'
+
         self.line_search_params = {
             'max_ls_iterations': self.ls_max_iterations,
-            'line_search_method': 'backtracking',
+            'line_search_method': line_search_method,
             'alpha_0': self.ls_alpha_0,
             'armijo': self.ls_armijo,
             'rho_lo': self.ls_rho_lo,
@@ -253,24 +264,11 @@ class MLNN:
             'use_prev_f': self.ls_use_prev_f,
         }
 
-        if 'fixed' in self.solver:
-            self.optimize_params['optimize_method'] = 'fixed'
-        elif 'alternating' in self.solver:
-            self.optimize_params['optimize_method'] = 'alternating'
-
-        if 'backtracking' in self.solver:
-            self.line_search_params['line_search_method'] = 'backtracking'
-        elif 'strong_wolfe' in self.solver:
-            self.line_search_params['line_search_method'] = 'strong_wolfe'
-
     def fit(self, X, y):
         Y = y.reshape(-1, 1)
+        Z = None
 
-        if self.kernel is None:
-            mlnn = MLNNEngine(X, Y, mlnn_params=self.mlnn_params)
-        else:
-            Z = None
-
+        if self.kernel is not None:
             if self.landmark_selection is None:
                 L = None
             else:
@@ -303,18 +301,41 @@ class MLNN:
             if self.regularization == 'unweighted':
                 self.mlnn_params['x_mode'] = 'raw'
 
-            mlnn = MLNNEngine(K, Y, Z, mlnn_params=self.mlnn_params)
+        mlnn = MLNNEngine(K, Y, Z, self.mlnn_params)
 
-        callback = MLNNCallback()
-        callback.callback_fun = self.callback_fun
-        if self.collect_stats:
-            callback.collect_stats = True
-        if self.animate:
-            callback.animate = True
-        if self.verbose >= 2:
-            callback.print_stats = True
+        print_stats = self.verbose >= 2
+        callback = MLNNCallback(print_stats, self.collect_stats, self.animate, self.callback_fun)
 
-        optimizer = None
+        if (
+            self.mlnn_matrix_mode == 'decomposed'
+            and isinstance(self.init, int)
+            and self.mlnn_matrix_init is None
+        ):
+            init_mlnn_params = self.mlnn_params.copy()
+            init_mlnn_params['a_mode'] = 'full'
+            init_mlnn = MLNNEngine(K, Y, Z, init_mlnn_params)
+
+            init_callback = MLNNCallback(print_stats)
+
+            init_optimize_params = self.optimize_params.copy()
+            init_optimize_params['max_steps'] = self.init
+            if 'steepest' in self.solver:
+                init_optimizer = MLNNSteepestDescent(
+                    init_mlnn, init_callback,
+                    optimize_params=init_optimize_params,
+                    line_search_params=self.line_search_params)
+            elif 'bfgs' in self.solver:
+                init_optimizer = MLNNBFGS(
+                    init_mlnn, init_callback,
+                    optimize_params=init_optimize_params,
+                    line_search_params=self.line_search_params)
+
+            init_optimizer.minimize()
+
+            self.mlnn_matrix_init = init_mlnn.get_transformation_matrix(self.n_components)
+            if self.mlnn_epsilon_init is None:
+                self.mlnn_epsilon_init = init_mlnn.E
+
         if 'steepest' in self.solver:
             optimizer = MLNNSteepestDescent(
                 mlnn, callback, self.mlnn_matrix_init, self.mlnn_epsilon_init,
