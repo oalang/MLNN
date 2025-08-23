@@ -131,6 +131,7 @@ class MLNN:
             collect_stats=False,
             animate=False,
             verbose=0,
+            config=None
     ):
         self.n_components = n_components
         self.kernel = kernel
@@ -142,10 +143,8 @@ class MLNN:
         self.max_iter = max_iter
         self.max_time = max_time
         self.tol = tol
-        self.callback_fun = callback
         self.random_state = random_state
         self.solver = solver
-        #self.backend = backend
         self.mlnn_alpha = mlnn_alpha
         self.mlnn_beta = mlnn_beta
         self.mlnn_gamma = mlnn_gamma
@@ -158,10 +157,8 @@ class MLNN:
         self.mlnn_matrix_mode = mlnn_matrix_mode
         self.mlnn_matrix_psd = mlnn_matrix_psd
         self.mlnn_matrix_centered = mlnn_matrix_centered
-        self.mlnn_matrix_init = mlnn_matrix_init
         self.mlnn_epsilon_mode = mlnn_epsilon_mode
         self.mlnn_epsilon_positive = mlnn_epsilon_positive
-        self.mlnn_epsilon_init = mlnn_epsilon_init
         self.opt_arguments = opt_arguments
         self.opt_max_arg_steps = opt_max_arg_steps
         self.opt_maxcor = opt_maxcor
@@ -176,6 +173,17 @@ class MLNN:
         self.ls_wolfe = ls_wolfe
         self.ls_rho_lo = ls_rho_lo
         self.ls_rho_hi = ls_rho_hi
+
+        if config is not None:
+            for key, value in config.items():
+                if hasattr(self, key):
+                    setattr(self, key, value)
+        self.config = self.__dict__.copy()
+
+        self.backend = backend
+        self.callback_fun = callback
+        self.mlnn_matrix_init = mlnn_matrix_init
+        self.mlnn_epsilon_init = mlnn_epsilon_init
         self.collect_stats = collect_stats
         self.animate = animate
         self.verbose = verbose
@@ -321,6 +329,7 @@ class MLNN:
 
             init_optimize_params = self.optimize_params.copy()
             init_optimize_params['max_steps'] = self.init
+            init_optimize_params['max_time'] = np.inf
             if 'steepest' in self.solver:
                 init_optimizer = MLNNSteepestDescent(
                     init_mlnn, init_callback,
