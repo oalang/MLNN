@@ -1,6 +1,6 @@
 Add unit test for different modes of opperation
+Fixed length active set vectors
 Make functions composable for jax/jit
-Output/input config dictionary
 
 func v grad shared computation
 base class

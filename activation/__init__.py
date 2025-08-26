@@ -1,16 +1,64 @@
+from abc import ABC, abstractmethod
+
 import numpy as np
 from scipy.stats import norm
 
 
-class ReLU:
+class Activation(ABC):
+    def intr(self, X):
+        return self._intr(X, self.params)
+
+    def func(self, X, I=None, full_output=False):
+        if I is None:
+            I = self.intr(X)
+
+        F = self._func(X, I, self.params)
+
+        if full_output:
+            return F, I
+        else:
+            return F
+
+    def grad(self, X, I=None, full_output=False):
+        if I is None:
+            I = self._intr(X, self.params)
+
+        G = self._grad(X, I, self.params)
+
+        if full_output:
+            return G, I
+        else:
+            return G
+
+    @abstractmethod
+    def _intr(self, X, params):
+        pass
+
+    @abstractmethod
+    def _func(self, X, I, params):
+        pass
+
+    @abstractmethod
+    def _grad(self, X, I, params):
+        pass
+
+
+class ReLU(Activation):
     def __init__(self, offset=0):
-        self.offset = offset
+        self.params = {
+            'offset': offset,
+        }
 
-    def func(self, X):
-        return np.maximum(X + self.offset, 0)
+    def _intr(self, X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        return np.where(X + self.offset > 0, 1, 0)
+        return X + offset
+
+    def _func(self, X, I, params):
+        return np.maximum(I, 0)
+
+    def _grad(self, X, I, params):
+        return np.where(I > 0, 1, 0)
 
 
 class LeakyReLU:
