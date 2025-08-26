@@ -10,9 +10,9 @@ class Activation(ABC):
 
     def func(self, X, I=None, full_output=False):
         if I is None:
-            I = self.intr(X)
+            I = self._intr(X, self.params)
 
-        F = self._func(X, I, self.params)
+        F = self._func(I, self.params)
 
         if full_output:
             return F, I
@@ -23,7 +23,7 @@ class Activation(ABC):
         if I is None:
             I = self._intr(X, self.params)
 
-        G = self._grad(X, I, self.params)
+        G = self._grad(I, self.params)
 
         if full_output:
             return G, I
@@ -35,11 +35,11 @@ class Activation(ABC):
         pass
 
     @abstractmethod
-    def _func(self, X, I, params):
+    def _func(self, I, params):
         pass
 
     @abstractmethod
-    def _grad(self, X, I, params):
+    def _grad(self, I, params):
         pass
 
 
@@ -52,13 +52,21 @@ class ReLU(Activation):
     def _intr(self, X, params):
         offset = params['offset']
 
-        return X + offset
+        Xo = X + offset
 
-    def _func(self, X, I, params):
-        return np.maximum(I, 0)
+        return (Xo,)
 
-    def _grad(self, X, I, params):
-        return np.where(I > 0, 1, 0)
+    def _func(self, I, params):
+        Xo = I[0]
+
+        F = np.maximum(Xo, 0)
+        return F
+
+    def _grad(self, I, params):
+        Xo = I[0]
+
+        G = np.where(Xo > 0, 1, 0)
+        return G
 
 
 class LeakyReLU:
