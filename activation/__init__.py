@@ -52,49 +52,78 @@ class ReLU(Activation):
     def _intr(self, X, params):
         offset = params['offset']
 
-        Xo = X + offset
+        A = X + offset
+        return (A,)
 
-        return (Xo,)
+    def _func(self, I, _):
+        A = I[0]
 
-    def _func(self, I, params):
-        Xo = I[0]
-
-        F = np.maximum(Xo, 0)
+        F = np.maximum(A, 0)
         return F
 
-    def _grad(self, I, params):
-        Xo = I[0]
+    def _grad(self, I, _):
+        A = I[0]
 
-        G = np.where(Xo > 0, 1, 0)
+        G = np.where(A > 0, 1, 0)
         return G
 
 
-class LeakyReLU:
+class LeakyReLU(Activation):
     def __init__(self, offset=0, alpha=1e-2):
-        self.offset = offset
-        self.alpha = alpha
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+        }
 
-    def func(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > 0, Xo, self.alpha * Xo)
+    def _intr(self, X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        return np.where(X + self.offset > 0, 1, self.alpha)
+        A = X + offset
+        return (A,)
+
+    def _func(self, I, params):
+        A = I[0]
+        alpha = params['alpha']
+
+        F = np.where(A > 0, A, alpha * A)
+        return F
+
+    def _grad(self, I, params):
+        A = I[0]
+        alpha = params['alpha']
+
+        G = np.where(A > 0, 1, alpha)
+        return G
 
 
-class SmoothReLU1:
+class SmoothReLU1(Activation):
     def __init__(self, offset=0):
-        self.offset = offset
+        self.params = {
+            'offset': offset,
+        }
 
-    def func(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > 0.5, Xo,
-                        np.where(Xo > -0.5, np.square(Xo + 0.5) / 2, 0))
+    def _intr(self, X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > 0.5, 1,
-                        np.where(Xo > -0.5, Xo + 0.5, 0))
+        A = X + offset
+        B = A + 0.5
+        return (A, B)
+
+    def _func(self, I, _):
+        A = I[0]
+        B = I[1]
+
+        F = np.where(A > 0.5, A,
+                     np.where(B > 0, np.square(B) / 2, 0))
+        return F
+
+    def _grad(self, I, _):
+        A = I[0]
+        B = I[1]
+
+        G = np.where(A > 0.5, 1,
+                     np.where(B > 0, B, 0))
+        return G
 
 
 class LeakySmoothReLU1:
