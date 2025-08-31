@@ -145,7 +145,7 @@ class LeakySmoothReLU1(Base):
         self.params = {
             'offset': offset,
             'alpha': alpha,
-            'a': alpha - 0.5,
+            'a': alpha,
             'b': 0.5 * (alpha - alpha ** 2),
         }
 
@@ -167,7 +167,7 @@ class LeakySmoothReLU1(Base):
         B = I[1]
 
         F = np.where(A > 0.5, A,
-                     np.where(A > a, np.square(B) / 2, alpha * A + b))
+                     np.where(B > a, np.square(B) / 2, alpha * A + b))
         return F
 
     @staticmethod
@@ -179,7 +179,7 @@ class LeakySmoothReLU1(Base):
         B = I[1]
 
         G = np.where(A > 0.5, 1,
-                     np.where(A > a, B, alpha))
+                     np.where(B > a, B, alpha))
         return G
 
 
@@ -269,28 +269,6 @@ class LeakySmoothReLU2(Base):
                      np.where(A > 0.5, -2 * B + 4 * A - 1,
                               np.where(A > a, 2 * B, alpha)))
         return G
-
-
-class LeakySmoothReLUX:
-    def __init__(self, offset=0, alpha=1e-2):
-        assert 0 <= alpha <= 0.5
-
-        self.offset = offset
-        self.alpha = alpha
-        self.a = np.sqrt(0.5 * alpha) - 0.5
-        self.b = 0.5 * alpha - np.sqrt(2) / 3 * alpha ** (3 / 2)
-
-    def func(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > 0.5, Xo,
-                        np.where(Xo > 0, -2 / 3 * np.power(Xo + 0.5, 3) + 2 * np.square(Xo + 0.5) - Xo - 1 / 3,
-                                 np.where(Xo > self.a, 2 / 3 * np.power(Xo + 0.5, 3), self.alpha * Xo + self.b)))
-
-    def grad(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > 0.5, 1,
-                        np.where(Xo > 0, 1 - 2 * np.square(Xo - 0.5),
-                                 np.where(Xo > self.a, 2 * np.square(Xo + 0.5), self.alpha)))
 
 
 class SmoothReLU3:

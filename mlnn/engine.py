@@ -513,7 +513,7 @@ class MLNNEngine:
         self.D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
 
     def _compute_I(self):
-        self.I = self.T * (self.D - self.E)
+        self.I = (self.D - self.E) * self.T
 
     def _compute_O(self):
         if self.q == 1:
