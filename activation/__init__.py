@@ -222,7 +222,56 @@ class SmoothReLU2(Base):
         return G
 
 
-class LeakySmoothReLU2:
+class LeakySmoothReLU2(Base):
+    def __init__(self, offset=0, alpha=1e-2):
+        assert 0 <= alpha <= 0.5
+
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'a': np.sqrt(0.5 * alpha),
+            'b': 0.5 * alpha - np.sqrt(2) / 3 * alpha ** (3 / 2),
+        }
+
+    @staticmethod
+    def _intr(X, params):
+        offset = params['offset']
+
+        A = X + offset + 0.5
+        B = np.square(A)
+        C = B * A
+        return (A, B, C)
+
+    @staticmethod
+    def _func(I, params):
+        alpha = params['alpha']
+        a = params['a']
+        b = params['b']
+
+        A = I[0]
+        B = I[1]
+        C = I[2]
+
+        F = np.where(A > 1, A - 0.5,
+                     np.where(A > 0.5, -2 / 3 * C + 2 * B - A + 1 / 6,
+                              np.where(A > a, 2 / 3 * C, alpha * (A - 0.5) + b)))
+        return F
+
+    @staticmethod
+    def _grad(I, params):
+        alpha = params['alpha']
+        a = params['a']
+
+        A = I[0]
+        B = I[1]
+
+        G = np.where(A > 1, 1,
+                     np.where(A > 0.5, -2 * B + 4 * A - 1,
+                              np.where(A > a, 2 * B, alpha)))
+        return G
+
+
+class LeakySmoothReLUX:
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha <= 0.5
 
