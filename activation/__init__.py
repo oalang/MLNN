@@ -125,7 +125,7 @@ class SmoothReLU1(Base):
         B = I[1]
 
         F = np.where(A > 0.5, A,
-                     np.where(B > 0, np.square(B) / 2, 0))
+                     np.where(A > -0.5, np.square(B) / 2, 0))
         return F
 
     @staticmethod
@@ -134,7 +134,7 @@ class SmoothReLU1(Base):
         B = I[1]
 
         G = np.where(A > 0.5, 1,
-                     np.where(B > 0, B, 0))
+                     np.where(A > -0.5, B, 0))
         return G
 
 
@@ -145,7 +145,7 @@ class LeakySmoothReLU1(Base):
         self.params = {
             'offset': offset,
             'alpha': alpha,
-            'a': alpha,
+            'a': alpha - 0.5,
             'b': 0.5 * (alpha - alpha ** 2),
         }
 
@@ -167,7 +167,7 @@ class LeakySmoothReLU1(Base):
         B = I[1]
 
         F = np.where(A > 0.5, A,
-                     np.where(B > a, np.square(B) / 2, alpha * A + b))
+                     np.where(A > a, np.square(B) / 2, alpha * A + b))
         return F
 
     @staticmethod
@@ -179,7 +179,7 @@ class LeakySmoothReLU1(Base):
         B = I[1]
 
         G = np.where(A > 0.5, 1,
-                     np.where(B > a, B, alpha))
+                     np.where(A > a, B, alpha))
         return G
 
 
@@ -195,14 +195,13 @@ class SmoothReLU2(Base):
 
         A = X + offset + 0.5
         B = np.square(A)
-        C = B * A
-        return (A, B, C)
+        return (A, B)
 
     @staticmethod
     def _func(I, _):
         A = I[0]
         B = I[1]
-        C = I[2]
+        C = B * A
 
         F = np.where(A > 1, A - 0.5,
                      np.where(A > 0.5, -2 / 3 * C + 2 * B - A + 1 / 6,
@@ -237,8 +236,7 @@ class LeakySmoothReLU2(Base):
 
         A = X + offset + 0.5
         B = np.square(A)
-        C = B * A
-        return (A, B, C)
+        return (A, B)
 
     @staticmethod
     def _func(I, params):
@@ -248,7 +246,7 @@ class LeakySmoothReLU2(Base):
 
         A = I[0]
         B = I[1]
-        C = I[2]
+        C = B * A
 
         F = np.where(A > 1, A - 0.5,
                      np.where(A > 0.5, -2 / 3 * C + 2 * B - A + 1 / 6,
