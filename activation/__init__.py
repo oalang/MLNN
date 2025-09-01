@@ -189,8 +189,6 @@ class SmoothReLU2(Base):
             'offset': offset,
         }
 
-        self.offset = offset
-
     @staticmethod
     def _intr(X, params):
         offset = params['offset']
@@ -271,19 +269,40 @@ class LeakySmoothReLU2(Base):
         return G
 
 
-class SmoothReLU3:
+class SmoothReLU3(Base):
     def __init__(self, offset=0):
-        self.offset = offset
+        self.params = {
+            'offset': offset,
+        }
 
-    def func(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > 0, np.log((1 + np.exp(4 * Xo)) / 2) / 4 + 1 / 6,
-                        np.where(Xo > -1, np.power(Xo + 1, 3) / 6, 0))
+    @staticmethod
+    def _intr(X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > 0, 1 - 1 / (1 + np.exp(4 * Xo)),
-                        np.where(Xo > -1, np.square(Xo + 1) / 2, 0))
+        A = X + offset + 1
+        B = 1 + np.exp(4 * (A - 1))
+        C = np.square(A)
+        return (A, B, C)
+
+    @staticmethod
+    def _func(I, _):
+        A = I[0]
+        B = I[1]
+        C = I[2]
+
+        F = np.where(A > 1, np.log(B / 2) / 4 + 1 / 6,
+                     np.where(A > 0, C * A / 6, 0))
+        return F
+
+    @staticmethod
+    def _grad(I, _):
+        A = I[0]
+        B = I[1]
+        C = I[2]
+
+        G = np.where(A > 1, 1 - 1 / B,
+                     np.where(A > 0, C / 2, 0))
+        return G
 
 
 class LeakySmoothReLU3:
