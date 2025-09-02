@@ -62,14 +62,12 @@ class ReLU(Base):
     @staticmethod
     def _func(I, _):
         A = I[0]
-
         F = np.maximum(A, 0)
         return F
 
     @staticmethod
     def _grad(I, _):
         A = I[0]
-
         G = np.where(A > 0, 1, 0)
         return G
 
@@ -90,17 +88,17 @@ class LeakyReLU(Base):
 
     @staticmethod
     def _func(I, params):
-        A = I[0]
         alpha = params['alpha']
 
+        A = I[0]
         F = np.where(A > 0, A, alpha * A)
         return F
 
     @staticmethod
     def _grad(I, params):
-        A = I[0]
         alpha = params['alpha']
 
+        A = I[0]
         G = np.where(A > 0, 1, alpha)
         return G
 
@@ -123,7 +121,6 @@ class SmoothReLU1(Base):
     def _func(I, _):
         A = I[0]
         B = I[1]
-
         F = np.where(A > 0.5, A,
                      np.where(A > -0.5, np.square(B) / 2, 0))
         return F
@@ -132,7 +129,6 @@ class SmoothReLU1(Base):
     def _grad(I, _):
         A = I[0]
         B = I[1]
-
         G = np.where(A > 0.5, 1,
                      np.where(A > -0.5, B, 0))
         return G
@@ -165,7 +161,6 @@ class LeakySmoothReLU1(Base):
 
         A = I[0]
         B = I[1]
-
         F = np.where(A > 0.5, A,
                      np.where(A > a, np.square(B) / 2, alpha * A + b))
         return F
@@ -177,7 +172,6 @@ class LeakySmoothReLU1(Base):
 
         A = I[0]
         B = I[1]
-
         G = np.where(A > 0.5, 1,
                      np.where(A > a, B, alpha))
         return G
@@ -202,7 +196,6 @@ class SmoothReLU2(Base):
         A = I[0]
         B = I[1]
         C = B * A
-
         F = np.where(A > 1, A - 0.5,
                      np.where(A > 0.5, -2 / 3 * C + 2 * B - A + 1 / 6,
                               np.where(A > 0, 2 / 3 * C, 0)))
@@ -212,7 +205,6 @@ class SmoothReLU2(Base):
     def _grad(I, _):
         A = I[0]
         B = I[1]
-
         G = np.where(A > 1, 1,
                      np.where(A > 0.5, -2 * B + 4 * A - 1,
                               np.where(A > 0, 2 * B, 0)))
@@ -247,7 +239,6 @@ class LeakySmoothReLU2(Base):
         A = I[0]
         B = I[1]
         C = B * A
-
         F = np.where(A > 1, A - 0.5,
                      np.where(A > 0.5, -2 / 3 * C + 2 * B - A + 1 / 6,
                               np.where(A > a, 2 / 3 * C, alpha * (A - 0.5) + b)))
@@ -260,7 +251,6 @@ class LeakySmoothReLU2(Base):
 
         A = I[0]
         B = I[1]
-
         G = np.where(A > 1, 1,
                      np.where(A > 0.5, -2 * B + 4 * A - 1,
                               np.where(A > a, 2 * B, alpha)))
@@ -287,7 +277,6 @@ class SmoothReLU3(Base):
         A = I[0]
         B = I[1]
         C = I[2]
-
         F = np.where(A > 1, np.log(B / 2) / 4 + 1 / 6,
                      np.where(A > 0, C * A / 6, 0))
         return F
@@ -297,7 +286,6 @@ class SmoothReLU3(Base):
         A = I[0]
         B = I[1]
         C = I[2]
-
         G = np.where(A > 1, 1 - 1 / B,
                      np.where(A > 0, C / 2, 0))
         return G
