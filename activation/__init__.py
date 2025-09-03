@@ -223,7 +223,7 @@ class LeakySmoothReLU2(Base):
         self.params = {
             'offset': offset,
             'alpha': alpha,
-            'a': np.sqrt(0.5 * alpha),
+            'a': np.sqrt(0.5 * alpha) - 0.5,
             'b': 0.5 * alpha - np.sqrt(2) / 3 * alpha ** (3 / 2),
         }
 
@@ -231,7 +231,7 @@ class LeakySmoothReLU2(Base):
     def _intr(X, params):
         offset = params['offset']
 
-        A = X + offset + 0.5
+        A = X + offset
         B = np.square(A)
         return (A, B)
 
@@ -243,10 +243,11 @@ class LeakySmoothReLU2(Base):
 
         A = I[0]
         B = I[1]
-        C = B * A
-        F = np.where(A > 1, A - 0.5,
-                     np.where(A > 0.5, -2 / 3 * C + 2 * B - A + 1 / 6,
-                              np.where(A > a, 2 / 3 * C, alpha * (A - 0.5) + b)))
+        C = 2 / 3 * B * A
+        D = B + A / 2 + 1 / 12
+        F = np.where(A > 0.5, A,
+                     np.where(A > 0, D - C,
+                              np.where(A > a, D + C, alpha * A + b)))
         return F
 
     @staticmethod
@@ -256,9 +257,11 @@ class LeakySmoothReLU2(Base):
 
         A = I[0]
         B = I[1]
-        G = np.where(A > 1, 1,
-                     np.where(A > 0.5, -2 * B + 4 * A - 1,
-                              np.where(A > a, 2 * B, alpha)))
+        C = 2 * B
+        D = 2 * A + 1 / 2
+        G = np.where(A > 0.5, 1,
+                     np.where(A > 0, D - C,
+                              np.where(A > a, D + C, alpha)))
         return G
 
 
