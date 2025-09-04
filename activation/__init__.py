@@ -339,41 +339,73 @@ class LeakySmoothReLU3(Base):
         return G
 
 
-class Logistic:
+class Logistic(Base):
     def __init__(self, offset=0):
-        self.offset = offset
+        self.params = {
+            'offset': offset,
+        }
 
-    def func(self, X):
-        Xo = 4 * (X + self.offset)
-        Y = np.exp(Xo)
-        return 0.25 * np.where(np.isposinf(Y), Xo, np.log1p(Y))
+    @staticmethod
+    def _intr(X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        Xo = 4 * (X + self.offset)
-        Y = np.exp(Xo)
-        return np.where(np.isposinf(Y), 1, 1 - 1 / (1 + Y))
+        A = 4 * (X + offset)
+        B = np.exp(A)
+        return (A, B)
+
+    @staticmethod
+    def _func(I, _):
+        A = I[0]
+        B = I[1]
+        F = np.where(np.isposinf(B), A, np.log1p(B)) / 4
+        return F
+
+    @staticmethod
+    def _grad(I, _):
+        B = I[1]
+        G = np.where(np.isposinf(B), 1, 1 - 1 / (1 + B))
+        return G
 
 
-class LeakyLogistic:
+class LeakyLogistic(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha < 1
 
-        self.offset = offset
-        self.alpha = alpha
-        self.a = -np.inf if alpha == 0 else np.log(alpha / (1 - alpha))
-        self.b = 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha))
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'a': -np.inf if alpha == 0 else np.log(alpha / (1 - alpha)),
+            'b': 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha)),
+        }
 
-    def func(self, X):
-        Xo = 4 * (X + self.offset)
-        Y = np.exp(Xo)
-        return 0.25 * np.where(Xo > self.a,
-                               np.where(np.isposinf(Y), Xo, np.log1p(Y)), self.alpha * Xo + self.b)
+    @staticmethod
+    def _intr(X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        Xo = 4 * (X + self.offset)
-        Y = np.exp(Xo)
-        return np.where(Xo > self.a,
-                        np.where(np.isposinf(Y), 1, 1 - 1 / (1 + Y)), self.alpha)
+        A = 4 * (X + offset)
+        B = np.exp(A)
+        return (A, B)
+
+    @staticmethod
+    def _func(I, params):
+        alpha = params['alpha']
+        a = params['a']
+        b = params['b']
+
+        A = I[0]
+        B = I[1]
+        F = np.where(A > a, np.where(np.isposinf(B), A, np.log1p(B)), alpha * A + b) / 4
+        return F
+
+    @staticmethod
+    def _grad(I, params):
+        alpha = params['alpha']
+        a = params['a']
+
+        A = I[0]
+        B = I[1]
+        G = np.where(A > a, np.where(np.isposinf(B), 1, 1 - 1 / (1 + B)), alpha)
+        return G
 
 
 class Softplus:
