@@ -549,72 +549,146 @@ class LeakySELU(Base):
         return G
 
 
-class Quadratic:
+class Quadratic(Base):
     def __init__(self, offset=0):
-        self.offset = offset
+        self.params = {
+            'offset': offset,
+        }
 
-    def func(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > 0, np.square(Xo), 0)
+    @staticmethod
+    def _intr(X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > 0, 2 * Xo, 0)
+        A = X + offset
+        return (A,)
+
+    @staticmethod
+    def _func(I, _):
+        A = I[0]
+        F = np.where(A > 0, np.square(A), 0)
+        return F
+
+    @staticmethod
+    def _grad(I, _):
+        A = I[0]
+        G = np.where(A > 0, 2 * A, 0)
+        return G
 
 
-class LeakyQuadratic:
+class LeakyQuadratic(Base):
     def __init__(self, offset=0, alpha=1e-2):
-        self.offset = offset
-        self.alpha = alpha
-        self.a = 0.5 * alpha
-        self.b = -((0.5 * alpha) ** 2)
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'a': 0.5 * alpha,
+            'b': -((0.5 * alpha) ** 2),
+        }
 
-    def func(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > self.a, np.square(Xo), self.alpha * Xo + self.b)
+    @staticmethod
+    def _intr(X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > self.a, 2 * Xo, self.alpha)
+        A = X + offset
+        return (A,)
+
+    @staticmethod
+    def _func(I, params):
+        alpha = params['alpha']
+        a = params['a']
+        b = params['b']
+
+        A = I[0]
+        F = np.where(A > a, np.square(A), alpha * A + b)
+        return F
+
+    @staticmethod
+    def _grad(I, params):
+        alpha = params['alpha']
+        a = params['a']
+
+        A = I[0]
+        G = np.where(A > a, 2 * A, alpha)
+        return G
 
 
-class Sigmoid:
+class Sigmoid(Base):
     def __init__(self, offset=0):
-        self.offset = offset
+        self.params = {
+            'offset': offset,
+        }
 
-    def func(self, X):
-        return 1 / (1 + np.exp(-4 * (X + self.offset)))
+    @staticmethod
+    def _intr(X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        Y = 1 / (1 + np.exp(-4 * (X + self.offset)))
-        return 4 * Y * (1 - Y)
+        B = 1 / (1 + np.exp(-4 * (X + offset)))
+        return (B,)
+
+    @staticmethod
+    def _func(I, _):
+        B = I[0]
+        F = B
+        return F
+
+    @staticmethod
+    def _grad(I, _):
+        B = I[0]
+        G = 4 * (B - np.square(B))
+        return G
 
 
-class LeakySigmoid:
+class LeakySigmoid(Base):
     def __init__(self, offset=0, alpha=1e-2, beta=1e-2):
         assert 0 <= alpha <= 1
         assert 0 <= beta <= 1
 
-        self.offset = offset
-        self.alpha = alpha
-        self.beta = beta
-        self.a = -np.inf if alpha == 0 else np.log((-alpha - 2 * np.sqrt(1 - alpha) + 2) / alpha)
-        self.b = 0 if alpha == 0 else 1 - (1 / (1 - alpha / (alpha - 2 * np.sqrt(1 - alpha) - 2)) -
-                                           0.25 * alpha * np.log((-alpha + 2 * np.sqrt(1 - alpha) + 2) / alpha))
-        self.c = np.inf if beta == 0 else np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta)
-        self.d = 1 if beta == 0 else (1 / (1 - beta / (beta - 2 * np.sqrt(1 - beta) - 2)) -
-                                      0.25 * beta * np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta))
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'beta': beta,
+            'a': -np.inf if alpha == 0 else np.log((-alpha - 2 * np.sqrt(1 - alpha) + 2) / alpha),
+            'b': 0 if alpha == 0 else 1 - (1 / (1 - alpha / (alpha - 2 * np.sqrt(1 - alpha) - 2)) -
+                                           0.25 * alpha * np.log((-alpha + 2 * np.sqrt(1 - alpha) + 2) / alpha)),
+            'c': np.inf if beta == 0 else np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta),
+            'd': 1 if beta == 0 else (1 / (1 - beta / (beta - 2 * np.sqrt(1 - beta) - 2)) -
+                                      0.25 * beta * np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta)),
+        }
 
-    def func(self, X):
-        Xo = 4 * (X + self.offset)
-        return np.where(Xo > self.c, 0.25 * self.beta * Xo + self.d,
-                        np.where(Xo > self.a, 1 / (1 + np.exp(-Xo)), 0.25 * self.alpha * Xo + self.b))
+    @staticmethod
+    def _intr(X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        Xo = 4 * (X + self.offset)
-        Y = 1 / (1 + np.exp(-Xo))
-        return np.where(Xo > self.c, self.beta,
-                        np.where(Xo > self.a, 4 * Y * (1 - Y), self.alpha))
+        A = 4 * (X + offset)
+        B = 1 / (1 + np.exp(np.negative(A)))
+        return (A, B)
+
+    @staticmethod
+    def _func(I, params):
+        alpha = params['alpha']
+        beta = params['beta']
+        a = params['a']
+        b = params['b']
+        c = params['c']
+        d = params['d']
+
+        A = I[0]
+        B = I[1]
+        F = np.where(A > c, beta / 4 * A + d,
+                     np.where(A > a, B, alpha / 4 * A + b))
+        return F
+
+    @staticmethod
+    def _grad(I, params):
+        alpha = params['alpha']
+        beta = params['beta']
+        a = params['a']
+        c = params['c']
+
+        A = I[0]
+        B = I[1]
+        G = np.where(A > c, beta,
+                     np.where(A > a, 4 * (B - np.square(B)), alpha))
+        return G
 
 
 class SiLU:
