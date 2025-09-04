@@ -275,48 +275,68 @@ class SmoothReLU3(Base):
     def _intr(X, params):
         offset = params['offset']
 
-        A = X + offset + 1
-        B = 1 + np.exp(4 * (A - 1))
-        C = np.square(A)
-        return (A, B, C)
+        A = X + offset
+        B = 1 + np.exp(4 * A)
+        return (A, B)
 
     @staticmethod
     def _func(I, _):
         A = I[0]
         B = I[1]
-        C = I[2]
-        F = np.where(A > 1, np.log(B / 2) / 4 + 1 / 6,
-                     np.where(A > 0, C * A / 6, 0))
+        F = np.where(A > 0, np.log(B / 2) / 4 + 1 / 6,
+                     np.where(A > -1, np.power(A + 1, 3) / 6, 0))
         return F
 
     @staticmethod
     def _grad(I, _):
         A = I[0]
         B = I[1]
-        C = I[2]
-        G = np.where(A > 1, 1 - 1 / B,
-                     np.where(A > 0, C / 2, 0))
+        G = np.where(A > 0, 1 - 1 / B,
+                     np.where(A > -1, np.square(A + 1) / 2, 0))
         return G
 
 
-class LeakySmoothReLU3:
+class LeakySmoothReLU3(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha <= 0.5
 
-        self.offset = offset
-        self.alpha = alpha
-        self.a = np.sqrt(2 * alpha) - 1
-        self.b = alpha - 2 / 3 * np.sqrt(2) * alpha ** (3 / 2)
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'a': np.sqrt(2 * alpha) - 1,
+            'b': alpha - 2 / 3 * np.sqrt(2) * alpha ** (3 / 2),
+        }
 
-    def func(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > 0, np.log((1 + np.exp(4 * Xo)) / 2) / 4 + 1 / 6,
-                        np.where(Xo > self.a, np.power(Xo + 1, 3) / 6, self.alpha * Xo + self.b))
+    @staticmethod
+    def _intr(X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        Xo = X + self.offset
-        return np.where(Xo > 0, 1 - 1 / (1 + np.exp(4 * Xo)),
-                        np.where(Xo > self.a, np.square(Xo + 1) / 2, self.alpha))
+        A = X + offset
+        B = 1 + np.exp(4 * A)
+        return (A, B)
+
+    @staticmethod
+    def _func(I, params):
+        alpha = params['alpha']
+        a = params['a']
+        b = params['b']
+
+        A = I[0]
+        B = I[1]
+        F = np.where(A > 0, np.log(B / 2) / 4 + 1 / 6,
+                     np.where(A > a, np.power(A + 1, 3) / 6, alpha * A + b))
+        return F
+
+    @staticmethod
+    def _grad(I, params):
+        alpha = params['alpha']
+        a = params['a']
+
+        A = I[0]
+        B = I[1]
+        G = np.where(A > 0, 1 - 1 / B,
+                     np.where(A > a, np.square(A + 1) / 2, alpha))
+        return G
 
 
 class Logistic:
