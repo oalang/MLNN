@@ -7,30 +7,17 @@ from scipy.stats import norm
 class Base(ABC):
     def intr(self, X):
         I = self._intr(X, self.params)
-
         return I
 
-    def func(self, X, I=None, full_output=False):
-        if I is None:
-            I = self._intr(X, self.params)
-
+    def func(self, X):
+        I = self._intr(X, self.params)
         F = self._func(I, self.params)
+        return F
 
-        if full_output:
-            return F, I
-        else:
-            return F
-
-    def grad(self, X, I=None, full_output=False):
-        if I is None:
-            I = self._intr(X, self.params)
-
+    def grad(self, X):
+        I = self._intr(X, self.params)
         G = self._grad(I, self.params)
-
-        if full_output:
-            return G, I
-        else:
-            return G
+        return G
 
     @staticmethod
     @abstractmethod
