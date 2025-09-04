@@ -720,17 +720,33 @@ class SiLU(Base):
         return G
 
 
-class GELU:
+class GELU(Base):
     def __init__(self, offset=0):
-        self.offset = offset
+        self.params = {
+            'offset': offset,
+        }
 
-    def func(self, X):
-        Xo = X + self.offset
-        return Xo * norm.cdf(Xo)
+    @staticmethod
+    def _intr(X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        Xo = X + self.offset
-        return Xo * norm.pdf(Xo) + norm.cdf(Xo)
+        A = X + offset
+        B = norm.cdf(A)
+        return (A, B)
+
+    @staticmethod
+    def _func(I, _ ):
+        A = I[0]
+        B = I[1]
+        F = A * B
+        return F
+
+    @staticmethod
+    def _grad(I, _):
+        A = I[0]
+        B = I[1]
+        G = A * norm.pdf(A) + B
+        return G
 
 
 def get_activation_function(type='smooth_relu2', offset=1, slope=1e-2):
