@@ -691,19 +691,33 @@ class LeakySigmoid(Base):
         return G
 
 
-class SiLU:
+class SiLU(Base):
     def __init__(self, offset=0):
-        self.offset = offset
+        self.params = {
+            'offset': offset,
+        }
 
-    def func(self, X):
-        Xo = X + self.offset
-        return Xo / (1 + np.exp(-Xo))
+    @staticmethod
+    def _intr(X, params):
+        offset = params['offset']
 
-    def grad(self, X):
-        Xo = X + self.offset
-        Y = np.exp(-Xo)
-        Z = 1 + Y
-        return Xo * Y / np.square(Z) + 1 / Z
+        A = X + offset
+        B = 1 + np.exp(-A)
+        return (A, B)
+
+    @staticmethod
+    def _func(I, _):
+        A = I[0]
+        B = I[1]
+        F = A / B
+        return F
+
+    @staticmethod
+    def _grad(I, _):
+        A = I[0]
+        B = I[1]
+        G = A * (B - 1) / np.square(B) + 1 / B
+        return G
 
 
 class GELU:
