@@ -5,10 +5,6 @@ from scipy.stats import norm
 
 
 class Base(ABC):
-    def intr(self, X):
-        I = self._intr(X, self.params)
-        return I
-
     def func(self, X):
         I = self._intr(X, self.params)
         F = self._func(I, self.params)
@@ -16,6 +12,18 @@ class Base(ABC):
 
     def grad(self, X):
         I = self._intr(X, self.params)
+        G = self._grad(I, self.params)
+        return G
+
+    def intr(self, X):
+        I = self._intr(X, self.params)
+        return I
+
+    def func_intr(self, I):
+        F = self._func(I, self.params)
+        return F
+
+    def grad_intr(self, I):
         G = self._grad(I, self.params)
         return G
 
