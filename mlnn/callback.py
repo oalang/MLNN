@@ -162,9 +162,9 @@ class MLNNCallback:
         S = f"{self.mlnn.S:10.3e}"
         L = f"{self.mlnn.L:10.3e}"
         mean_E = f"{np.mean(self.mlnn.E):10.3e}"
-        actv_rows = f"{self.mlnn.subset_active_rows.size:9d}"
-        actv_cols = f"{self.mlnn.subset_active_cols.size:9d}"
-        actv_data = f"{self.mlnn.subset_active_data.size:9d}"
+        actv_rows = f"{np.count_nonzero(self.mlnn.active_rows):9d}"
+        actv_cols = f"{np.count_nonzero(self.mlnn.active_cols):9d}"
+        actv_data = f"{np.count_nonzero(self.mlnn.active_data):9d}"
 
         print(" ".join((step, arguments, ls_iterations, alpha, phi, delta_F, F, R, S, L, mean_E, actv_rows, actv_cols, actv_data)))
 
@@ -185,9 +185,9 @@ class MLNNCallback:
         stats_dict['S'] = self.mlnn.S
         stats_dict['L'] = self.mlnn.L
         stats_dict['mean_E'] = np.mean(self.mlnn.E)
-        stats_dict['actv_rows'] = self.mlnn.subset_active_rows.size
-        stats_dict['actv_cols'] = self.mlnn.subset_active_cols.size
-        stats_dict['actv_data'] = self.mlnn.subset_active_data.size
+        stats_dict['actv_rows'] = np.count_nonzero(self.mlnn.active_rows)
+        stats_dict['actv_cols'] = np.count_nonzero(self.mlnn.active_cols)
+        stats_dict['actv_data'] = np.count_nonzero(self.mlnn.active_data)
         stats_dict['time'] = self.optimizer.time
 
         return stats_dict
@@ -220,7 +220,7 @@ class MLNNCallback:
         X = self.mlnn.X @ B.T
         Y = self.mlnn.Y
         A = np.full(X.shape[0], False)
-        A[self.mlnn.subset_active_rows] = True
+        A[self.mlnn.active_rows] = True
 
         x_min, x_max = X[:, 0].min(), X[:, 0].max()
         y_min, y_max = X[:, 1].min(), X[:, 1].max()

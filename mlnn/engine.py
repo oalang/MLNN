@@ -318,40 +318,40 @@ class MLNNEngine:
     @U.setter
     def U(self, U):
         self._U = U
-        self.subset_active_rows = None
-        self.subset_active_cols = None
-        self.subset_active_data = None
+        self.active_rows = None
+        self.active_cols = None
+        self.active_data = None
         self.V = None
 
     @property
-    def subset_active_rows(self):
-        if self._subset_active_rows is None:
+    def active_rows(self):
+        if self._active_rows is None:
             self._compute_subset_active()
-        return self._subset_active_rows
+        return self._active_rows
 
-    @subset_active_rows.setter
-    def subset_active_rows(self, subset_active_rows):
-        self._subset_active_rows = subset_active_rows
+    @active_rows.setter
+    def active_rows(self, active_rows):
+        self._active_rows = active_rows
 
     @property
-    def subset_active_cols(self):
-        if self._subset_active_cols is None:
+    def active_cols(self):
+        if self._active_cols is None:
             self._compute_subset_active()
-        return self._subset_active_cols
+        return self._active_cols
 
-    @subset_active_cols.setter
-    def subset_active_cols(self, subset_active_cols):
-        self._subset_active_cols = subset_active_cols
+    @active_cols.setter
+    def active_cols(self, active_cols):
+        self._active_cols = active_cols
 
     @property
-    def subset_active_data(self):
-        if self._subset_active_data is None:
+    def active_data(self):
+        if self._active_data is None:
             self._compute_subset_active()
-        return self._subset_active_data
+        return self._active_data
 
-    @subset_active_data.setter
-    def subset_active_data(self, subset_active_data):
-        self._subset_active_data = subset_active_data
+    @active_data.setter
+    def active_data(self, active_data):
+        self._active_data = active_data
 
     @property
     def V(self):
@@ -567,16 +567,13 @@ class MLNNEngine:
             self.U *= self.Q
 
     def _compute_subset_active(self):
-        is_active_row = np.any(self.U, axis=1)
-        is_active_col = np.any(self.U, axis=0)
-        is_active_all = np.logical_or(is_active_row, is_active_col)
-        self.subset_active_rows = np.argwhere(is_active_row).flatten()
-        self.subset_active_cols = np.argwhere(is_active_col).flatten()
-        self.subset_active_data = np.argwhere(is_active_all).flatten()
+        self.active_rows = np.any(self.U, axis=1)
+        self.active_cols = np.any(self.U, axis=0)
+        self.active_data = np.logical_or(self.active_rows, self.active_cols)
 
     def _compute_V(self):
         if self.reduce_derivative_matrix:
-            self.V = self.U.take(self.subset_active_data, axis=0).take(self.subset_active_data, axis=1)
+            self.V = self.U[np.ix_(self.active_data, self.active_data)]
         else:
             self.V = self.U
 
@@ -595,11 +592,11 @@ class MLNNEngine:
             self.dRdA = self.r * 2 * self.K @ self.J
 
     def _compute_dLdA(self):
-        if self.subset_active_data.size:
+        if self.active_data.any():
             W = np.negative(self.V + self.V.T)
             np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
             if self.reduce_derivative_matrix:
-                X = self.X.take(self.subset_active_data, axis=0)
+                X = self.X[self.active_data]
             else:
                 X = self.X
 
@@ -626,13 +623,13 @@ class MLNNEngine:
         self.dSdE = self.s * (self.E - 1)
 
     def _compute_dLdE(self):
-        if self.subset_active_data.size:
+        if self.active_data.any():
             if self.e_mode == 'single':
                 self.dLdE = self.l * -np.sum(self.V, keepdims=True)
             elif self.e_mode == 'multiple':
                 if self.reduce_derivative_matrix:
                     C = np.zeros((self.n, 1))
-                    C[self.subset_active_data] = -np.sum(self.V, axis=1, keepdims=True)
+                    C[self.active_data] = -np.sum(self.V, axis=1, keepdims=True)
                     self.dLdE = self.l * C
                 else:
                     self.dLdE = self.l * -np.sum(self.V, axis=1, keepdims=True)
