@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from scipy.optimize import bracket, minimize_scalar
 
-from activation import get_activation_function
+from mlnn.activation import get_activation_function
 from mlnn.engine import MLNNEngine
 from mlnn.callback import MLNNCallback
 from mlnn.optimize import MLNNSteepestDescent, MLNNBFGS
