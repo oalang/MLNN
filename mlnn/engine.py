@@ -141,10 +141,10 @@ class MLNNEngine:
     @E.setter
     def E(self, E):
         self._E = E
-        self.I = None
         if self.s:
             self.S = None
             self.dSdE = None
+        self.I = None
 
         if self.keep_e_positive:
             self._E = self._E_positive_projection()
@@ -263,7 +263,6 @@ class MLNNEngine:
     def I_intr(self, I_intr):
         self._I_intr = I_intr
         self.O = None
-        self.U = None
 
     @property
     def O(self):
@@ -275,8 +274,6 @@ class MLNNEngine:
     def O(self, O):
         self._O = O
         self.O_intr = None
-        if self.outer_loss is None:
-            self.L = None
 
     @property
     def O_intr(self):
@@ -324,6 +321,7 @@ class MLNNEngine:
         self.subset_active_rows = None
         self.subset_active_cols = None
         self.subset_active_data = None
+        self.V = None
 
     @property
     def subset_active_rows(self):
@@ -354,7 +352,6 @@ class MLNNEngine:
     @subset_active_data.setter
     def subset_active_data(self, subset_active_data):
         self._subset_active_data = subset_active_data
-        self.V = None
 
     @property
     def V(self):
