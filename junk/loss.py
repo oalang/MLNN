@@ -356,7 +356,7 @@ def get_activation_function(type='smooth_relu2', offset=1, slope=1e-2):
             return SmoothReLU3(offset)
         case 'leaky_smooth_relu3':
             return LeakySmoothReLU3(offset, slope)
-        case 'logisic':
+        case 'logistic':
             return Logistic(offset)
         case 'leaky_logistic':
             return LeakyLogistic(offset, slope)
