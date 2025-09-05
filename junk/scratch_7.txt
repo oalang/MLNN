@@ -1,0 +1,118 @@
+X
+    D
+
+Y
+    T
+
+Z
+    J
+
+A
+    J
+    A_is_psd
+    eigenvalues
+    eigenvectors
+
+E
+    S if s
+    dSdE if s
+    I
+
+T
+    N
+    Q
+    I
+
+N
+    O
+
+Q
+    O
+
+J
+    K
+    D
+
+K
+    R if r
+    dRdA if r
+
+R
+    F
+
+S
+    F
+
+D
+    I
+
+I
+    I_intr
+
+I_intr
+    O
+
+O
+    O_intr
+
+O_intr
+    L
+    U
+
+L
+    F
+
+F
+    *
+
+U
+    subset_active_rows
+    subset_active_cols
+    subset_active_data
+    V
+
+subset_active_rows
+    *
+
+subset_active_cols
+    *
+
+subset_active_data
+    *
+
+V
+    dLdA
+    dLdE
+
+dRdA
+    dFdA
+
+dLdA
+    dFdA
+
+dFdA
+    phiA
+
+phiA
+    *
+
+dSdE
+    dFdE
+
+dLdE
+    dFdE
+
+dFdE
+    phiE
+
+phiE
+    *
+
+A_is_psd
+    *
+
+eigenvalues
+    *
+
+eigenvectors
+    *
