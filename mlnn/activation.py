@@ -730,7 +730,7 @@ class GELU(Base):
         return (A, B)
 
     @staticmethod
-    def _func(I, _ ):
+    def _func(I, _):
         A = I[0]
         B = I[1]
         F = A * B
