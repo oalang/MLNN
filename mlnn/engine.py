@@ -482,7 +482,7 @@ class MLNNEngine:
         self._eigenvectors = eigenvectors
 
     def _compute_T(self):
-        self.T = np.where(np.equal(self.Y.reshape(-1, 1), self.Y.reshape(1, -1)), 1, -1)
+        self.T = np.where(np.equal.outer(self.Y.ravel(), self.Y.ravel()), 1, -1)
 
     def _compute_N(self):
         self.N = self.q * (np.sum(self.T == 1, axis=1, keepdims=True) - 1)
