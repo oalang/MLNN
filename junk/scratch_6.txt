@@ -1,0 +1,111 @@
+X
+
+Y
+
+Z
+
+A
+
+E
+    S if s
+    I
+    dSdE if s
+
+T
+
+N
+
+Q
+    O
+    U
+
+J
+    K
+
+K
+    R if r
+    dRdA if r
+
+R
+    F
+
+S
+    F
+
+D
+    I
+
+I
+    I_intr
+
+I_intr
+    O
+    L if outer_loss is None
+    U
+
+O
+    O_intr
+
+O_intr
+    L if outer_loss is not None
+    U if outer_loss is not None
+
+L
+    F
+
+F
+    *
+
+U
+    subset_active_rows
+    subset_active_cols
+    subset_active_data
+    V
+
+subset_active_rows
+    *
+
+subset_active_cols
+    *
+
+subset_active_data
+    V if reduce_derivative_matrix
+    dLdA if reduce_derivative_matrix
+    dLdE if reduce_derivative_matrix
+
+V
+    dLdA
+    dLdE
+
+dRdA
+    dFdA
+
+dLdA
+    dFdA
+
+dFdA
+    phiA
+
+phiA
+    *
+
+dSdE
+    dFdE
+
+dLdE
+    dFdE
+
+dFdE
+    phiE
+
+phiE
+    *
+
+A_is_psd
+    *
+
+eigenvalues
+    *
+
+eigenvectors
+    *

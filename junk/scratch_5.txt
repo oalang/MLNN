@@ -1,0 +1,133 @@
+T
+    Y
+
+N
+    T
+
+Q
+    T
+
+J
+    A
+    Z if x_mode == 'kernel'
+
+K
+    J
+    A if a_mode == 'decomposed'
+
+R
+    K
+
+S
+    E
+
+D
+    if a_mode == 'full':
+        if Z_equals_X:
+            X J
+        else:
+            X A
+    if a_mode == 'diagonal':
+        if Z_equals_X:
+            X J
+        else:
+            X A
+    if a_mode == 'decomposed':
+        if Z_equals_X:
+            J
+        else:
+            X A
+
+I
+    T
+    E
+    D
+
+I_intr
+    I
+
+O
+    N
+    Q
+    I_intr
+
+O_intr
+    O
+
+L
+    I_intr if outer_loss is None
+    O_intr if outer_loss is not None
+
+F
+    R
+    S
+    L
+
+U
+    T
+    Q
+    I_intr
+    O_intr if outer_loss is not None
+
+subset_active_rows
+    U
+
+subset_active_cols
+    U
+
+subset_active_data
+    U
+
+V
+    U
+    subset_active_data if reduce_derivative_matrix
+
+dRdA
+    if a_mode == 'full':
+        if x_mode == 'raw':
+            K
+        elif x_mode == 'kernel':
+            Z K
+    elif a_mode == 'diagonal':
+        if x_mode == 'raw':
+            K
+        elif x_mode == 'kernel':
+            Z K
+    elif a_mode == 'decomposed':
+        J K
+
+dLdA
+    X
+    A if a_mode == 'decomposed'
+    subset_active_data if reduce_derivative_matrix
+    V
+
+dFdA
+    dRdA
+    dLdA
+
+phiA
+    dFdA
+
+dSdE
+    E
+
+dLdE
+    subset_active_data if reduce_derivative_matrix
+    V
+
+dFdE
+    dSdE
+    dLdE
+
+phiE
+    dFdE
+
+A_is_psd
+    A
+
+eigenvalues
+    A
+
+eigenvectors
+    A

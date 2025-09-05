@@ -251,7 +251,7 @@ class MLNNEngine:
     @I.setter
     def I(self, I):
         self._I = I
-        self.O = None
+        self.I_intr = None
 
     @property
     def I_intr(self):
@@ -262,6 +262,8 @@ class MLNNEngine:
     @I_intr.setter
     def I_intr(self, I_intr):
         self._I_intr = I_intr
+        self.O = None
+        self.U = None
 
     @property
     def O(self):
@@ -272,11 +274,9 @@ class MLNNEngine:
     @O.setter
     def O(self, O):
         self._O = O
-        self.L = None
-        self.U = None
-        self.subset_active_rows = None
-        self.subset_active_cols = None
-        self.subset_active_data = None
+        self.O_intr = None
+        if self.outer_loss is None:
+            self.L = None
 
     @property
     def O_intr(self):
@@ -287,6 +287,9 @@ class MLNNEngine:
     @O_intr.setter
     def O_intr(self, O_intr):
         self._O_intr = O_intr
+        if self.outer_loss is not None:
+            self.L = None
+            self.U = None
 
     @property
     def L(self):
@@ -538,13 +541,10 @@ class MLNNEngine:
         self.I_intr = self.inner_loss.intr(self.I)
 
     def _compute_O(self):
-        if self.q == 1:
-            self.O = np.sum(self.inner_loss.func_intr(self.I_intr), axis=1, keepdims=True)
+        if self.q != 1:
+            self.O = np.sum(self.Q * self.inner_loss.func_intr(self.I_intr), axis=1, keepdims=True) - self.N
         else:
-            self.O = np.sum(self.Q * self.inner_loss.func_intr(self.I_intr), axis=1, keepdims=True)
-
-        if self.outer_loss is not None:
-            self.O -= self.N
+            self.O = np.sum(self.inner_loss.func_intr(self.I_intr), axis=1, keepdims=True) - self.N
 
     def _compute_O_intr(self):
         self.O_intr = self.outer_loss.intr(self.O)
@@ -553,7 +553,10 @@ class MLNNEngine:
         if self.outer_loss is not None:
             self.L = self.l * np.sum(self.outer_loss.func_intr(self.O_intr))
         else:
-            self.L = self.l * np.sum(self.O)
+            if self.q != 1:
+                self.L = self.l * np.sum(self.Q * self.inner_loss.func_intr(self.I_intr))
+            else:
+                self.L = self.l * np.sum(self.inner_loss.func_intr(self.I_intr))
 
     def _compute_F(self):
         self.F = self.R + self.S + self.L
