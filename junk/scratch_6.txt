@@ -1,10 +1,22 @@
 X
+    D
+    dLdA
 
 Y
+    T
 
 Z
+    J if x_mode == 'kernel'
+    dRdA if x_mode == 'kernel' and a_mode != 'decomposed'
 
 A
+    J
+    K if a_mode == 'decomposed'
+    D if not Z_equals_X
+    dLdA if a_mode == 'decomposed'
+    A_is_psd
+    eigenvalues
+    eigenvectors
 
 E
     S if s
@@ -12,8 +24,13 @@ E
     dSdE if s
 
 T
+    N
+    Q
+    I
+    U
 
 N
+    O
 
 Q
     O
@@ -21,6 +38,8 @@ Q
 
 J
     K
+    D if Z_equals_X
+    dRdA if a_mode == 'decomposed'
 
 K
     R if r

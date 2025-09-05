@@ -39,8 +39,8 @@ D
             X A
 
 I
-    T
     E
+    T
     D
 
 I_intr
