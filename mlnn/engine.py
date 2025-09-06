@@ -506,7 +506,7 @@ class MLNNEngine:
             self.K = self.A @ self.J.T
 
     def _compute_R(self):
-        self.R = self.r * .5 * np.dot(self.K.T.ravel(), self.K.ravel())
+        self.R = self.r * .5 * np.vdot(self.K, self.K)
 
     def _compute_S(self):
         self.S = self.s * .5 * np.sum((self.E - 1) ** 2)
@@ -617,7 +617,7 @@ class MLNNEngine:
         if np.isscalar(self.dFdA):
             self.phiA = 0
         else:
-            self.phiA = -np.dot(self.dFdA.ravel(), self.dFdA.ravel())
+            self.phiA = -np.vdot(self.dFdA, self.dFdA)
 
     def _compute_dSdE(self):
         self.dSdE = self.s * (self.E - 1)
@@ -644,7 +644,7 @@ class MLNNEngine:
         if np.isscalar(self.dFdE):
             self.phiE = 0
         else:
-            self.phiE = -np.dot(self.dFdE.ravel(), self.dFdE.ravel())
+            self.phiE = -np.vdot(self.dFdE, self.dFdE)
 
     def _compute_A_is_psd(self):
         if self.a_mode == 'full':
@@ -738,7 +738,7 @@ class MLNNEngine:
                     K = A
                 elif self.x_mode == 'kernel':
                     K = A @ self.Z
-                A /= np.sqrt(np.dot(K.T.ravel(), K.ravel()))
+                A /= np.sqrt(np.vdot(K, K))
 
                 A = (A + A.T) / 2
         elif self.a_mode == 'diagonal':
@@ -754,7 +754,7 @@ class MLNNEngine:
                     K = A
                 elif self.x_mode == 'kernel':
                     K = A * self.Z
-                A /= np.sqrt(np.dot(K.T.ravel(), K.ravel()))
+                A /= np.sqrt(np.vdot(K, K))
         elif self.a_mode == 'decomposed':
             if d is None:
                 d = self.m
@@ -783,7 +783,7 @@ class MLNNEngine:
                 K = A @ A.T
             elif self.x_mode == 'kernel':
                 K = A @ self.Z @ A.T
-            A /= np.dot(K.T.ravel(), K.ravel()) ** .25
+            A /= (np.vdot(K, K)) ** .25
 
         return A
 
