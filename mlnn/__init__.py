@@ -14,9 +14,13 @@ from mlnn.optimize import MLNNSteepestDescent, MLNNBFGS
 def pairwise_squared_distance(X, L=None):
     if L is None:
         P = X @ X.T
-        return P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
+        C = P.diagonal()
+        return np.add.outer(C, C) - 2 * P
     else:
-        return np.sum(np.square(X), axis=1).reshape(-1, 1) + np.sum(np.square(L), axis=1).reshape(1, -1) - 2 * X @ L.T
+        P = X @ L.T
+        C = np.einsum('ij,ij->i', X, X)
+        D = np.einsum('ij,ij->i', L, L)
+        return np.add.outer(C, D) - 2 * P
 
 
 def generate_landmarks(X, n_landmarks, method='kmeans'):

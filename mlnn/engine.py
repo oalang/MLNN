@@ -529,7 +529,8 @@ class MLNNEngine:
                 B = self.A @ self.X.T
                 P = B.T @ B
 
-        self.D = P.diagonal().reshape(-1, 1) + P.diagonal().reshape(1, -1) - 2 * P
+        C = P.diagonal()
+        self.D = np.add.outer(C, C) - 2 * P
 
     def _compute_I(self):
         self.I = (self.D - self.E) * self.T
