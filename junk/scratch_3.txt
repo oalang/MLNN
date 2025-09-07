@@ -2,6 +2,7 @@ Stochastic gradient descent with random batch selection based on selection and a
 active / selection + dynamic epsilon
 Add unit test for different modes of opperation
 Make functions composable for jax/jit
+Sort data if animation = "all"
 
 func v grad shared computation
 base class
