@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from functools import partial
 
 import numpy as np
 from scipy.stats import norm
@@ -7,35 +6,64 @@ from scipy.stats import norm
 
 class Base(ABC):
     def func(self, X):
-        I = self.intr(X)
-        F = self.func_intr(I)
+        I = self._intr(X, self.params)
+        F = self._func(I, self.params)
         return F
 
     def grad(self, X):
-        I = self.intr(X)
-        G = self.grad_intr(I)
+        I = self._intr(X, self.params)
+        G = self._grad(I, self.params)
         return G
+
+    def intr(self, X):
+        I = self._intr(X, self.params)
+        return I
+
+    def func_intr(self, I):
+        F = self._func(I, self.params)
+        return F
+
+    def grad_intr(self, I):
+        G = self._grad(I, self.params)
+        return G
+
+    @staticmethod
+    @abstractmethod
+    def _intr(X, params):
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def _func(I, params):
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def _grad(I, params):
+        pass
 
 
 class ReLU(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self.params = {
+            'offset': offset,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         return (A,)
 
     @staticmethod
-    def _func(I):
+    def _func(I, _):
         A = I[0]
         F = np.maximum(A, 0)
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I, _):
         A = I[0]
         G = (A > 0).astype(float)
         return G
@@ -43,23 +71,30 @@ class ReLU(Base):
 
 class LeakyReLU(Base):
     def __init__(self, offset=0, alpha=1e-2):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha)
-        self.grad_intr = partial(self._grad, alpha=alpha)
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         return (A,)
 
     @staticmethod
-    def _func(I, alpha):
+    def _func(I, params):
+        alpha = params['alpha']
+
         A = I[0]
         F = np.where(A > 0, A, alpha * A)
         return F
 
     @staticmethod
-    def _grad(I, alpha):
+    def _grad(I, params):
+        alpha = params['alpha']
+
         A = I[0]
         G = np.where(A > 0, 1, alpha)
         return G
@@ -67,18 +102,20 @@ class LeakyReLU(Base):
 
 class SmoothReLU1(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self.params = {
+            'offset': offset,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = A + 0.5
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I, _):
         A = I[0]
         B = I[1]
         F = np.where(A > 0.5, A,
@@ -86,7 +123,7 @@ class SmoothReLU1(Base):
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I, _):
         A = I[0]
         B = I[1]
         G = np.where(A > 0.5, 1,
@@ -97,20 +134,28 @@ class SmoothReLU1(Base):
 class LeakySmoothReLU1(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert alpha <= 1
-        a = alpha - 0.5
-        b = 0.5 * (alpha - alpha ** 2)
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'a': alpha - 0.5,
+            'b': 0.5 * (alpha - alpha ** 2),
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = A + 0.5
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I, params):
+        alpha = params['alpha']
+        a = params['a']
+        b = params['b']
+
         A = I[0]
         B = I[1]
         F = np.where(A > 0.5, A,
@@ -118,7 +163,10 @@ class LeakySmoothReLU1(Base):
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I, params):
+        alpha = params['alpha']
+        a = params['a']
+
         A = I[0]
         B = I[1]
         G = np.where(A > 0.5, 1,
@@ -128,18 +176,20 @@ class LeakySmoothReLU1(Base):
 
 class SmoothReLU2(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self.params = {
+            'offset': offset,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = np.square(A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I, _):
         A = I[0]
         B = I[1]
         C = 2 / 3 * B * A
@@ -150,7 +200,7 @@ class SmoothReLU2(Base):
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I, _):
         A = I[0]
         B = I[1]
         C = 2 * B
@@ -164,20 +214,28 @@ class SmoothReLU2(Base):
 class LeakySmoothReLU2(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha <= 0.5
-        a = np.sqrt(0.5 * alpha) - 0.5
-        b = 0.5 * alpha - np.sqrt(2) / 3 * alpha ** (3 / 2)
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'a': np.sqrt(0.5 * alpha) - 0.5,
+            'b': 0.5 * alpha - np.sqrt(2) / 3 * alpha ** (3 / 2),
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = np.square(A)
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I, params):
+        alpha = params['alpha']
+        a = params['a']
+        b = params['b']
+
         A = I[0]
         B = I[1]
         C = 2 / 3 * B * A
@@ -188,7 +246,10 @@ class LeakySmoothReLU2(Base):
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I, params):
+        alpha = params['alpha']
+        a = params['a']
+
         A = I[0]
         B = I[1]
         C = 2 * B
@@ -201,18 +262,20 @@ class LeakySmoothReLU2(Base):
 
 class SmoothReLU3(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self.params = {
+            'offset': offset,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = 1 + np.exp(4 * A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I, _):
         A = I[0]
         B = I[1]
         F = np.where(A > 0, np.log(B / 2) / 4 + 1 / 6,
@@ -220,7 +283,7 @@ class SmoothReLU3(Base):
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I, _):
         A = I[0]
         B = I[1]
         G = np.where(A > 0, 1 - 1 / B,
@@ -231,20 +294,28 @@ class SmoothReLU3(Base):
 class LeakySmoothReLU3(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha <= 0.5
-        a = np.sqrt(2 * alpha) - 1
-        b = alpha - 2 / 3 * np.sqrt(2) * alpha ** (3 / 2)
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'a': np.sqrt(2 * alpha) - 1,
+            'b': alpha - 2 / 3 * np.sqrt(2) * alpha ** (3 / 2),
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = 1 + np.exp(4 * A)
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I, params):
+        alpha = params['alpha']
+        a = params['a']
+        b = params['b']
+
         A = I[0]
         B = I[1]
         F = np.where(A > 0, np.log(B / 2) / 4 + 1 / 6,
@@ -252,7 +323,10 @@ class LeakySmoothReLU3(Base):
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I, params):
+        alpha = params['alpha']
+        a = params['a']
+
         A = I[0]
         B = I[1]
         G = np.where(A > 0, 1 - 1 / B,
@@ -262,25 +336,27 @@ class LeakySmoothReLU3(Base):
 
 class Logistic(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self.params = {
+            'offset': offset,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = 4 * (X + offset)
         B = np.exp(A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I, _):
         A = I[0]
         B = I[1]
         F = np.where(np.isposinf(B), A, np.log1p(B)) / 4
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I, _):
         B = I[1]
         G = np.where(np.isposinf(B), 1, 1 - 1 / (1 + B))
         return G
@@ -289,27 +365,38 @@ class Logistic(Base):
 class LeakyLogistic(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha < 1
-        a = -np.inf if alpha == 0 else np.log(alpha / (1 - alpha))
-        b = 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha))
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'a': -np.inf if alpha == 0 else np.log(alpha / (1 - alpha)),
+            'b': 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha)),
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = 4 * (X + offset)
         B = np.exp(A)
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I, params):
+        alpha = params['alpha']
+        a = params['a']
+        b = params['b']
+
         A = I[0]
         B = I[1]
         F = np.where(A > a, np.where(np.isposinf(B), A, np.log1p(B)), alpha * A + b) / 4
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I, params):
+        alpha = params['alpha']
+        a = params['a']
+
         A = I[0]
         B = I[1]
         G = np.where(A > a, np.where(np.isposinf(B), 1, 1 - 1 / (1 + B)), alpha)
@@ -318,25 +405,27 @@ class LeakyLogistic(Base):
 
 class Softplus(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self.params = {
+            'offset': offset,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = np.exp(A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I, _):
         A = I[0]
         B = I[1]
         F = np.where(np.isposinf(B), A, np.log1p(B))
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I, _):
         B = I[1]
         G = np.where(np.isposinf(B), 1, 1 - 1 / (1 + B))
         return G
@@ -345,27 +434,38 @@ class Softplus(Base):
 class LeakySoftplus(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha < 1
-        a = -np.inf if alpha == 0 else np.log(alpha / (1 - alpha))
-        b = 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha))
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'a': -np.inf if alpha == 0 else np.log(alpha / (1 - alpha)),
+            'b': 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha)),
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = np.exp(A)
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I, params):
+        alpha = params['alpha']
+        a = params['a']
+        b = params['b']
+
         A = I[0]
         B = I[1]
         F = np.where(A > a, np.where(np.isposinf(B), A, np.log1p(B)), alpha * A + b)
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I, params):
+        alpha = params['alpha']
+        a = params['a']
+
         A = I[0]
         B = I[1]
         G = np.where(A > a, np.where(np.isposinf(B), 1, 1 - 1 / (1 + B)), alpha)
@@ -374,25 +474,27 @@ class LeakySoftplus(Base):
 
 class SELU(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self.params = {
+            'offset': offset,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = np.exp(A - 1)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I, _):
         A = I[0]
         B = I[1]
         F = np.where(A > 1, A, B)
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I, _):
         A = I[0]
         B = I[1]
         G = np.where(A > 1, 1, B)
@@ -402,20 +504,28 @@ class SELU(Base):
 class LeakySELU(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha <= 1
-        a = -np.inf if alpha == 0 else np.log(alpha) + 1
-        b = 0 if alpha == 0 else -alpha * np.log(alpha)
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'a': -np.inf if alpha == 0 else np.log(alpha) + 1,
+            'b': 0 if alpha == 0 else -alpha * np.log(alpha),
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = np.exp(A - 1)
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I, params):
+        alpha = params['alpha']
+        a = params['a']
+        b = params['b']
+
         A = I[0]
         B = I[1]
         F = np.where(A > 1, A,
@@ -423,7 +533,10 @@ class LeakySELU(Base):
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I, params):
+        alpha = params['alpha']
+        a = params['a']
+
         A = I[0]
         B = I[1]
         G = np.where(A > 1, 1,
@@ -433,23 +546,25 @@ class LeakySELU(Base):
 
 class Quadratic(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self.params = {
+            'offset': offset,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         return (A,)
 
     @staticmethod
-    def _func(I):
+    def _func(I, _):
         A = I[0]
         F = np.where(A > 0, np.square(A), 0)
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I, _):
         A = I[0]
         G = np.where(A > 0, 2 * A, 0)
         return G
@@ -457,25 +572,35 @@ class Quadratic(Base):
 
 class LeakyQuadratic(Base):
     def __init__(self, offset=0, alpha=1e-2):
-        a = 0.5 * alpha
-        b = -((0.5 * alpha) ** 2)
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'a': 0.5 * alpha,
+            'b': -((0.5 * alpha) ** 2),
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         return (A,)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I, params):
+        alpha = params['alpha']
+        a = params['a']
+        b = params['b']
+
         A = I[0]
         F = np.where(A > a, np.square(A), alpha * A + b)
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I, params):
+        alpha = params['alpha']
+        a = params['a']
+
         A = I[0]
         G = np.where(A > a, 2 * A, alpha)
         return G
@@ -483,23 +608,25 @@ class LeakyQuadratic(Base):
 
 class Sigmoid(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self.params = {
+            'offset': offset,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         B = 1 / (1 + np.exp(-4 * (X + offset)))
         return (B,)
 
     @staticmethod
-    def _func(I):
+    def _func(I, _):
         B = I[0]
         F = B
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I, _):
         B = I[0]
         G = 4 * (B - np.square(B))
         return G
@@ -509,24 +636,36 @@ class LeakySigmoid(Base):
     def __init__(self, offset=0, alpha=1e-2, beta=1e-2):
         assert 0 <= alpha <= 1
         assert 0 <= beta <= 1
-        a = -np.inf if alpha == 0 else np.log((-alpha - 2 * np.sqrt(1 - alpha) + 2) / alpha)
-        b = 0 if alpha == 0 else 1 - (1 / (1 - alpha / (alpha - 2 * np.sqrt(1 - alpha) - 2)) -
-                                      0.25 * alpha * np.log((-alpha + 2 * np.sqrt(1 - alpha) + 2) / alpha))
-        c = np.inf if beta == 0 else np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta)
-        d = 1 if beta == 0 else (1 / (1 - beta / (beta - 2 * np.sqrt(1 - beta) - 2)) -
-                                 0.25 * beta * np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta))
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, beta=beta, a=a, b=b, c=c, d=d)
-        self.grad_intr = partial(self._grad, alpha=alpha, beta=beta, a=a, c=c)
+
+        self.params = {
+            'offset': offset,
+            'alpha': alpha,
+            'beta': beta,
+            'a': -np.inf if alpha == 0 else np.log((-alpha - 2 * np.sqrt(1 - alpha) + 2) / alpha),
+            'b': 0 if alpha == 0 else 1 - (1 / (1 - alpha / (alpha - 2 * np.sqrt(1 - alpha) - 2)) -
+                                           0.25 * alpha * np.log((-alpha + 2 * np.sqrt(1 - alpha) + 2) / alpha)),
+            'c': np.inf if beta == 0 else np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta),
+            'd': 1 if beta == 0 else (1 / (1 - beta / (beta - 2 * np.sqrt(1 - beta) - 2)) -
+                                      0.25 * beta * np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta)),
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = 4 * (X + offset)
         B = 1 / (1 + np.exp(np.negative(A)))
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, beta, a, b, c, d):
+    def _func(I, params):
+        alpha = params['alpha']
+        beta = params['beta']
+        a = params['a']
+        b = params['b']
+        c = params['c']
+        d = params['d']
+
         A = I[0]
         B = I[1]
         F = np.where(A > c, beta / 4 * A + d,
@@ -534,7 +673,12 @@ class LeakySigmoid(Base):
         return F
 
     @staticmethod
-    def _grad(I, alpha, beta, a, c):
+    def _grad(I, params):
+        alpha = params['alpha']
+        beta = params['beta']
+        a = params['a']
+        c = params['c']
+
         A = I[0]
         B = I[1]
         G = np.where(A > c, beta,
@@ -544,25 +688,27 @@ class LeakySigmoid(Base):
 
 class SiLU(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self.params = {
+            'offset': offset,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = 1 + np.exp(-A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I, _):
         A = I[0]
         B = I[1]
         F = A / B
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I, _):
         A = I[0]
         B = I[1]
         G = A * (B - 1) / np.square(B) + 1 / B
@@ -571,25 +717,27 @@ class SiLU(Base):
 
 class GELU(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self.params = {
+            'offset': offset,
+        }
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X, params):
+        offset = params['offset']
+
         A = X + offset
         B = norm.cdf(A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I, _):
         A = I[0]
         B = I[1]
         F = A * B
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I, _):
         A = I[0]
         B = I[1]
         G = A * norm.pdf(A) + B
