@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from functools import partial
 from typing import Callable
+from functools import partial
 
 import numpy as np
 from numpy.typing import NDArray
@@ -152,8 +152,8 @@ class LeakySmoothReLU1(Base):
         assert alpha <= 1
         self._offset = offset
         self._alpha = alpha
-        self._a = alpha - 0.5
-        self._b = 0.5 * (alpha - alpha ** 2)
+        self._a = float(alpha - 0.5)
+        self._b = float(0.5 * (alpha - alpha ** 2))
         super().__init__()
 
     @staticmethod
@@ -236,8 +236,8 @@ class LeakySmoothReLU2(Base):
         assert 0 <= alpha <= 0.5
         self._offset = offset
         self._alpha = alpha
-        self._a = np.sqrt(0.5 * alpha) - 0.5
-        self._b = 0.5 * alpha - np.sqrt(2) / 3 * alpha ** (3 / 2)
+        self._a = float(np.sqrt(0.5 * alpha) - 0.5)
+        self._b = float(0.5 * alpha - np.sqrt(2) / 3 * alpha ** (3 / 2))
         super().__init__()
 
     @staticmethod
@@ -320,8 +320,8 @@ class LeakySmoothReLU3(Base):
         assert 0 <= alpha <= 0.5
         self._offset = offset
         self._alpha = alpha
-        self._a = np.sqrt(2 * alpha) - 1
-        self._b = alpha - 2 / 3 * np.sqrt(2) * alpha ** (3 / 2)
+        self._a = float(np.sqrt(2 * alpha) - 1)
+        self._b = float(alpha - 2 / 3 * np.sqrt(2) * alpha ** (3 / 2))
         super().__init__()
 
     @staticmethod
@@ -395,8 +395,8 @@ class LeakyLogistic(Base):
         assert 0 <= alpha < 1
         self._offset = offset
         self._alpha = alpha
-        self._a = -np.inf if alpha == 0 else np.log(alpha / (1 - alpha))
-        self._b = 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha))
+        self._a = float('-inf') if alpha == 0 else float(np.log(alpha / (1 - alpha)))
+        self._b = 0.0 if alpha == 0 else float(np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha)))
         super().__init__()
 
     @staticmethod
@@ -468,8 +468,8 @@ class LeakySoftplus(Base):
         assert 0 <= alpha < 1
         self._offset = offset
         self._alpha = alpha
-        self._a = -np.inf if alpha == 0 else np.log(alpha / (1 - alpha))
-        self._b = 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha))
+        self._a = float('-inf') if alpha == 0 else float(np.log(alpha / (1 - alpha)))
+        self._b = 0.0 if alpha == 0 else float(np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha)))
         super().__init__()
 
     @staticmethod
@@ -542,8 +542,8 @@ class LeakySELU(Base):
         assert 0 <= alpha <= 1
         self._offset = offset
         self._alpha = alpha
-        self._a = -np.inf if alpha == 0 else np.log(alpha) + 1
-        self._b = 0 if alpha == 0 else -alpha * np.log(alpha)
+        self._a = float('-inf') if alpha == 0 else float(np.log(alpha) + 1)
+        self._b = 0.0 if alpha == 0 else float(-alpha * np.log(alpha))
         super().__init__()
 
     @staticmethod
@@ -614,8 +614,8 @@ class LeakyQuadratic(Base):
     def __init__(self, offset=0, alpha=1e-2):
         self._offset = offset
         self._alpha = alpha
-        self._a = 0.5 * alpha
-        self._b = -((0.5 * alpha) ** 2)
+        self._a = float(0.5 * alpha)
+        self._b = float(-((0.5 * alpha) ** 2))
         super().__init__()
 
     @staticmethod
@@ -684,12 +684,12 @@ class LeakySigmoid(Base):
         self._offset = offset
         self._alpha = alpha
         self._beta = beta
-        self._a = -np.inf if alpha == 0 else np.log((-alpha - 2 * np.sqrt(1 - alpha) + 2) / alpha)
-        self._b = 0 if alpha == 0 else 1 - (1 / (1 - alpha / (alpha - 2 * np.sqrt(1 - alpha) - 2)) -
-                                            0.25 * alpha * np.log((-alpha + 2 * np.sqrt(1 - alpha) + 2) / alpha))
-        self._c = np.inf if beta == 0 else np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta)
-        self._d = 1 if beta == 0 else (1 / (1 - beta / (beta - 2 * np.sqrt(1 - beta) - 2)) -
-                                       0.25 * beta * np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta))
+        self._a = float('-inf') if alpha == 0 else float(np.log((-alpha - 2 * np.sqrt(1 - alpha) + 2) / alpha))
+        self._b = 0.0 if alpha == 0 else float(1 - (1 / (1 - alpha / (alpha - 2 * np.sqrt(1 - alpha) - 2)) -
+                                                    0.25 * alpha * np.log((-alpha + 2 * np.sqrt(1 - alpha) + 2) / alpha)))
+        self._c = float('inf') if beta == 0 else float(np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta))
+        self._d = 1.0 if beta == 0 else float(1 / (1 - beta / (beta - 2 * np.sqrt(1 - beta) - 2)) -
+                                              0.25 * beta * np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta))
         super().__init__()
 
     @staticmethod
