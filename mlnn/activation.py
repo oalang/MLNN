@@ -12,7 +12,7 @@ FuncIntr = Callable[[tuple[NDArray, ...]], NDArray]
 GradIntr = Callable[[tuple[NDArray, ...]], NDArray]
 
 
-class Base(ABC):
+class ActivationBase(ABC):
     intr: Intr
     func_intr: FuncIntr
     grad_intr: GradIntr
@@ -45,7 +45,7 @@ class Base(ABC):
         ...
 
 
-class ReLU(Base):
+class ReLU(ActivationBase):
     def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
@@ -77,7 +77,7 @@ class ReLU(Base):
         return self._grad
 
 
-class LeakyReLU(Base):
+class LeakyReLU(ActivationBase):
     def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         self._offset = offset
         self._alpha = alpha
@@ -110,7 +110,7 @@ class LeakyReLU(Base):
         return partial(self._grad, alpha=self._alpha)
 
 
-class SmoothReLU1(Base):
+class SmoothReLU1(ActivationBase):
     def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
@@ -147,7 +147,7 @@ class SmoothReLU1(Base):
         return self._grad
 
 
-class LeakySmoothReLU1(Base):
+class LeakySmoothReLU1(ActivationBase):
     def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert alpha <= 1
         self._offset = offset
@@ -188,7 +188,7 @@ class LeakySmoothReLU1(Base):
         return partial(self._grad, alpha=self._alpha, a=self._a)
 
 
-class SmoothReLU2(Base):
+class SmoothReLU2(ActivationBase):
     def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
@@ -231,7 +231,7 @@ class SmoothReLU2(Base):
         return self._grad
 
 
-class LeakySmoothReLU2(Base):
+class LeakySmoothReLU2(ActivationBase):
     def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert 0 <= alpha <= 0.5
         self._offset = offset
@@ -278,7 +278,7 @@ class LeakySmoothReLU2(Base):
         return partial(self._grad, alpha=self._alpha, a=self._a)
 
 
-class SmoothReLU3(Base):
+class SmoothReLU3(ActivationBase):
     def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
@@ -315,7 +315,7 @@ class SmoothReLU3(Base):
         return self._grad
 
 
-class LeakySmoothReLU3(Base):
+class LeakySmoothReLU3(ActivationBase):
     def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert 0 <= alpha <= 0.5
         self._offset = offset
@@ -356,7 +356,7 @@ class LeakySmoothReLU3(Base):
         return partial(self._grad, alpha=self._alpha, a=self._a)
 
 
-class Logistic(Base):
+class Logistic(ActivationBase):
     def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
@@ -390,7 +390,7 @@ class Logistic(Base):
         return self._grad
 
 
-class LeakyLogistic(Base):
+class LeakyLogistic(ActivationBase):
     def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert 0 <= alpha < 1
         self._offset = offset
@@ -429,7 +429,7 @@ class LeakyLogistic(Base):
         return partial(self._grad, alpha=self._alpha, a=self._a)
 
 
-class Softplus(Base):
+class Softplus(ActivationBase):
     def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
@@ -463,7 +463,7 @@ class Softplus(Base):
         return self._grad
 
 
-class LeakySoftplus(Base):
+class LeakySoftplus(ActivationBase):
     def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert 0 <= alpha < 1
         self._offset = offset
@@ -502,7 +502,7 @@ class LeakySoftplus(Base):
         return partial(self._grad, alpha=self._alpha, a=self._a)
 
 
-class SELU(Base):
+class SELU(ActivationBase):
     def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
@@ -537,7 +537,7 @@ class SELU(Base):
         return self._grad
 
 
-class LeakySELU(Base):
+class LeakySELU(ActivationBase):
     def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert 0 <= alpha <= 1
         self._offset = offset
@@ -578,7 +578,7 @@ class LeakySELU(Base):
         return partial(self._grad, alpha=self._alpha, a=self._a)
 
 
-class Quadratic(Base):
+class Quadratic(ActivationBase):
     def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
@@ -610,7 +610,7 @@ class Quadratic(Base):
         return self._grad
 
 
-class LeakyQuadratic(Base):
+class LeakyQuadratic(ActivationBase):
     def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         self._offset = offset
         self._alpha = alpha
@@ -645,7 +645,7 @@ class LeakyQuadratic(Base):
         return partial(self._grad, alpha=self._alpha, a=self._a)
 
 
-class Sigmoid(Base):
+class Sigmoid(ActivationBase):
     def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
@@ -677,7 +677,7 @@ class Sigmoid(Base):
         return self._grad
 
 
-class LeakySigmoid(Base):
+class LeakySigmoid(ActivationBase):
     def __init__(self, offset: float = 0.0, alpha: float = 1e-2, beta: float = 1e-2) -> None:
         assert 0 <= alpha <= 1
         assert 0 <= beta <= 1
@@ -724,7 +724,7 @@ class LeakySigmoid(Base):
         return partial(self._grad, alpha=self._alpha, beta=self._beta, a=self._a, c=self._c)
 
 
-class SiLU(Base):
+class SiLU(ActivationBase):
     def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
@@ -759,7 +759,7 @@ class SiLU(Base):
         return self._grad
 
 
-class GELU(Base):
+class GELU(ActivationBase):
     def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
@@ -794,7 +794,7 @@ class GELU(Base):
         return self._grad
 
 
-def get_activation_function(type: str = 'smooth_relu2', offset: float = 1.0, slope: float = 1e-2) -> Base:
+def get_activation_function(type: str = 'smooth_relu2', offset: float = 1.0, slope: float = 1e-2) -> ActivationBase:
     match type:
         case 'relu':
             return ReLU(offset)
