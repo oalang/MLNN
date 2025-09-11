@@ -1,27 +1,54 @@
 from abc import ABC, abstractmethod
 from functools import partial
+from typing import Callable
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.stats import norm
 
 
+Intr = Callable[[NDArray], tuple[NDArray, ...]]
+FuncIntr = Callable[[tuple[NDArray, ...]], NDArray]
+GradIntr = Callable[[tuple[NDArray, ...]], NDArray]
+
+
 class Base(ABC):
-    def func(self, X):
+    intr: Intr
+    func_intr: FuncIntr
+    grad_intr: GradIntr
+
+    def __init__(self) -> None:
+        self.intr = self._make_intr()
+        self.func_intr = self._make_func_intr()
+        self.grad_intr = self._make_grad_intr()
+
+    def func(self, X: NDArray) -> NDArray:
         I = self.intr(X)
         F = self.func_intr(I)
         return F
 
-    def grad(self, X):
+    def grad(self, X: NDArray) -> NDArray:
         I = self.intr(X)
         G = self.grad_intr(I)
         return G
 
+    @abstractmethod
+    def _make_intr(self) -> Intr:
+        ...
+
+    @abstractmethod
+    def _make_func_intr(self) -> FuncIntr:
+        ...
+
+    @abstractmethod
+    def _make_grad_intr(self) -> GradIntr:
+        ...
+
 
 class ReLU(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self._offset = offset
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -40,12 +67,21 @@ class ReLU(Base):
         G = (A > 0).astype(float)
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return self._func
+
+    def _make_grad_intr(self) -> GradIntr:
+        return self._grad
+
 
 class LeakyReLU(Base):
     def __init__(self, offset=0, alpha=1e-2):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha)
-        self.grad_intr = partial(self._grad, alpha=alpha)
+        self._offset = offset
+        self._alpha = alpha
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -64,12 +100,20 @@ class LeakyReLU(Base):
         G = np.where(A > 0, 1, alpha)
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return partial(self._func, alpha=self._alpha)
+
+    def _make_grad_intr(self) -> GradIntr:
+        return partial(self._grad, alpha=self._alpha)
+
 
 class SmoothReLU1(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self._offset = offset
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -93,15 +137,24 @@ class SmoothReLU1(Base):
                      np.where(A > -0.5, B, 0))
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return self._func
+
+    def _make_grad_intr(self) -> GradIntr:
+        return self._grad
+
 
 class LeakySmoothReLU1(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert alpha <= 1
-        a = alpha - 0.5
-        b = 0.5 * (alpha - alpha ** 2)
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+        self._offset = offset
+        self._alpha = alpha
+        self._a = alpha - 0.5
+        self._b = 0.5 * (alpha - alpha ** 2)
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -125,12 +178,20 @@ class LeakySmoothReLU1(Base):
                      np.where(A > a, B, alpha))
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return partial(self._func, alpha=self._alpha, a=self._a, b=self._b)
+
+    def _make_grad_intr(self) -> GradIntr:
+        return partial(self._grad, alpha=self._alpha, a=self._a)
+
 
 class SmoothReLU2(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self._offset = offset
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -160,15 +221,24 @@ class SmoothReLU2(Base):
                               np.where(A > -0.5, D + C, 0)))
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return self._func
+
+    def _make_grad_intr(self) -> GradIntr:
+        return self._grad
+
 
 class LeakySmoothReLU2(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha <= 0.5
-        a = np.sqrt(0.5 * alpha) - 0.5
-        b = 0.5 * alpha - np.sqrt(2) / 3 * alpha ** (3 / 2)
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+        self._offset = offset
+        self._alpha = alpha
+        self._a = np.sqrt(0.5 * alpha) - 0.5
+        self._b = 0.5 * alpha - np.sqrt(2) / 3 * alpha ** (3 / 2)
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -198,12 +268,20 @@ class LeakySmoothReLU2(Base):
                               np.where(A > a, D + C, alpha)))
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return partial(self._func, alpha=self._alpha, a=self._a, b=self._b)
+
+    def _make_grad_intr(self) -> GradIntr:
+        return partial(self._grad, alpha=self._alpha, a=self._a)
+
 
 class SmoothReLU3(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self._offset = offset
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -227,15 +305,24 @@ class SmoothReLU3(Base):
                      np.where(A > -1, np.square(A + 1) / 2, 0))
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return self._func
+
+    def _make_grad_intr(self) -> GradIntr:
+        return self._grad
+
 
 class LeakySmoothReLU3(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha <= 0.5
-        a = np.sqrt(2 * alpha) - 1
-        b = alpha - 2 / 3 * np.sqrt(2) * alpha ** (3 / 2)
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+        self._offset = offset
+        self._alpha = alpha
+        self._a = np.sqrt(2 * alpha) - 1
+        self._b = alpha - 2 / 3 * np.sqrt(2) * alpha ** (3 / 2)
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -259,12 +346,20 @@ class LeakySmoothReLU3(Base):
                      np.where(A > a, np.square(A + 1) / 2, alpha))
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return partial(self._func, alpha=self._alpha, a=self._a, b=self._b)
+
+    def _make_grad_intr(self) -> GradIntr:
+        return partial(self._grad, alpha=self._alpha, a=self._a)
+
 
 class Logistic(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self._offset = offset
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -285,15 +380,24 @@ class Logistic(Base):
         G = np.where(np.isposinf(B), 1, 1 - 1 / (1 + B))
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return self._func
+
+    def _make_grad_intr(self) -> GradIntr:
+        return self._grad
+
 
 class LeakyLogistic(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha < 1
-        a = -np.inf if alpha == 0 else np.log(alpha / (1 - alpha))
-        b = 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha))
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+        self._offset = offset
+        self._alpha = alpha
+        self._a = -np.inf if alpha == 0 else np.log(alpha / (1 - alpha))
+        self._b = 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha))
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -315,12 +419,20 @@ class LeakyLogistic(Base):
         G = np.where(A > a, np.where(np.isposinf(B), 1, 1 - 1 / (1 + B)), alpha)
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return partial(self._func, alpha=self._alpha, a=self._a, b=self._b)
+
+    def _make_grad_intr(self) -> GradIntr:
+        return partial(self._grad, alpha=self._alpha, a=self._a)
+
 
 class Softplus(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self._offset = offset
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -341,15 +453,24 @@ class Softplus(Base):
         G = np.where(np.isposinf(B), 1, 1 - 1 / (1 + B))
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return self._func
+
+    def _make_grad_intr(self) -> GradIntr:
+        return self._grad
+
 
 class LeakySoftplus(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha < 1
-        a = -np.inf if alpha == 0 else np.log(alpha / (1 - alpha))
-        b = 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha))
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+        self._offset = offset
+        self._alpha = alpha
+        self._a = -np.inf if alpha == 0 else np.log(alpha / (1 - alpha))
+        self._b = 0 if alpha == 0 else np.log(1 / (1 - alpha)) - alpha * np.log(alpha / (1 - alpha))
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -371,12 +492,20 @@ class LeakySoftplus(Base):
         G = np.where(A > a, np.where(np.isposinf(B), 1, 1 - 1 / (1 + B)), alpha)
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return partial(self._func, alpha=self._alpha, a=self._a, b=self._b)
+
+    def _make_grad_intr(self) -> GradIntr:
+        return partial(self._grad, alpha=self._alpha, a=self._a)
+
 
 class SELU(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self._offset = offset
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -398,15 +527,24 @@ class SELU(Base):
         G = np.where(A > 1, 1, B)
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return self._func
+
+    def _make_grad_intr(self) -> GradIntr:
+        return self._grad
+
 
 class LeakySELU(Base):
     def __init__(self, offset=0, alpha=1e-2):
         assert 0 <= alpha <= 1
-        a = -np.inf if alpha == 0 else np.log(alpha) + 1
-        b = 0 if alpha == 0 else -alpha * np.log(alpha)
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+        self._offset = offset
+        self._alpha = alpha
+        self._a = -np.inf if alpha == 0 else np.log(alpha) + 1
+        self._b = 0 if alpha == 0 else -alpha * np.log(alpha)
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -430,12 +568,20 @@ class LeakySELU(Base):
                      np.where(A > a, B, alpha))
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return partial(self._func, alpha=self._alpha, a=self._a, b=self._b)
+
+    def _make_grad_intr(self) -> GradIntr:
+        return partial(self._grad, alpha=self._alpha, a=self._a)
+
 
 class Quadratic(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self._offset = offset
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -454,14 +600,23 @@ class Quadratic(Base):
         G = np.where(A > 0, 2 * A, 0)
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return self._func
+
+    def _make_grad_intr(self) -> GradIntr:
+        return self._grad
+
 
 class LeakyQuadratic(Base):
     def __init__(self, offset=0, alpha=1e-2):
-        a = 0.5 * alpha
-        b = -((0.5 * alpha) ** 2)
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, a=a, b=b)
-        self.grad_intr = partial(self._grad, alpha=alpha, a=a)
+        self._offset = offset
+        self._alpha = alpha
+        self._a = 0.5 * alpha
+        self._b = -((0.5 * alpha) ** 2)
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -480,12 +635,20 @@ class LeakyQuadratic(Base):
         G = np.where(A > a, 2 * A, alpha)
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return partial(self._func, alpha=self._alpha, a=self._a, b=self._b)
+
+    def _make_grad_intr(self) -> GradIntr:
+        return partial(self._grad, alpha=self._alpha, a=self._a)
+
 
 class Sigmoid(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self._offset = offset
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -504,20 +667,30 @@ class Sigmoid(Base):
         G = 4 * (B - np.square(B))
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return self._func
+
+    def _make_grad_intr(self) -> GradIntr:
+        return self._grad
+
 
 class LeakySigmoid(Base):
     def __init__(self, offset=0, alpha=1e-2, beta=1e-2):
         assert 0 <= alpha <= 1
         assert 0 <= beta <= 1
-        a = -np.inf if alpha == 0 else np.log((-alpha - 2 * np.sqrt(1 - alpha) + 2) / alpha)
-        b = 0 if alpha == 0 else 1 - (1 / (1 - alpha / (alpha - 2 * np.sqrt(1 - alpha) - 2)) -
-                                      0.25 * alpha * np.log((-alpha + 2 * np.sqrt(1 - alpha) + 2) / alpha))
-        c = np.inf if beta == 0 else np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta)
-        d = 1 if beta == 0 else (1 / (1 - beta / (beta - 2 * np.sqrt(1 - beta) - 2)) -
-                                 0.25 * beta * np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta))
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func, alpha=alpha, beta=beta, a=a, b=b, c=c, d=d)
-        self.grad_intr = partial(self._grad, alpha=alpha, beta=beta, a=a, c=c)
+        self._offset = offset
+        self._alpha = alpha
+        self._beta = beta
+        self._a = -np.inf if alpha == 0 else np.log((-alpha - 2 * np.sqrt(1 - alpha) + 2) / alpha)
+        self._b = 0 if alpha == 0 else 1 - (1 / (1 - alpha / (alpha - 2 * np.sqrt(1 - alpha) - 2)) -
+                                            0.25 * alpha * np.log((-alpha + 2 * np.sqrt(1 - alpha) + 2) / alpha))
+        self._c = np.inf if beta == 0 else np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta)
+        self._d = 1 if beta == 0 else (1 / (1 - beta / (beta - 2 * np.sqrt(1 - beta) - 2)) -
+                                       0.25 * beta * np.log((-beta + 2 * np.sqrt(1 - beta) + 2) / beta))
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -541,12 +714,20 @@ class LeakySigmoid(Base):
                      np.where(A > a, 4 * (B - np.square(B)), alpha))
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return partial(self._func, alpha=self._alpha, beta=self._beta, a=self._a, b=self._b, c=self._c, d=self._d)
+
+    def _make_grad_intr(self) -> GradIntr:
+        return partial(self._grad, alpha=self._alpha, beta=self._beta, a=self._a, c=self._c)
+
 
 class SiLU(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self._offset = offset
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -568,12 +749,20 @@ class SiLU(Base):
         G = A * (B - 1) / np.square(B) + 1 / B
         return G
 
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return self._func
+
+    def _make_grad_intr(self) -> GradIntr:
+        return self._grad
+
 
 class GELU(Base):
     def __init__(self, offset=0):
-        self.intr = partial(self._intr, offset=offset)
-        self.func_intr = partial(self._func)
-        self.grad_intr = partial(self._grad)
+        self._offset = offset
+        super().__init__()
 
     @staticmethod
     def _intr(X, offset):
@@ -594,6 +783,15 @@ class GELU(Base):
         B = I[1]
         G = A * norm.pdf(A) + B
         return G
+
+    def _make_intr(self) -> Intr:
+        return partial(self._intr, offset=self._offset)
+
+    def _make_func_intr(self) -> FuncIntr:
+        return self._func
+
+    def _make_grad_intr(self) -> GradIntr:
+        return self._grad
 
 
 def get_activation_function(type='smooth_relu2', offset=1, slope=1e-2):
