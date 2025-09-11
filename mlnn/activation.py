@@ -46,23 +46,23 @@ class Base(ABC):
 
 
 class ReLU(Base):
-    def __init__(self, offset=0):
+    def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         return (A,)
 
     @staticmethod
-    def _func(I):
+    def _func(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         F = np.maximum(A, 0)
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         G = (A > 0).astype(float)
         return G
@@ -78,24 +78,24 @@ class ReLU(Base):
 
 
 class LeakyReLU(Base):
-    def __init__(self, offset=0, alpha=1e-2):
+    def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         self._offset = offset
         self._alpha = alpha
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         return (A,)
 
     @staticmethod
-    def _func(I, alpha):
+    def _func(I: tuple[NDArray, ...], alpha: float) -> NDArray:
         A = I[0]
         F = np.where(A > 0, A, alpha * A)
         return F
 
     @staticmethod
-    def _grad(I, alpha):
+    def _grad(I: tuple[NDArray, ...], alpha: float) -> NDArray:
         A = I[0]
         G = np.where(A > 0, 1, alpha)
         return G
@@ -111,18 +111,18 @@ class LeakyReLU(Base):
 
 
 class SmoothReLU1(Base):
-    def __init__(self, offset=0):
+    def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = A + 0.5
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         F = np.where(A > 0.5, A,
@@ -130,7 +130,7 @@ class SmoothReLU1(Base):
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         G = np.where(A > 0.5, 1,
@@ -148,7 +148,7 @@ class SmoothReLU1(Base):
 
 
 class LeakySmoothReLU1(Base):
-    def __init__(self, offset=0, alpha=1e-2):
+    def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert alpha <= 1
         self._offset = offset
         self._alpha = alpha
@@ -157,13 +157,13 @@ class LeakySmoothReLU1(Base):
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = A + 0.5
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I: tuple[NDArray, ...], alpha: float, a: float, b: float) -> NDArray:
         A = I[0]
         B = I[1]
         F = np.where(A > 0.5, A,
@@ -171,7 +171,7 @@ class LeakySmoothReLU1(Base):
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I: tuple[NDArray, ...], alpha: float, a: float) -> NDArray:
         A = I[0]
         B = I[1]
         G = np.where(A > 0.5, 1,
@@ -189,18 +189,18 @@ class LeakySmoothReLU1(Base):
 
 
 class SmoothReLU2(Base):
-    def __init__(self, offset=0):
+    def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = np.square(A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         C = 2 / 3 * B * A
@@ -211,7 +211,7 @@ class SmoothReLU2(Base):
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         C = 2 * B
@@ -232,7 +232,7 @@ class SmoothReLU2(Base):
 
 
 class LeakySmoothReLU2(Base):
-    def __init__(self, offset=0, alpha=1e-2):
+    def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert 0 <= alpha <= 0.5
         self._offset = offset
         self._alpha = alpha
@@ -241,13 +241,13 @@ class LeakySmoothReLU2(Base):
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = np.square(A)
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I: tuple[NDArray, ...], alpha: float, a: float, b: float) -> NDArray:
         A = I[0]
         B = I[1]
         C = 2 / 3 * B * A
@@ -258,7 +258,7 @@ class LeakySmoothReLU2(Base):
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I: tuple[NDArray, ...], alpha: float, a: float) -> NDArray:
         A = I[0]
         B = I[1]
         C = 2 * B
@@ -279,18 +279,18 @@ class LeakySmoothReLU2(Base):
 
 
 class SmoothReLU3(Base):
-    def __init__(self, offset=0):
+    def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = 1 + np.exp(4 * A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         F = np.where(A > 0, np.log(B / 2) / 4 + 1 / 6,
@@ -298,7 +298,7 @@ class SmoothReLU3(Base):
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         G = np.where(A > 0, 1 - 1 / B,
@@ -316,7 +316,7 @@ class SmoothReLU3(Base):
 
 
 class LeakySmoothReLU3(Base):
-    def __init__(self, offset=0, alpha=1e-2):
+    def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert 0 <= alpha <= 0.5
         self._offset = offset
         self._alpha = alpha
@@ -325,13 +325,13 @@ class LeakySmoothReLU3(Base):
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = 1 + np.exp(4 * A)
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I: tuple[NDArray, ...], alpha: float, a: float, b: float) -> NDArray:
         A = I[0]
         B = I[1]
         F = np.where(A > 0, np.log(B / 2) / 4 + 1 / 6,
@@ -339,7 +339,7 @@ class LeakySmoothReLU3(Base):
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I: tuple[NDArray, ...], alpha: float, a: float) -> NDArray:
         A = I[0]
         B = I[1]
         G = np.where(A > 0, 1 - 1 / B,
@@ -357,25 +357,25 @@ class LeakySmoothReLU3(Base):
 
 
 class Logistic(Base):
-    def __init__(self, offset=0):
+    def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = 4 * (X + offset)
         B = np.exp(A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         F = np.where(np.isposinf(B), A, np.log1p(B)) / 4
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I: tuple[NDArray, ...]) -> NDArray:
         B = I[1]
         G = np.where(np.isposinf(B), 1, 1 - 1 / (1 + B))
         return G
@@ -391,7 +391,7 @@ class Logistic(Base):
 
 
 class LeakyLogistic(Base):
-    def __init__(self, offset=0, alpha=1e-2):
+    def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert 0 <= alpha < 1
         self._offset = offset
         self._alpha = alpha
@@ -400,20 +400,20 @@ class LeakyLogistic(Base):
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = 4 * (X + offset)
         B = np.exp(A)
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I: tuple[NDArray, ...], alpha: float, a: float, b: float) -> NDArray:
         A = I[0]
         B = I[1]
         F = np.where(A > a, np.where(np.isposinf(B), A, np.log1p(B)), alpha * A + b) / 4
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I: tuple[NDArray, ...], alpha: float, a: float) -> NDArray:
         A = I[0]
         B = I[1]
         G = np.where(A > a, np.where(np.isposinf(B), 1, 1 - 1 / (1 + B)), alpha)
@@ -430,25 +430,25 @@ class LeakyLogistic(Base):
 
 
 class Softplus(Base):
-    def __init__(self, offset=0):
+    def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = np.exp(A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         F = np.where(np.isposinf(B), A, np.log1p(B))
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I: tuple[NDArray, ...]) -> NDArray:
         B = I[1]
         G = np.where(np.isposinf(B), 1, 1 - 1 / (1 + B))
         return G
@@ -464,7 +464,7 @@ class Softplus(Base):
 
 
 class LeakySoftplus(Base):
-    def __init__(self, offset=0, alpha=1e-2):
+    def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert 0 <= alpha < 1
         self._offset = offset
         self._alpha = alpha
@@ -473,20 +473,20 @@ class LeakySoftplus(Base):
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = np.exp(A)
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I: tuple[NDArray, ...], alpha: float, a: float, b: float) -> NDArray:
         A = I[0]
         B = I[1]
         F = np.where(A > a, np.where(np.isposinf(B), A, np.log1p(B)), alpha * A + b)
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I: tuple[NDArray, ...], alpha: float, a: float) -> NDArray:
         A = I[0]
         B = I[1]
         G = np.where(A > a, np.where(np.isposinf(B), 1, 1 - 1 / (1 + B)), alpha)
@@ -503,25 +503,25 @@ class LeakySoftplus(Base):
 
 
 class SELU(Base):
-    def __init__(self, offset=0):
+    def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = np.exp(A - 1)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         F = np.where(A > 1, A, B)
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         G = np.where(A > 1, 1, B)
@@ -538,7 +538,7 @@ class SELU(Base):
 
 
 class LeakySELU(Base):
-    def __init__(self, offset=0, alpha=1e-2):
+    def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         assert 0 <= alpha <= 1
         self._offset = offset
         self._alpha = alpha
@@ -547,13 +547,13 @@ class LeakySELU(Base):
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = np.exp(A - 1)
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I: tuple[NDArray, ...], alpha: float, a: float, b: float) -> NDArray:
         A = I[0]
         B = I[1]
         F = np.where(A > 1, A,
@@ -561,7 +561,7 @@ class LeakySELU(Base):
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I: tuple[NDArray, ...], alpha: float, a: float) -> NDArray:
         A = I[0]
         B = I[1]
         G = np.where(A > 1, 1,
@@ -579,23 +579,23 @@ class LeakySELU(Base):
 
 
 class Quadratic(Base):
-    def __init__(self, offset=0):
+    def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         return (A,)
 
     @staticmethod
-    def _func(I):
+    def _func(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         F = np.where(A > 0, np.square(A), 0)
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         G = np.where(A > 0, 2 * A, 0)
         return G
@@ -611,7 +611,7 @@ class Quadratic(Base):
 
 
 class LeakyQuadratic(Base):
-    def __init__(self, offset=0, alpha=1e-2):
+    def __init__(self, offset: float = 0.0, alpha: float = 1e-2) -> None:
         self._offset = offset
         self._alpha = alpha
         self._a = float(0.5 * alpha)
@@ -619,18 +619,18 @@ class LeakyQuadratic(Base):
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         return (A,)
 
     @staticmethod
-    def _func(I, alpha, a, b):
+    def _func(I: tuple[NDArray, ...], alpha: float, a: float, b: float) -> NDArray:
         A = I[0]
         F = np.where(A > a, np.square(A), alpha * A + b)
         return F
 
     @staticmethod
-    def _grad(I, alpha, a):
+    def _grad(I: tuple[NDArray, ...], alpha: float, a: float) -> NDArray:
         A = I[0]
         G = np.where(A > a, 2 * A, alpha)
         return G
@@ -646,23 +646,23 @@ class LeakyQuadratic(Base):
 
 
 class Sigmoid(Base):
-    def __init__(self, offset=0):
+    def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         B = 1 / (1 + np.exp(-4 * (X + offset)))
         return (B,)
 
     @staticmethod
-    def _func(I):
+    def _func(I: tuple[NDArray, ...]) -> NDArray:
         B = I[0]
         F = B
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I: tuple[NDArray, ...]) -> NDArray:
         B = I[0]
         G = 4 * (B - np.square(B))
         return G
@@ -678,7 +678,7 @@ class Sigmoid(Base):
 
 
 class LeakySigmoid(Base):
-    def __init__(self, offset=0, alpha=1e-2, beta=1e-2):
+    def __init__(self, offset: float = 0.0, alpha: float = 1e-2, beta: float = 1e-2) -> None:
         assert 0 <= alpha <= 1
         assert 0 <= beta <= 1
         self._offset = offset
@@ -693,13 +693,13 @@ class LeakySigmoid(Base):
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = 4 * (X + offset)
         B = 1 / (1 + np.exp(np.negative(A)))
         return (A, B)
 
     @staticmethod
-    def _func(I, alpha, beta, a, b, c, d):
+    def _func(I: tuple[NDArray, ...], alpha: float, beta: float, a: float, b: float, c: float, d: float) -> NDArray:
         A = I[0]
         B = I[1]
         F = np.where(A > c, beta / 4 * A + d,
@@ -707,7 +707,7 @@ class LeakySigmoid(Base):
         return F
 
     @staticmethod
-    def _grad(I, alpha, beta, a, c):
+    def _grad(I: tuple[NDArray, ...], alpha: float, beta: float, a: float, c: float) -> NDArray:
         A = I[0]
         B = I[1]
         G = np.where(A > c, beta,
@@ -725,25 +725,25 @@ class LeakySigmoid(Base):
 
 
 class SiLU(Base):
-    def __init__(self, offset=0):
+    def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = 1 + np.exp(-A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         F = A / B
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         G = A * (B - 1) / np.square(B) + 1 / B
@@ -760,25 +760,25 @@ class SiLU(Base):
 
 
 class GELU(Base):
-    def __init__(self, offset=0):
+    def __init__(self, offset: float = 0.0) -> None:
         self._offset = offset
         super().__init__()
 
     @staticmethod
-    def _intr(X, offset):
+    def _intr(X: NDArray, offset: float) -> tuple[NDArray, ...]:
         A = X + offset
         B = norm.cdf(A)
         return (A, B)
 
     @staticmethod
-    def _func(I):
+    def _func(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         F = A * B
         return F
 
     @staticmethod
-    def _grad(I):
+    def _grad(I: tuple[NDArray, ...]) -> NDArray:
         A = I[0]
         B = I[1]
         G = A * norm.pdf(A) + B
@@ -794,7 +794,7 @@ class GELU(Base):
         return self._grad
 
 
-def get_activation_function(type='smooth_relu2', offset=1, slope=1e-2):
+def get_activation_function(type: str = 'smooth_relu2', offset: float = 1.0, slope: float = 1e-2) -> Base:
     match type:
         case 'relu':
             return ReLU(offset)
