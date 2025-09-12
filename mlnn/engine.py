@@ -1,6 +1,8 @@
 import numpy as np
 from sklearn.decomposition import PCA, KernelPCA
 
+from mlnn.activation import get_activation
+
 
 class MLNNEngine:
     def __init__(self, X, Y, Z=None, mlnn_params=None):
@@ -19,10 +21,9 @@ class MLNNEngine:
         self.reduce_derivative_matrix = False
         self.check_array_equal = False
 
-        if 'inner_loss' not in mlnn_params:
-            from mlnn.activation import ReLU
-            self.inner_loss = ReLU(1)
-        if 'outer_loss' not in mlnn_params:
+        if mlnn_params is None or 'inner_loss' not in mlnn_params:
+            self.inner_loss = get_activation('relu', 1)
+        if mlnn_params is None or 'outer_loss' not in mlnn_params:
             self.outer_loss = self.inner_loss
 
         if mlnn_params:
