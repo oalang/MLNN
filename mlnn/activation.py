@@ -794,7 +794,7 @@ class GELU(ActivationBase):
         return self._grad
 
 
-def get_activation_function(type: str = 'smooth_relu2', offset: float = 1.0, slope: float = 1e-2) -> ActivationBase:
+def get_activation(type: str = 'smooth_relu2', offset: float = 1.0, slope: float = 1e-2) -> ActivationBase:
     match type:
         case 'relu':
             return ReLU(offset)

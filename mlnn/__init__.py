@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from scipy.optimize import bracket, minimize_scalar
 
-from mlnn.activation import get_activation_function
+from mlnn.activation import get_activation
 from mlnn.engine import MLNNEngine
 from mlnn.callback import MLNNCallback
 from mlnn.optimize import MLNNSteepestDescent, MLNNBFGS
@@ -208,13 +208,13 @@ class MLNN:
         else:
             x_mode = 'kernel'
 
-        inner_loss = get_activation_function(
+        inner_loss = get_activation(
             self.mlnn_inner_loss,
             self.mlnn_inner_offset,
             self.mlnn_leaky_slope
         )
 
-        outer_loss = get_activation_function(
+        outer_loss = get_activation(
             self.mlnn_outer_loss,
             self.mlnn_outer_offset,
             self.mlnn_leaky_slope
