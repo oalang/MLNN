@@ -6,10 +6,10 @@ from mlnn.activation import get_activation
 
 class MLNNEngine:
     def __init__(self, X, Y, Z=None, mlnn_params=None):
-        self.r = 0
-        self.s = 0
-        self.l = 1
-        self.q = 1
+        self.r = 0.0
+        self.s = 0.0
+        self.l = 1.0
+        self.q = 1.0
         self.inner_loss = None
         self.outer_loss = None
         self.x_mode = None
@@ -22,7 +22,7 @@ class MLNNEngine:
         self.check_array_equal = False
 
         if mlnn_params is None or 'inner_loss' not in mlnn_params:
-            self.inner_loss = get_activation('relu', 1)
+            self.inner_loss = get_activation('relu', 1.0)
         if mlnn_params is None or 'outer_loss' not in mlnn_params:
             self.outer_loss = self.inner_loss
 
