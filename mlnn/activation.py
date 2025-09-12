@@ -794,8 +794,8 @@ class GELU(ActivationBase):
         return self._grad
 
 
-def get_activation(type: str = 'smooth_relu2', offset: float = 1.0, slope: float = 1e-2) -> ActivationBase:
-    match type:
+def get_activation(name: str = 'relu', offset: float = 0.0, slope: float = 1e-2) -> ActivationBase:
+    match name:
         case 'relu':
             return ReLU(offset)
         case 'leaky_relu':
@@ -837,4 +837,4 @@ def get_activation(type: str = 'smooth_relu2', offset: float = 1.0, slope: float
         case 'gelu':
             return GELU(offset)
         case _:
-            raise ValueError(f"{type} is not a supported activation function")
+            raise ValueError(f"{name} is not a supported activation function")
