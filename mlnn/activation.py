@@ -837,4 +837,4 @@ def get_activation(name: str = 'relu', offset: float = 0.0, slope: float = 1e-2)
         case 'gelu':
             return GELU(offset)
         case _:
-            raise ValueError(f"{name} is not a supported activation function")
+            raise ValueError(f"'{name}' is not a supported activation function")
