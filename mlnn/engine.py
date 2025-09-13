@@ -285,9 +285,11 @@ class MLNNEngine:
     @O_intr.setter
     def O_intr(self, O_intr):
         self._O_intr = O_intr
-        if self.outer_loss is not None:
-            self.L = None
-            self.U = None
+        self.L = None
+        self.U = None
+        self.active_rows = None
+        self.active_cols = None
+        self.active_data = None
 
     @property
     def L(self):
@@ -319,15 +321,13 @@ class MLNNEngine:
     @U.setter
     def U(self, U):
         self._U = U
-        self.active_rows = None
-        self.active_cols = None
-        self.active_data = None
-        self.V = None
+        self.dLdA = None
+        self.dLdE = None
 
     @property
     def active_rows(self):
         if self._active_rows is None:
-            self._compute_subset_active()
+            self._compute_U()
         return self._active_rows
 
     @active_rows.setter
@@ -337,7 +337,7 @@ class MLNNEngine:
     @property
     def active_cols(self):
         if self._active_cols is None:
-            self._compute_subset_active()
+            self._compute_U()
         return self._active_cols
 
     @active_cols.setter
@@ -347,24 +347,12 @@ class MLNNEngine:
     @property
     def active_data(self):
         if self._active_data is None:
-            self._compute_subset_active()
+            self._compute_U()
         return self._active_data
 
     @active_data.setter
     def active_data(self, active_data):
         self._active_data = active_data
-
-    @property
-    def V(self):
-        if self._V is None:
-            self._compute_V()
-        return self._V
-
-    @V.setter
-    def V(self, V):
-        self._V = V
-        self.dLdA = None
-        self.dLdE = None
 
     @property
     def dRdA(self):
@@ -567,17 +555,9 @@ class MLNNEngine:
             self.U *= self.outer_loss.grad_intr(self.O_intr)
         if self.q != 1:
             self.U *= self.Q
-
-    def _compute_subset_active(self):
         self.active_rows = np.any(self.U, axis=1)
         self.active_cols = np.any(self.U, axis=0)
         self.active_data = np.logical_or(self.active_rows, self.active_cols)
-
-    def _compute_V(self):
-        if self.reduce_derivative_matrix:
-            self.V = self.U[np.ix_(self.active_data, self.active_data)]
-        else:
-            self.V = self.U
 
     def _compute_dRdA(self):
         if self.a_mode == 'full':
@@ -595,12 +575,14 @@ class MLNNEngine:
 
     def _compute_dLdA(self):
         if self.active_data.any():
-            W = np.negative(self.V + self.V.T)
-            np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
             if self.reduce_derivative_matrix:
+                V = self.U[np.ix_(self.active_data, self.active_data)]
                 X = self.X[self.active_data]
             else:
+                V = self.U
                 X = self.X
+            W = np.negative(V + V.T)
+            np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
 
             if self.a_mode == 'full':
                 self.dLdA = self.l * (X.T @ W @ X)
@@ -627,14 +609,9 @@ class MLNNEngine:
     def _compute_dLdE(self):
         if self.active_data.any():
             if self.e_mode == 'single':
-                self.dLdE = self.l * -np.sum(self.V, keepdims=True)
+                self.dLdE = self.l * -np.sum(self.U, keepdims=True)
             elif self.e_mode == 'multiple':
-                if self.reduce_derivative_matrix:
-                    C = np.zeros((self.n, 1))
-                    C[self.active_data] = -np.sum(self.V, axis=1, keepdims=True)
-                    self.dLdE = self.l * C
-                else:
-                    self.dLdE = self.l * -np.sum(self.V, axis=1, keepdims=True)
+                self.dLdE = self.l * -np.sum(self.U, axis=1, keepdims=True)
         else:
             self.dLdE = 0
 
@@ -865,7 +842,7 @@ class MLNNEngine:
             n_components = self.m
 
         d = np.minimum(n_components, self.m)
-        M = (np.sqrt(np.clip(self.eigenvalues[self.m - d:], 0).reshape(d, 1))
-             * self.eigenvectors[:, self.m - d:].T)
+        M = (np.sqrt(np.clip(self.eigenvalues[self.m - d:], 0).reshape(d, 1)) *
+             self.eigenvectors[:, self.m - d:].T)
 
         return np.vstack((M, np.zeros((n_components - d, self.m))))

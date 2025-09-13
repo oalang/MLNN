@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 print(jax.__version__)
 
+
 @partial(jax.jit, static_argnames=['offset'])
 def intr_compiled(X, offset):
     A = X + offset

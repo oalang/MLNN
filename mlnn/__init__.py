@@ -321,9 +321,9 @@ class MLNN:
         callback = MLNNCallback(print_stats, self.collect_stats, self.animate, self.callback_fun)
 
         if (
-            self.mlnn_matrix_mode == 'decomposed'
-            and isinstance(self.init, int)
-            and self.mlnn_matrix_init is None
+            self.mlnn_matrix_mode == 'decomposed' and
+            isinstance(self.init, int) and
+            self.mlnn_matrix_init is None
         ):
             init_mlnn_params = self.mlnn_params.copy()
             init_mlnn_params['a_mode'] = 'full'
