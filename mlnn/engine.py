@@ -514,30 +514,30 @@ class MLNNEngine:
         self.I = self.inner_loss.intr((self.D - self.E) * self.T)
 
     def _compute_O(self):
+        O = self.inner_loss.func_intr(self.I)
         if self.q != 1:
-            self.O = self.outer_loss.intr(np.sum(self.Q * self.inner_loss.func_intr(self.I), axis=1, keepdims=True) - self.N)
-        else:
-            self.O = self.outer_loss.intr(np.sum(self.inner_loss.func_intr(self.I), axis=1, keepdims=True) - self.N)
+            O *= self.Q
+        if self.outer_loss is not None:
+            O = self.outer_loss.intr(np.sum(O, axis=1, keepdims=True) - self.N)
+        self.O = O
 
     def _compute_L(self):
         if self.outer_loss is not None:
             self.L = self.l * np.sum(self.outer_loss.func_intr(self.O))
         else:
-            if self.q != 1:
-                self.L = self.l * np.sum(self.Q * self.inner_loss.func_intr(self.I))
-            else:
-                self.L = self.l * np.sum(self.inner_loss.func_intr(self.I))
+            self.L = self.l * np.sum(self.O)
 
     def _compute_F(self):
         self.F = self.R + self.S + self.L
         self.F_count += 1
 
     def _compute_U(self):
-        self.U = self.inner_loss.grad_intr(self.I) * self.T
-        if self.outer_loss is not None:
-            self.U *= self.outer_loss.grad_intr(self.O)
+        U = self.inner_loss.grad_intr(self.I) * self.T
         if self.q != 1:
-            self.U *= self.Q
+            U *= self.Q
+        if self.outer_loss is not None:
+            U *= self.outer_loss.grad_intr(self.O)
+        self.U = U
         self.active_rows = np.any(self.U, axis=1)
         self.active_cols = np.any(self.U, axis=0)
         self.active_data = np.logical_or(self.active_rows, self.active_cols)
