@@ -4,6 +4,206 @@ from sklearn.decomposition import PCA, KernelPCA
 from mlnn.activation import get_activation
 
 
+def compute_T(Y):
+    return np.where(np.equal.outer(Y, Y), 1, -1)
+
+
+def compute_N(T, q):
+    return q * (np.sum(T == 1, axis=1, keepdims=True) - 1)
+
+
+def compute_Q(T, q):
+    return np.where(T == 1, q, 1)
+
+
+def compute_J(Z, A, x_mode, a_mode):
+    if x_mode == 'raw':
+        return A
+    elif x_mode == 'kernel':
+        if a_mode in ('full', 'decomposed'):
+            return A @ Z
+        elif a_mode == 'diagonal':
+            return A * Z
+
+
+def compute_K(A, J, a_mode):
+    if a_mode in ('full', 'diagonal'):
+        return J
+    elif a_mode == 'decomposed':
+        return A @ J.T
+
+
+def compute_R(K, r):
+    return r * .5 * np.vdot(K, K)
+
+
+def compute_S(E, s):
+    return s * .5 * np.sum((E - 1) ** 2)
+
+
+def compute_D(X, A, J, a_mode, Z_equals_X):
+    if a_mode == 'full':
+        if Z_equals_X:
+            P = X @ J
+        else:
+            P = X @ A @ X.T
+    elif a_mode == 'diagonal':
+        if Z_equals_X:
+            P = X @ J
+        else:
+            P = X @ (A * X.T)
+    elif a_mode == 'decomposed':
+        if Z_equals_X:
+            P = J.T @ J
+        else:
+            B = A @ X.T
+            P = B.T @ B
+
+    C = P.diagonal()
+    return np.add.outer(C, C) - 2 * P
+
+
+def compute_I(E, T, D, inner_loss_intr):
+    return inner_loss_intr((D - E) * T)
+
+
+def compute_O(N, Q, I, q, inner_loss_func_intr, outer_loss_intr=None):
+    O = inner_loss_func_intr(I)
+    if q != 1:
+        O *= Q
+    if outer_loss_intr is not None:
+        O = outer_loss_intr(np.sum(O, axis=1, keepdims=True) - N)
+    return O
+
+
+def compute_L(O, l, outer_loss_func_intr=None):
+    if outer_loss_func_intr is not None:
+        return l * np.sum(outer_loss_func_intr(O))
+    else:
+        return l * np.sum(O)
+
+
+def compute_F(R, S, L):
+    return R + S + L
+
+
+def compute_U(T, Q, I, O, q, inner_loss_grad_intr, outer_loss_grad_intr=None):
+    U = inner_loss_grad_intr(I) * T
+    if q != 1:
+        U *= Q
+    if outer_loss_grad_intr is not None:
+        U *= outer_loss_grad_intr(O)
+    active_rows = np.any(U, axis=1)
+    active_cols = np.any(U, axis=0)
+    active_data = np.logical_or(active_rows, active_cols)
+    none_active = not active_data.any()
+    return U, active_rows, active_cols, active_data, none_active
+
+
+def compute_dRdA():
+    if self.a_mode == 'full':
+        if self.x_mode == 'raw':
+            self.dRdA = self.r * self.K
+        elif self.x_mode == 'kernel':
+            self.dRdA = self.r * self.Z @ self.K
+    elif self.a_mode == 'diagonal':
+        if self.x_mode == 'raw':
+            self.dRdA = self.r * self.K
+        elif self.x_mode == 'kernel':
+            self.dRdA = self.r * np.sum(self.Z * self.K, axis=1, keepdims=True)
+    elif self.a_mode == 'decomposed':
+        self.dRdA = self.r * 2 * self.K @ self.J
+
+
+def compute_dLdA():
+    if self.none_active:
+        self.dLdA = 0
+    else:
+        if self.reduce_derivative_matrix:
+            V = self.U[np.ix_(self.active_data, self.active_data)]
+            X = self.X[self.active_data]
+        else:
+            V = self.U
+            X = self.X
+        W = np.negative(V + V.T)
+        np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
+
+        if self.a_mode == 'full':
+            self.dLdA = self.l * (X.T @ W @ X)
+        elif self.a_mode == 'diagonal':
+            self.dLdA = self.l * np.sum(X.T * (W @ X).T, axis=1, keepdims=True)
+        elif self.a_mode == 'decomposed':
+            self.dLdA = self.l * 2 * ((self.A @ X.T) @ W @ X)
+
+
+def compute_dFdA():
+    self.dFdA = self.dRdA + self.dLdA
+    self.dFdA_count += 1
+
+
+def compute_phiA():
+    if np.isscalar(self.dFdA):
+        self.phiA = 0
+    else:
+        self.phiA = -np.vdot(self.dFdA, self.dFdA)
+
+
+def compute_dSdE():
+    self.dSdE = self.s * (self.E - 1)
+
+
+def compute_dLdE():
+    if self.none_active:
+        self.dLdE = 0
+    else:
+        if self.e_mode == 'single':
+            self.dLdE = self.l * -np.sum(self.U, keepdims=True)
+        elif self.e_mode == 'multiple':
+            self.dLdE = self.l * -np.sum(self.U, axis=1, keepdims=True)
+
+
+def compute_dFdE():
+    self.dFdE = self.dSdE + self.dLdE
+    self.dFdE_count += 1
+
+
+def compute_phiE():
+    if np.isscalar(self.dFdE):
+        self.phiE = 0
+    else:
+        self.phiE = -np.vdot(self.dFdE, self.dFdE)
+
+
+def compute_A_is_psd():
+    if self.a_mode == 'full':
+        try:
+            np.linalg.cholesky(self.A)
+            self.A_is_psd = True
+        except np.linalg.LinAlgError:
+            self.A_is_psd = False
+    elif self.a_mode == 'diagonal':
+        if np.all(self.A >= 0):
+            self.A_is_psd = True
+        else:
+            self.A_is_psd = False
+    elif self.a_mode == 'decomposed':
+        self.A_is_psd = True
+
+
+def compute_eigh():
+    if self.a_mode == 'full':
+        self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.A)
+        self.eigh_count += 1
+    elif self.a_mode == 'diagonal':
+        G = self.A.ravel()
+        H = np.argsort(G)
+        self.eigenvalues = G[H]
+        self.eigenvectors = np.identity(self.m)[:, H]
+    elif self.a_mode == 'decomposed':
+        self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.A.T @ self.A)
+        self.eigh_count += 1
+
+
 class MLNNEngine:
     def __init__(self, X, Y, Z=None, mlnn_params=None):
         self.r = 0.0
