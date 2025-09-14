@@ -268,6 +268,7 @@ class MLNNEngine:
         self.active_rows = None
         self.active_cols = None
         self.active_data = None
+        self.none_active = None
 
     @property
     def L(self):
@@ -331,6 +332,16 @@ class MLNNEngine:
     @active_data.setter
     def active_data(self, active_data):
         self._active_data = active_data
+
+    @property
+    def none_active(self):
+        if self._none_active is None:
+            self._compute_U()
+        return self._none_active
+
+    @none_active.setter
+    def none_active(self, none_active):
+        self._none_active = none_active
 
     @property
     def dRdA(self):
@@ -449,7 +460,7 @@ class MLNNEngine:
         self._eigenvectors = eigenvectors
 
     def _compute_T(self):
-        self.T = np.where(np.equal.outer(self.Y.ravel(), self.Y.ravel()), 1, -1)
+        self.T = np.where(np.equal.outer(self.Y, self.Y), 1, -1)
 
     def _compute_N(self):
         self.N = self.q * (np.sum(self.T == 1, axis=1, keepdims=True) - 1)
@@ -530,6 +541,7 @@ class MLNNEngine:
         self.active_rows = np.any(self.U, axis=1)
         self.active_cols = np.any(self.U, axis=0)
         self.active_data = np.logical_or(self.active_rows, self.active_cols)
+        self.none_active = self.active_data.any()
 
     def _compute_dRdA(self):
         if self.a_mode == 'full':
@@ -546,7 +558,9 @@ class MLNNEngine:
             self.dRdA = self.r * 2 * self.K @ self.J
 
     def _compute_dLdA(self):
-        if self.active_data.any():
+        if self.none_active:
+            self.dLdA = 0
+        else:
             if self.reduce_derivative_matrix:
                 V = self.U[np.ix_(self.active_data, self.active_data)]
                 X = self.X[self.active_data]
@@ -562,8 +576,6 @@ class MLNNEngine:
                 self.dLdA = self.l * np.sum(X.T * (W @ X).T, axis=1, keepdims=True)
             elif self.a_mode == 'decomposed':
                 self.dLdA = self.l * 2 * ((self.A @ X.T) @ W @ X)
-        else:
-            self.dLdA = 0
 
     def _compute_dFdA(self):
         self.dFdA = self.dRdA + self.dLdA
@@ -579,13 +591,13 @@ class MLNNEngine:
         self.dSdE = self.s * (self.E - 1)
 
     def _compute_dLdE(self):
-        if self.active_data.any():
+        if self.none_active:
+            self.dLdE = 0
+        else:
             if self.e_mode == 'single':
                 self.dLdE = self.l * -np.sum(self.U, keepdims=True)
             elif self.e_mode == 'multiple':
                 self.dLdE = self.l * -np.sum(self.U, axis=1, keepdims=True)
-        else:
-            self.dLdE = 0
 
     def _compute_dFdE(self):
         self.dFdE = self.dSdE + self.dLdE

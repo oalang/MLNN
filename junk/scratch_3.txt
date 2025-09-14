@@ -4,6 +4,10 @@ Add unit test for different modes of opperation
 Make functions composable for jax/jit
 Sort data if animation = "all"
 
+move "if self.outer_loss" to _compute_O
+mask using boolean same class matrics (benchmark)
+unfunc in_place, out, where, += -= *=
+
 func v grad shared computation
 base class
 intr(self, X)
