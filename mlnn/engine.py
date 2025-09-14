@@ -541,7 +541,7 @@ class MLNNEngine:
         self.active_rows = np.any(self.U, axis=1)
         self.active_cols = np.any(self.U, axis=0)
         self.active_data = np.logical_or(self.active_rows, self.active_cols)
-        self.none_active = self.active_data.any()
+        self.none_active = not self.active_data.any()
 
     def _compute_dRdA(self):
         if self.a_mode == 'full':
