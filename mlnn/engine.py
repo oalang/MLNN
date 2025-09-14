@@ -252,17 +252,6 @@ class MLNNEngine:
     @I.setter
     def I(self, I):
         self._I = I
-        self.I_intr = None
-
-    @property
-    def I_intr(self):
-        if self._I_intr is None:
-            self._compute_I_intr()
-        return self._I_intr
-
-    @I_intr.setter
-    def I_intr(self, I_intr):
-        self._I_intr = I_intr
         self.O = None
 
     @property
@@ -274,17 +263,6 @@ class MLNNEngine:
     @O.setter
     def O(self, O):
         self._O = O
-        self.O_intr = None
-
-    @property
-    def O_intr(self):
-        if self._O_intr is None:
-            self._compute_O_intr()
-        return self._O_intr
-
-    @O_intr.setter
-    def O_intr(self, O_intr):
-        self._O_intr = O_intr
         self.L = None
         self.U = None
         self.active_rows = None
@@ -522,37 +500,31 @@ class MLNNEngine:
         self.D = np.add.outer(C, C) - 2 * P
 
     def _compute_I(self):
-        self.I = (self.D - self.E) * self.T
-
-    def _compute_I_intr(self):
-        self.I_intr = self.inner_loss.intr(self.I)
+        self.I = self.inner_loss.intr((self.D - self.E) * self.T)
 
     def _compute_O(self):
         if self.q != 1:
-            self.O = np.sum(self.Q * self.inner_loss.func_intr(self.I_intr), axis=1, keepdims=True) - self.N
+            self.O = self.outer_loss.intr(np.sum(self.Q * self.inner_loss.func_intr(self.I), axis=1, keepdims=True) - self.N)
         else:
-            self.O = np.sum(self.inner_loss.func_intr(self.I_intr), axis=1, keepdims=True) - self.N
-
-    def _compute_O_intr(self):
-        self.O_intr = self.outer_loss.intr(self.O)
+            self.O = self.outer_loss.intr(np.sum(self.inner_loss.func_intr(self.I), axis=1, keepdims=True) - self.N)
 
     def _compute_L(self):
         if self.outer_loss is not None:
-            self.L = self.l * np.sum(self.outer_loss.func_intr(self.O_intr))
+            self.L = self.l * np.sum(self.outer_loss.func_intr(self.O))
         else:
             if self.q != 1:
-                self.L = self.l * np.sum(self.Q * self.inner_loss.func_intr(self.I_intr))
+                self.L = self.l * np.sum(self.Q * self.inner_loss.func_intr(self.I))
             else:
-                self.L = self.l * np.sum(self.inner_loss.func_intr(self.I_intr))
+                self.L = self.l * np.sum(self.inner_loss.func_intr(self.I))
 
     def _compute_F(self):
         self.F = self.R + self.S + self.L
         self.F_count += 1
 
     def _compute_U(self):
-        self.U = self.inner_loss.grad_intr(self.I_intr) * self.T
+        self.U = self.inner_loss.grad_intr(self.I) * self.T
         if self.outer_loss is not None:
-            self.U *= self.outer_loss.grad_intr(self.O_intr)
+            self.U *= self.outer_loss.grad_intr(self.O)
         if self.q != 1:
             self.U *= self.Q
         self.active_rows = np.any(self.U, axis=1)
