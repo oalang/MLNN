@@ -257,10 +257,11 @@ class MLNNEngine:
         self.Z_equals_X = False
         if self.x_mode == 'raw':
             assert Z is None
+            self.Z = None
         elif self.x_mode == 'kernel':
             if Z is None:
-                self.Z = self.X
                 self.Z_equals_X = True
+                self.Z = self.X
             else:
                 self.Z = Z
 
@@ -706,12 +707,12 @@ class MLNNEngine:
 
     def _compute_U(self):
         if self.outer_loss is not None:
-            self.active_rows, self.active_cols, self.active_data, self.none_active = compute_U(
-                self.T, self.Q, self.I, self.q, self.inner_loss.grad_intr,
+            self.U, self.active_rows, self.active_cols, self.active_data, self.none_active = compute_U(
+                self.T, self.Q, self.I, self.O, self.q, self.inner_loss.grad_intr,
                 self.outer_loss.grad_intr)
         else:
-            self.active_rows, self.active_cols, self.active_data, self.none_active = compute_U(
-                self.T, self.Q, self.I, self.q, self.inner_loss.grad_intr)
+            self.U, self.active_rows, self.active_cols, self.active_data, self.none_active = compute_U(
+                self.T, self.Q, self.I, self.O, self.q, self.inner_loss.grad_intr)
 
     def _compute_dRdA(self):
         self.dRdA = compute_dRdA(self.Z, self.J, self.K, self.r, self.x_mode, self.a_mode)

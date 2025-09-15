@@ -5,7 +5,7 @@ Make functions composable for jax/jit
 Sort data if animation = "all"
 
 scalar d + d?
-move "if self.outer_loss" to _compute_O
+substiture self.m in compute function
 mask using boolean same class matrics (benchmark)
 unfunc in_place, out, where, += -= *=
 
