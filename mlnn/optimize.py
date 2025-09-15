@@ -350,7 +350,7 @@ class MLNNSteepestDescent(MLNNOptimizer):
         alpha_prev = self.alpha
 
         # Compute phi, the gradient of F with respect to the step size, alpha.
-        phi = 0
+        phi = 0.0
         if 'A' in arguments and self.mlnn.phiA:
             dA = self.mlnn.dFdA
             phi += self.mlnn.phiA
@@ -362,8 +362,8 @@ class MLNNSteepestDescent(MLNNOptimizer):
         else:
             dE = None
 
-        # If phi == 0, F is at a minimum or a saddle point. Return without taking a step.
-        if phi == 0:
+        # If phi == 0.0, F is at a minimum or a saddle point. Return without taking a step.
+        if phi == 0.0:
             self.termination = 'zero_phi'
             return False
 
