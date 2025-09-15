@@ -16,6 +16,7 @@ def compute_Q(T, q):
     return np.where(T == 1, q, 1)
 
 
+# @partial(jax.jit, static_argnames=['x_mode', 'a_mode'])
 def compute_J(Z, A, x_mode, a_mode):
     if x_mode == 'raw':
         return A
@@ -26,6 +27,7 @@ def compute_J(Z, A, x_mode, a_mode):
             return A * Z
 
 
+# @partial(jax.jit, static_argnames=['a_mode'])
 def compute_K(A, J, a_mode):
     if a_mode in ('full', 'diagonal'):
         return J
@@ -33,14 +35,17 @@ def compute_K(A, J, a_mode):
         return A @ J.T
 
 
+# @partial(jax.jit, static_argnames=['r'])
 def compute_R(K, r):
     return r * .5 * np.vdot(K, K)
 
 
+# @partial(jax.jit, static_argnames=['s'])
 def compute_S(E, s):
     return s * .5 * np.sum((E - 1) ** 2)
 
 
+# @partial(jax.jit, static_argnames=['a_mode', 'Z_equals_X'])
 def compute_D(X, A, J, a_mode, Z_equals_X):
     if a_mode == 'full':
         if Z_equals_X:
@@ -58,15 +63,16 @@ def compute_D(X, A, J, a_mode, Z_equals_X):
         else:
             B = A @ X.T
             P = B.T @ B
-
     C = P.diagonal()
     return np.add.outer(C, C) - 2 * P
 
 
+# @partial(jax.jit, static_argnames=['inner_loss_intr'])
 def compute_I(E, T, D, inner_loss_intr):
     return inner_loss_intr((D - E) * T)
 
 
+# @partial(jax.jit, static_argnames=['q', 'inner_loss_func_intr', 'outer_loss_intr'])
 def compute_O(N, Q, I, q, inner_loss_func_intr, outer_loss_intr=None):
     O = inner_loss_func_intr(I)
     if q != 1:
@@ -76,6 +82,7 @@ def compute_O(N, Q, I, q, inner_loss_func_intr, outer_loss_intr=None):
     return O
 
 
+# @partial(jax.jit, static_argnames=['l', 'outer_loss_func_intr'])
 def compute_L(O, l, outer_loss_func_intr=None):
     if outer_loss_func_intr is not None:
         return l * np.sum(outer_loss_func_intr(O))
@@ -83,10 +90,12 @@ def compute_L(O, l, outer_loss_func_intr=None):
         return l * np.sum(O)
 
 
+# @partial(jax.jit, static_argnames=[])
 def compute_F(R, S, L):
     return R + S + L
 
 
+# @partial(jax.jit, static_argnames=['q', 'inner_loss_grad_intr', 'outer_loss_grad_intr'])
 def compute_U(T, Q, I, O, q, inner_loss_grad_intr, outer_loss_grad_intr=None):
     U = inner_loss_grad_intr(I) * T
     if q != 1:
@@ -100,108 +109,99 @@ def compute_U(T, Q, I, O, q, inner_loss_grad_intr, outer_loss_grad_intr=None):
     return U, active_rows, active_cols, active_data, none_active
 
 
-def compute_dRdA():
-    if self.a_mode == 'full':
-        if self.x_mode == 'raw':
-            self.dRdA = self.r * self.K
-        elif self.x_mode == 'kernel':
-            self.dRdA = self.r * self.Z @ self.K
-    elif self.a_mode == 'diagonal':
-        if self.x_mode == 'raw':
-            self.dRdA = self.r * self.K
-        elif self.x_mode == 'kernel':
-            self.dRdA = self.r * np.sum(self.Z * self.K, axis=1, keepdims=True)
-    elif self.a_mode == 'decomposed':
-        self.dRdA = self.r * 2 * self.K @ self.J
+# @partial(jax.jit, static_argnames=['r', 'x_mode', 'a_mode'])
+def compute_dRdA(Z, J, K, r, x_mode, a_mode):
+    if a_mode == 'full':
+        if x_mode == 'raw':
+            return r * K
+        elif x_mode == 'kernel':
+            return r * Z @ K
+    elif a_mode == 'diagonal':
+        if x_mode == 'raw':
+            return r * K
+        elif x_mode == 'kernel':
+            return r * np.sum(Z * K, axis=1, keepdims=True)
+    elif a_mode == 'decomposed':
+        return r * 2 * K @ J
 
 
-def compute_dLdA():
-    if self.none_active:
-        self.dLdA = 0
-    else:
-        if self.reduce_derivative_matrix:
-            V = self.U[np.ix_(self.active_data, self.active_data)]
-            X = self.X[self.active_data]
-        else:
-            V = self.U
-            X = self.X
-        W = np.negative(V + V.T)
-        np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
-
-        if self.a_mode == 'full':
-            self.dLdA = self.l * (X.T @ W @ X)
-        elif self.a_mode == 'diagonal':
-            self.dLdA = self.l * np.sum(X.T * (W @ X).T, axis=1, keepdims=True)
-        elif self.a_mode == 'decomposed':
-            self.dLdA = self.l * 2 * ((self.A @ X.T) @ W @ X)
+# @partial(jax.jit, static_argnames=['l', 'a_mode', 'reduce_derivative_matrix'])
+def compute_dLdA(X, A, U, active_data, l, a_mode, reduce_derivative_matrix):
+    if reduce_derivative_matrix:
+        U = U[np.ix_(active_data, active_data)]
+        X = X[active_data]
+    W = np.negative(U + U.T)
+    np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
+    if a_mode == 'full':
+        return l * (X.T @ W @ X)
+    elif a_mode == 'diagonal':
+        return l * np.sum(X.T * (W @ X).T, axis=1, keepdims=True)
+    elif a_mode == 'decomposed':
+        return l * 2 * ((A @ X.T) @ W @ X)
 
 
-def compute_dFdA():
-    self.dFdA = self.dRdA + self.dLdA
-    self.dFdA_count += 1
+# @partial(jax.jit, static_argnames=[])
+def compute_dFdA(dRdA, dLdA):
+    return dRdA + dLdA
 
 
-def compute_phiA():
-    if np.isscalar(self.dFdA):
-        self.phiA = 0
-    else:
-        self.phiA = -np.vdot(self.dFdA, self.dFdA)
+# @partial(jax.jit, static_argnames=[])
+def compute_phiA(dFdA):
+    return -np.vdot(dFdA, dFdA)
 
 
-def compute_dSdE():
-    self.dSdE = self.s * (self.E - 1)
+# @partial(jax.jit, static_argnames=['s'])
+def compute_dSdE(E, s):
+    return s * (E - 1)
 
 
-def compute_dLdE():
-    if self.none_active:
-        self.dLdE = 0
-    else:
-        if self.e_mode == 'single':
-            self.dLdE = self.l * -np.sum(self.U, keepdims=True)
-        elif self.e_mode == 'multiple':
-            self.dLdE = self.l * -np.sum(self.U, axis=1, keepdims=True)
+# @partial(jax.jit, static_argnames=[l, e_mode])
+def compute_dLdE(U, l, e_mode):
+    if e_mode == 'single':
+        return l * -np.sum(U, keepdims=True)
+    elif e_mode == 'multiple':
+        return l * -np.sum(U, axis=1, keepdims=True)
 
 
-def compute_dFdE():
-    self.dFdE = self.dSdE + self.dLdE
-    self.dFdE_count += 1
+# @partial(jax.jit, static_argnames=[])
+def compute_dFdE(dSdE, dLdE):
+    return dSdE + dLdE
 
 
-def compute_phiE():
-    if np.isscalar(self.dFdE):
-        self.phiE = 0
-    else:
-        self.phiE = -np.vdot(self.dFdE, self.dFdE)
+# @partial(jax.jit, static_argnames=[])
+def compute_phiE(dFdE):
+    return -np.vdot(dFdE, dFdE)
 
 
-def compute_A_is_psd():
-    if self.a_mode == 'full':
+# @partial(jax.jit, static_argnames=['a_mode'])
+def compute_A_is_psd(A, a_mode):
+    if a_mode == 'full':
         try:
-            np.linalg.cholesky(self.A)
-            self.A_is_psd = True
+            np.linalg.cholesky(A)
+            return True
         except np.linalg.LinAlgError:
-            self.A_is_psd = False
-    elif self.a_mode == 'diagonal':
-        if np.all(self.A >= 0):
-            self.A_is_psd = True
+            return False
+    elif a_mode == 'diagonal':
+        if np.all(A >= 0):
+            return True
         else:
-            self.A_is_psd = False
-    elif self.a_mode == 'decomposed':
-        self.A_is_psd = True
+            return False
+    elif a_mode == 'decomposed':
+        return True
 
 
-def compute_eigh():
-    if self.a_mode == 'full':
-        self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.A)
-        self.eigh_count += 1
-    elif self.a_mode == 'diagonal':
-        G = self.A.ravel()
+# @partial(jax.jit, static_argnames=['a_mode', 'm'])
+def compute_eigh(A, a_mode, m):
+    if a_mode == 'full':
+        eigenvalues, eigenvectors = np.linalg.eigh(A)
+    elif a_mode == 'diagonal':
+        G = A.ravel()
         H = np.argsort(G)
-        self.eigenvalues = G[H]
-        self.eigenvectors = np.identity(self.m)[:, H]
-    elif self.a_mode == 'decomposed':
-        self.eigenvalues, self.eigenvectors = np.linalg.eigh(self.A.T @ self.A)
-        self.eigh_count += 1
+        eigenvalues = G[H]
+        eigenvectors = np.identity(m)[:, H]
+    elif a_mode == 'decomposed':
+        eigenvalues, eigenvectors = np.linalg.eigh(A.T @ A)
+    return eigenvalues, eigenvectors
 
 
 class MLNNEngine:
