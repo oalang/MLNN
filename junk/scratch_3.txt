@@ -7,14 +7,18 @@ Sort data if animation = "all"
 getters: dFdA, dFdE, A, E (only if converting to NumPy)
 setters: dFdA, dFdE, A, E (only if converting from NumPy)
 
-active_rows
-active_cols
-active_data
-U
-get_transformation_matrix() - self.A.shape[0]?
-D
 X
 Y
+A     getter+setter
+E     getter+setter
+dFdA  getter+setter
+dFdE  getter+setter
+D
+U
+active_rows and/or active_rows_count
+active_cols and/or active_cols_count
+active_data and/or active_data_count
+V get_transformation_matrix() - self.A.shape[0]?
 
 * _A_psd_projection
 * _A_centered_projection
@@ -25,7 +29,7 @@ Y
   compute_E_0
 * fun
 * jac
-* get_transformation_matrix (V)
+* get_transformation_matrix (V) - self.A.shape[0]?
 
 
 substiture self.m in compute function
