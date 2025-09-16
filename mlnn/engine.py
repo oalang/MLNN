@@ -725,7 +725,14 @@ class MLNNEngine:
                                      self.reduce_derivative_matrix)
 
     def _compute_dFdA(self):
-        self.dFdA = compute_dFdA(self.dRdA, self.dLdA)
+        if np.isscalar(self.dRdA) and np.isscalar(self.dLdA):
+            self.dFdA = 0
+        elif not np.isscalar(self.dRdA) and np.isscalar(self.dLdA):
+            self.dFdA = self.dRdA
+        elif np.isscalar(self.dRdA) and not np.isscalar(self.dLdA):
+            self.dFdA = self.dLdA
+        else:
+            self.dFdA = compute_dFdA(self.dRdA, self.dLdA)
         self.dFdA_count += 1
 
     def _compute_phiA(self):
@@ -744,7 +751,14 @@ class MLNNEngine:
             self.dLdE = compute_dLdE(self.U, self.l, self.e_mode)
 
     def _compute_dFdE(self):
-        self.dFdE = compute_dFdE(self.dSdE, self.dLdE)
+        if np.isscalar(self.dSdE) and np.isscalar(self.dLdE):
+            self.dFdE = 0
+        elif not np.isscalar(self.dSdE) and np.isscalar(self.dLdE):
+            self.dFdE = self.dSdE
+        elif np.isscalar(self.dSdE) and not np.isscalar(self.dLdE):
+            self.dFdE = self.dLdE
+        else:
+            self.dFdE = compute_dFdE(self.dSdE, self.dLdE)
         self.dFdE_count += 1
 
     def _compute_phiE(self):

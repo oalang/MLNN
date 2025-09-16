@@ -1,13 +1,19 @@
 Stochastic gradient descent with random batch selection based on selection and active coount
 active / selection + dynamic epsilon
-Add unit test for different modes of opperation
+Add unit test for different modes of operation
 Make functions composable for jax/jit
 Sort data if animation = "all"
 
-scalar d + d?
+getters: dFdA, dFdE, A, E
+setters: dFdA, dFdE, A, E
+
 substiture self.m in compute function
 mask using boolean same class matrics (benchmark)
 unfunc in_place, out, where, += -= *=
+set and get functions for interacting with MLNNEngine
+Scalars are python floats
+__init__ and optimize should not need JAX
+grid search unit test
 
 func v grad shared computation
 base class
