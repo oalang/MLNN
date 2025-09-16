@@ -4,8 +4,29 @@ Add unit test for different modes of operation
 Make functions composable for jax/jit
 Sort data if animation = "all"
 
-getters: dFdA, dFdE, A, E
-setters: dFdA, dFdE, A, E
+getters: dFdA, dFdE, A, E (only if converting to NumPy)
+setters: dFdA, dFdE, A, E (only if converting from NumPy)
+
+active_rows
+active_cols
+active_data
+U
+get_transformation_matrix() - self.A.shape[0]?
+D
+X
+Y
+
+* _A_psd_projection
+* _A_centered_projection
+* _E_positive_projection
+* update_A
+* update_E
+  compute_A_0
+  compute_E_0
+* fun
+* jac
+* get_transformation_matrix (V)
+
 
 substiture self.m in compute function
 mask using boolean same class matrics (benchmark)
@@ -35,3 +56,5 @@ verbose=0 | 0, 1, 2
 
 Expand[Piecewise[{{0, x <= -1 / 2}, {2 / 3 * (x + 1 / 2) ^ 3, -1 / 2 < x <= 0}, {-2 / 3 * (x + 1 / 2) ^ 3 + 2 * (x + 1 / 2) ^ 2 - x - 1 / 3, 0 < x <= 1 / 2}, {x, 1 / 2 < x}}]]
 Expand[D[Piecewise[{{0, x <= -1 / 2}, {2 / 3 * (x + 1 / 2) ^ 3, -1 / 2 < x <= 0}, {-2 / 3 * (x + 1 / 2) ^ 3 + 2 * (x + 1 / 2) ^ 2 - x - 1 / 3, 0 < x <= 1 / 2}, {x, 1 / 2 < x}}], x]]
+
+
