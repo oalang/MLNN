@@ -3,6 +3,25 @@ active / selection + dynamic epsilon
 Add unit test for different modes of operation
 Make functions composable for jax/jit
 Sort data if animation = "all"
+Return zeros array and boolean
+Remove r and s gating
+Reorder everything
+
+jax.lax.cond
+K = empty if r is 0
+
+dF = zeros, if ... +=, if ... +=
+
+get rid of outer loss if statement, precompute if None
+
+static variables
+(T, N, compute_Q)
+intermediate variables module
+(J, K, I, O) (D)
+F module
+R, S, L) (F)
+dF module
+U, phiA, phiE), (dFdA, dFdE)
 
 getters: dFdA, dFdE, A, E (only if converting to NumPy)
 setters: dFdA, dFdE, A, E (only if converting from NumPy)
@@ -30,6 +49,7 @@ V get_transformation_matrix() - self.A.shape[0]?
 * fun
 * jac
 * get_transformation_matrix (V) - self.A.shape[0]?
+* get X transformed n_components <- static
 
 
 substiture self.m in compute function
@@ -61,4 +81,8 @@ verbose=0 | 0, 1, 2
 Expand[Piecewise[{{0, x <= -1 / 2}, {2 / 3 * (x + 1 / 2) ^ 3, -1 / 2 < x <= 0}, {-2 / 3 * (x + 1 / 2) ^ 3 + 2 * (x + 1 / 2) ^ 2 - x - 1 / 3, 0 < x <= 1 / 2}, {x, 1 / 2 < x}}]]
 Expand[D[Piecewise[{{0, x <= -1 / 2}, {2 / 3 * (x + 1 / 2) ^ 3, -1 / 2 < x <= 0}, {-2 / 3 * (x + 1 / 2) ^ 3 + 2 * (x + 1 / 2) ^ 2 - x - 1 / 3, 0 < x <= 1 / 2}, {x, 1 / 2 < x}}], x]]
 
+(shared) (secondary) (primary)
+(J, K, I, O) (D, R, S, L) (F)
+(J, K, I, O) (D, U, phiA, phiE), (dFdA, dFdE)
 
+Reorder everything
