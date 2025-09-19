@@ -3,13 +3,23 @@ from sklearn.decomposition import PCA, KernelPCA
 
 from mlnn.activation import get_activation
 
+USE_ALT_FUNCS = True
+
 
 def compute_T(Y):
     return np.where(np.equal.outer(Y, Y), 1, -1)
 
 
+def alt_compute_T(Y):
+    return np.equal.outer(Y, Y)
+
+
 def compute_N(T, q):
     return q * (np.sum(T == 1, axis=1, keepdims=True) - 1)
+
+
+def alt_compute_N(T, q):
+    return q * (np.sum(T, axis=1, keepdims=True) - 1)
 
 
 def compute_Q(T, q):
@@ -81,11 +91,27 @@ def compute_I(E, T, D, inner_loss_intr):
     return inner_loss_intr((D - E) * T)
 
 
+# @partial(jax.jit, static_argnames=['inner_loss_intr'])
+def alt_compute_I(E, T, D, inner_loss_intr):
+    I = E - D
+    return inner_loss_intr(np.negative(I, out=I, where=T))
+
+
 # @partial(jax.jit, static_argnames=['q', 'inner_loss_func_intr', 'outer_loss_intr'])
 def compute_O(N, Q, I, q, inner_loss_func_intr, outer_loss_intr=None):
     O = inner_loss_func_intr(I)
     if q != 1:
         O *= Q
+    if outer_loss_intr is not None:
+        O = outer_loss_intr(np.sum(O, axis=1, keepdims=True) - N)
+    return O
+
+
+# @partial(jax.jit, static_argnames=['q', 'inner_loss_func_intr', 'outer_loss_intr'])
+def alt_compute_O(T, N, I, q, inner_loss_func_intr, outer_loss_intr=None):
+    O = inner_loss_func_intr(I)
+    if q != 1:
+        np.multiply(O, q, out=O, where=T)
     if outer_loss_intr is not None:
         O = outer_loss_intr(np.sum(O, axis=1, keepdims=True) - N)
     return O
@@ -109,6 +135,20 @@ def compute_U(T, Q, I, O, q, inner_loss_grad_intr, outer_loss_grad_intr=None):
     U = inner_loss_grad_intr(I) * T
     if q != 1:
         U *= Q
+    if outer_loss_grad_intr is not None:
+        U *= outer_loss_grad_intr(O)
+    active_rows = np.any(U, axis=1)
+    active_cols = np.any(U, axis=0)
+    active_data = np.logical_or(active_rows, active_cols)
+    any_active = active_data.any()
+    return U, active_rows, active_cols, active_data, any_active
+
+
+def alt_compute_U(T, I, O, q, inner_loss_grad_intr, outer_loss_grad_intr=None):
+    U = inner_loss_grad_intr(I)
+    np.negative(U, out=U, where=~T)
+    if q != 1:
+        np.multiply(U, q, out=U, where=T)
     if outer_loss_grad_intr is not None:
         U *= outer_loss_grad_intr(O)
     active_rows = np.any(U, axis=1)
@@ -700,10 +740,16 @@ class MLNNEngine:
         self._eigenvecs = eigenvecs
 
     def _compute_T(self):
-        self.T = compute_T(self.Y)
+        if not USE_ALT_FUNCS:
+            self.T = compute_T(self.Y)
+        else:
+            self.T = alt_compute_T(self.Y)
 
     def _compute_N(self):
-        self.N = compute_N(self.T, self.q)
+        if not USE_ALT_FUNCS:
+            self.N = compute_N(self.T, self.q)
+        else:
+            self.N = alt_compute_N(self.T, self.q)
 
     def _compute_Q(self):
         self.Q = compute_Q(self.T, self.q)
@@ -724,10 +770,16 @@ class MLNNEngine:
         self.D = compute_D(self.X, self.A, self.J, self.a_mode, self.Z_equals_X)
 
     def _compute_I(self):
-        self.I = compute_I(self.E, self.T, self.D, self.inner_loss_intr)
+        if not USE_ALT_FUNCS:
+            self.I = compute_I(self.E, self.T, self.D, self.inner_loss_intr)
+        else:
+            self.I = alt_compute_I(self.E, self.T, self.D, self.inner_loss_intr)
 
     def _compute_O(self):
-        self.O = compute_O(self.N, self.Q, self.I, self.q, self.inner_loss_func_intr, self.outer_loss_intr)
+        if not USE_ALT_FUNCS:
+            self.O = compute_O(self.N, self.Q, self.I, self.q, self.inner_loss_func_intr, self.outer_loss_intr)
+        else:
+            self.O = alt_compute_O(self.T, self.N, self.I, self.q, self.inner_loss_func_intr, self.outer_loss_intr)
 
     def _compute_L(self):
         self.L = compute_L(self.O, self.l, self.outer_loss_func_intr)
@@ -737,8 +789,12 @@ class MLNNEngine:
         self.F_count += 1
 
     def _compute_U(self):
-        self.U, self.active_rows, self.active_cols, self.active_data, self.any_active = compute_U(
-            self.T, self.Q, self.I, self.O, self.q, self.inner_loss_grad_intr, self.outer_loss_grad_intr)
+        if not USE_ALT_FUNCS:
+            self.U, self.active_rows, self.active_cols, self.active_data, self.any_active = compute_U(
+                self.T, self.Q, self.I, self.O, self.q, self.inner_loss_grad_intr, self.outer_loss_grad_intr)
+        else:
+            self.U, self.active_rows, self.active_cols, self.active_data, self.any_active = alt_compute_U(
+                self.T, self.I, self.O, self.q, self.inner_loss_grad_intr, self.outer_loss_grad_intr)
 
     def _compute_dRdA(self):
         self.dRdA = compute_dRdA(self.Z, self.J, self.K, self.r, self.x_mode, self.a_mode)
@@ -896,7 +952,7 @@ class MLNNEngine:
             if initialization == 'zero':
                 E = 0.0
             elif initialization == 'random':
-                E = float(np.square(rng.standard_normal()))
+                E = np.square(rng.standard_normal())
             elif initialization in ('identity', 'centered', 'pca', 'kpca'):
                 E = 1.0
         elif self.e_mode == 'multiple':

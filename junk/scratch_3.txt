@@ -7,6 +7,8 @@ Return zeros array and boolean
 Remove r and s gating
 Reorder everything
 
+A : m x m, m x 1, d x m
+
 jax.lax.cond
 K = empty if r is 0
 
@@ -86,3 +88,19 @@ Expand[D[Piecewise[{{0, x <= -1 / 2}, {2 / 3 * (x + 1 / 2) ^ 3, -1 / 2 < x <= 0}
 (J, K, I, O) (D, U, phiA, phiE), (dFdA, dFdE)
 
 Reorder everything
+
+
+q = 2.3
+Y 10000
+D 10000 x 10000
+E 1 x 1
+
+T = np.where(np.equal.outer(Y, Y), 1, -1)
+N = q * (np.sum(T == 1, axis=1, keepdims=True) - 1)
+Q = np.where(T == 1, q, 1)
+
+I = (D - E) * T
+
+I *= Q
+
+
