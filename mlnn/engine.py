@@ -27,22 +27,31 @@ def compute_J(Z, A, x_mode, a_mode):
             return A * Z
 
 
-# @partial(jax.jit, static_argnames=['a_mode'])
-def compute_K(A, J, a_mode):
-    if a_mode in ('full', 'diagonal'):
-        return J
-    elif a_mode == 'decomposed':
-        return A @ J.T
+# @partial(jax.jit, static_argnames=['r', 'a_mode'])
+def compute_K(A, J, r, a_mode):
+    if r:
+        if a_mode in ('full', 'diagonal'):
+            return J
+        elif a_mode == 'decomposed':
+            return A @ J.T
+    else:
+        return None
 
 
 # @partial(jax.jit, static_argnames=['r'])
 def compute_R(K, r):
-    return r * 0.5 * np.vdot(K, K)
+    if r:
+        return r * 0.5 * np.vdot(K, K)
+    else:
+        return 0.0
 
 
 # @partial(jax.jit, static_argnames=['s'])
 def compute_S(E, s):
-    return s * 0.5 * np.sum(np.squared(E - 1.0))
+    if s:
+        return s * 0.5 * np.sum(np.squared(E - 1.0))
+    else:
+        return 0.0
 
 
 # @partial(jax.jit, static_argnames=['a_mode', 'Z_equals_X'])
@@ -105,72 +114,100 @@ def compute_U(T, Q, I, O, q, inner_loss_grad_intr, outer_loss_grad_intr=None):
     active_rows = np.any(U, axis=1)
     active_cols = np.any(U, axis=0)
     active_data = np.logical_or(active_rows, active_cols)
-    none_active = not active_data.any()
-    return U, active_rows, active_cols, active_data, none_active
+    any_active = active_data.any()
+    return U, active_rows, active_cols, active_data, any_active
 
 
 # @partial(jax.jit, static_argnames=['r', 'x_mode', 'a_mode'])
 def compute_dRdA(Z, J, K, r, x_mode, a_mode):
-    if a_mode == 'full':
-        if x_mode == 'raw':
-            return r * K
-        elif x_mode == 'kernel':
-            return r * Z @ K
-    elif a_mode == 'diagonal':
-        if x_mode == 'raw':
-            return r * K
-        elif x_mode == 'kernel':
-            return r * np.sum(Z * K, axis=1, keepdims=True)
-    elif a_mode == 'decomposed':
-        return r * 2 * K @ J
+    if r:
+        if a_mode == 'full':
+            if x_mode == 'raw':
+                return r * K
+            elif x_mode == 'kernel':
+                return r * Z @ K
+        elif a_mode == 'diagonal':
+            if x_mode == 'raw':
+                return r * K
+            elif x_mode == 'kernel':
+                return r * np.sum(Z * K, axis=1, keepdims=True)
+        elif a_mode == 'decomposed':
+            return r * 2 * K @ J
+    else:
+        return None
 
 
 # @partial(jax.jit, static_argnames=['l', 'a_mode', 'reduce_derivative_matrix'])
-def compute_dLdA(X, A, U, active_data, l, a_mode, reduce_derivative_matrix):
-    if reduce_derivative_matrix:
-        U = U[np.ix_(active_data, active_data)]
-        X = X[active_data]
-    W = np.negative(U + U.T)
-    np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
-    if a_mode == 'full':
-        return l * (X.T @ W @ X)
-    elif a_mode == 'diagonal':
-        return l * np.sum(X.T * (W @ X).T, axis=1, keepdims=True)
-    elif a_mode == 'decomposed':
-        return l * 2 * ((A @ X.T) @ W @ X)
+def compute_dLdA(X, A, U, active_data, any_active, l, a_mode, reduce_derivative_matrix):
+    if any_active:
+        if reduce_derivative_matrix:
+            U = U[np.ix_(active_data, active_data)]
+            X = X[active_data]
+        W = np.negative(U + U.T)
+        np.fill_diagonal(W, np.diagonal(W) - np.sum(W, axis=0))
+        if a_mode == 'full':
+            return l * (X.T @ W @ X)
+        elif a_mode == 'diagonal':
+            return l * np.sum(X.T * (W @ X).T, axis=1, keepdims=True)
+        elif a_mode == 'decomposed':
+            return l * 2 * ((A @ X.T) @ W @ X)
+    else:
+        return np.zeros_like(A)
 
 
-# @partial(jax.jit, static_argnames=[])
-def compute_dFdA(dRdA, dLdA):
-    return dRdA + dLdA
+# @partial(jax.jit, static_argnames=[r])
+def compute_dFdA(A, any_active, dRdA, dLdA, r):
+    dFdA = np.zeros_like(A)
+    if r:
+        dFdA += dRdA
+    if any_active:
+        dFdA += dLdA
+    return dFdA
 
 
-# @partial(jax.jit, static_argnames=[])
-def compute_phiA(dFdA):
-    return -np.vdot(dFdA, dFdA)
+# @partial(jax.jit, static_argnames=[r])
+def compute_phiA(any_active, dFdA, r):
+    if r or any_active:
+        return -np.vdot(dFdA, dFdA)
+    else:
+        return 0.0
 
 
 # @partial(jax.jit, static_argnames=['s'])
 def compute_dSdE(E, s):
-    return s * (E - 1)
+    if s:
+        return s * (E - 1)
+    else:
+        return None
 
 
 # @partial(jax.jit, static_argnames=[l, e_mode])
-def compute_dLdE(U, l, e_mode):
-    if e_mode == 'single':
-        return l * -np.sum(U, keepdims=True)
-    elif e_mode == 'multiple':
-        return l * -np.sum(U, axis=1, keepdims=True)
+def compute_dLdE(E, U, any_active, l, e_mode):
+    if any_active:
+        if e_mode == 'single':
+            return l * -np.sum(U, keepdims=True)
+        elif e_mode == 'multiple':
+            return l * -np.sum(U, axis=1, keepdims=True)
+    else:
+        return np.zeros_like(E)
 
 
-# @partial(jax.jit, static_argnames=[])
-def compute_dFdE(dSdE, dLdE):
-    return dSdE + dLdE
+# @partial(jax.jit, static_argnames=[s])
+def compute_dFdE(E, any_active, dSdE, dLdE, s):
+    dFdE = np.zeros_like(E)
+    if s:
+        dFdE += dSdE
+    if any_active:
+        dFdE += dLdE
+    return dFdE
 
 
-# @partial(jax.jit, static_argnames=[])
-def compute_phiE(dFdE):
-    return -np.vdot(dFdE, dFdE)
+# @partial(jax.jit, static_argnames=[s])
+def compute_phiE(any_active, dFdE, s):
+    if s or any_active:
+        return -np.vdot(dFdE, dFdE)
+    else:
+        return 0.0
 
 
 # @partial(jax.jit, static_argnames=['a_mode'])
@@ -190,15 +227,15 @@ def compute_A_is_psd(A, a_mode):
         return True
 
 
-# @partial(jax.jit, static_argnames=['a_mode', 'm'])
-def compute_eigh(A, a_mode, m):
+# @partial(jax.jit, static_argnames=['a_mode'])
+def compute_eigh(A, a_mode):
     if a_mode == 'full':
         eigenvals, eigenvecs = np.linalg.eigh(A)
     elif a_mode == 'diagonal':
         G = A.ravel()
         H = np.argsort(G)
         eigenvals = G[H]
-        eigenvecs = np.identity(m)[:, H]
+        eigenvecs = np.identity(G.size)[:, H]
     elif a_mode == 'decomposed':
         eigenvals, eigenvecs = np.linalg.eigh(A.T @ A)
     return eigenvals, eigenvecs
@@ -229,6 +266,22 @@ class MLNNEngine:
         if mlnn_params:
             self.apply_params(mlnn_params)
 
+        assert self.r >= 0
+        assert self.s >= 0
+        assert self.l > 0
+        assert self.q > 0
+
+        self.inner_loss_intr = self.inner_loss.intr
+        self.inner_loss_func_intr = self.inner_loss.func_intr
+        self.inner_loss_grad_intr = self.inner_loss.grad_intr
+        self.outer_loss_intr = None
+        self.outer_loss_func_intr = None
+        self.outer_loss_grad_intr = None
+        if self.outer_loss is not None:
+            self.outer_loss_intr = self.outer_loss.intr
+            self.outer_loss_func_intr = self.outer_loss.func_intr
+            self.outer_loss_grad_intr = self.outer_loss.grad_intr
+
         if self.x_mode is None:
             if Z is None:
                 self.x_mode = 'raw'
@@ -237,11 +290,6 @@ class MLNNEngine:
 
         if self.keep_e_positive is None:
             self.keep_e_positive = self.keep_a_psd
-
-        assert self.r >= 0
-        assert self.s >= 0
-        assert self.l > 0
-        assert self.q > 0
 
         self.X = X
         self.Y = Y
@@ -267,13 +315,6 @@ class MLNNEngine:
 
             assert self.Z.shape[0] == self.m
             assert np.array_equal(self.Z, self.Z.T)
-
-        if not self.r:
-            self.R = 0
-            self.dRdA = 0
-        if not self.s:
-            self.S = 0
-            self.dSdE = 0
 
         self.F_count = 0
         self.dFdA_count = 0
@@ -343,10 +384,9 @@ class MLNNEngine:
     @E.setter
     def E(self, E):
         self._E = E
-        if self.s:
-            self.S = None
-            self.dSdE = None
+        self.S = None
         self.I = None
+        self.dSdE = None
 
         if self.keep_e_positive:
             self._E = self._E_positive_projection()
@@ -407,9 +447,8 @@ class MLNNEngine:
     @K.setter
     def K(self, K):
         self._K = K
-        if self.r:
-            self.R = None
-            self.dRdA = None
+        self.R = None
+        self.dRdA = None
 
     @property
     def R(self):
@@ -469,7 +508,7 @@ class MLNNEngine:
         self.active_rows = None
         self.active_cols = None
         self.active_data = None
-        self.none_active = None
+        self.any_active = None
 
     @property
     def L(self):
@@ -535,14 +574,14 @@ class MLNNEngine:
         self._active_data = active_data
 
     @property
-    def none_active(self):
-        if self._none_active is None:
+    def any_active(self):
+        if self._any_active is None:
             self._compute_U()
-        return self._none_active
+        return self._any_active
 
-    @none_active.setter
-    def none_active(self, none_active):
-        self._none_active = none_active
+    @any_active.setter
+    def any_active(self, any_active):
+        self._any_active = any_active
 
     @property
     def dRdA(self):
@@ -673,7 +712,7 @@ class MLNNEngine:
         self.J = compute_J(self.Z, self.A, self.x_mode, self.a_mode)
 
     def _compute_K(self):
-        self.K = compute_K(self.A, self.J, self.a_mode)
+        self.K = compute_K(self.A, self.J, self.r, self.a_mode)
 
     def _compute_R(self):
         self.R = compute_R(self.K, self.r)
@@ -685,93 +724,54 @@ class MLNNEngine:
         self.D = compute_D(self.X, self.A, self.J, self.a_mode, self.Z_equals_X)
 
     def _compute_I(self):
-        self.I = compute_I(self.E, self.T, self.D, self.inner_loss.intr)
+        self.I = compute_I(self.E, self.T, self.D, self.inner_loss_intr)
 
     def _compute_O(self):
-        if self.outer_loss is not None:
-            self.O = compute_O(self.N, self.Q, self.I, self.q, self.inner_loss.func_intr,
-                               self.outer_loss.intr)
-        else:
-            self.O = compute_O(self.N, self.Q, self.I, self.q, self.inner_loss.func_intr)
+        self.O = compute_O(self.N, self.Q, self.I, self.q, self.inner_loss_func_intr, self.outer_loss_intr)
 
     def _compute_L(self):
-        if self.outer_loss is not None:
-            self.L = compute_L(self.O, self.l,
-                               self.outer_loss.func_intr)
-        else:
-            self.L = compute_L(self.O, self.l)
+        self.L = compute_L(self.O, self.l, self.outer_loss_func_intr)
 
     def _compute_F(self):
         self.F = compute_F(self.R, self.S, self.L)
         self.F_count += 1
 
     def _compute_U(self):
-        if self.outer_loss is not None:
-            self.U, self.active_rows, self.active_cols, self.active_data, self.none_active = compute_U(
-                self.T, self.Q, self.I, self.O, self.q, self.inner_loss.grad_intr,
-                self.outer_loss.grad_intr)
-        else:
-            self.U, self.active_rows, self.active_cols, self.active_data, self.none_active = compute_U(
-                self.T, self.Q, self.I, self.O, self.q, self.inner_loss.grad_intr)
+        self.U, self.active_rows, self.active_cols, self.active_data, self.any_active = compute_U(
+            self.T, self.Q, self.I, self.O, self.q, self.inner_loss_grad_intr, self.outer_loss_grad_intr)
 
     def _compute_dRdA(self):
         self.dRdA = compute_dRdA(self.Z, self.J, self.K, self.r, self.x_mode, self.a_mode)
 
     def _compute_dLdA(self):
-        if self.none_active:
-            self.dLdA = 0
-        else:
-            self.dLdA = compute_dLdA(self.X, self.A, self.U, self.active_data, self.l, self.a_mode,
-                                     self.reduce_derivative_matrix)
+        self.dLdA = compute_dLdA(self.X, self.A, self.U, self.active_data, self.any_active, self.l, self.a_mode,
+                                 self.reduce_derivative_matrix)
 
     def _compute_dFdA(self):
-        if np.isscalar(self.dRdA) and np.isscalar(self.dLdA):
-            self.dFdA = 0
-        elif not np.isscalar(self.dRdA) and np.isscalar(self.dLdA):
-            self.dFdA = self.dRdA
-        elif np.isscalar(self.dRdA) and not np.isscalar(self.dLdA):
-            self.dFdA = self.dLdA
-        else:
-            self.dFdA = compute_dFdA(self.dRdA, self.dLdA)
+        self.dFdA = compute_dFdA(self.A, self.any_active, self.dRdA, self.dLdA, self.r)
         self.dFdA_count += 1
 
     def _compute_phiA(self):
-        if np.isscalar(self.dFdA):
-            self.phiA = 0.0
-        else:
-            self.phiA = compute_phiA(self.dFdA)
+        self.phiA = compute_phiA(self.any_active, self.dFdA, self.r)
 
     def _compute_dSdE(self):
         self.dSdE = compute_dSdE(self.E, self.s)
 
     def _compute_dLdE(self):
-        if self.none_active:
-            self.dLdE = 0
-        else:
-            self.dLdE = compute_dLdE(self.U, self.l, self.e_mode)
+        self.dLdE = compute_dLdE(self.E, self.U, self.any_active, self.l, self.e_mode)
 
     def _compute_dFdE(self):
-        if np.isscalar(self.dSdE) and np.isscalar(self.dLdE):
-            self.dFdE = 0
-        elif not np.isscalar(self.dSdE) and np.isscalar(self.dLdE):
-            self.dFdE = self.dSdE
-        elif np.isscalar(self.dSdE) and not np.isscalar(self.dLdE):
-            self.dFdE = self.dLdE
-        else:
-            self.dFdE = compute_dFdE(self.dSdE, self.dLdE)
+        self.dFdE = compute_dFdE(self.E, self.any_active, self.dSdE, self.dLdE, self.s)
         self.dFdE_count += 1
 
     def _compute_phiE(self):
-        if np.isscalar(self.dFdE):
-            self.phiE = 0.0
-        else:
-            self.phiE = compute_phiE(self.dFdE)
+        self.phiE = compute_phiE(self.any_active, self.dFdE, self.s)
 
     def _compute_A_is_psd(self):
         self.A_is_psd = compute_A_is_psd(self.A, self.a_mode)
 
     def _compute_eigh(self):
-        self.eigenvals, self.eigenvecs = compute_eigh(self.A, self.a_mode, self.m)
+        self.eigenvals, self.eigenvecs = compute_eigh(self.A, self.a_mode)
         if self.a_mode in ('full', 'decomposed'):
             self.eigh_count += 1
 
