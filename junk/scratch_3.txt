@@ -104,3 +104,44 @@ I = (D - E) * T
 I *= Q
 
 
+
+###################
+
+Good call. When U isn’t symmetric, you can still avoid materializing W and W @ X.
+
+Let W0 = -(U + U.T) and s = sum(W0, axis=0) = -(U.sum(axis=0) + U.sum(axis=1)). Then:
+- W = W0 with diag(W) = diag(W0) − s, i.e. W = W0 − diag(s)
+- So for any X: W @ X = -(U @ X + U.T @ X) - s[:, None] * X
+
+Drop W construction and use WX computed as above:
+
+- full:
+```python
+UX = U @ X
+UTX = U.T @ X
+s = -(U.sum(axis=0) + U.sum(axis=1))
+WX = -(UX + UTX) - s[:, None] * X
+dLdA = l * (X.T @ WX)
+```
+
+- diagonal:
+```python
+UX = U @ X
+UTX = U.T @ X
+s = -(U.sum(axis=0) + U.sum(axis=1))
+WX = -(UX + UTX) - s[:, None] * X
+dLdA = l * np.sum(X * WX, axis=0, keepdims=True).T
+```
+
+- decomposed:
+```python
+UX = U @ X
+UTX = U.T @ X
+s = -(U.sum(axis=0) + U.sum(axis=1))
+WX = -(UX + UTX) - s[:, None] * X
+dLdA = l * 2 * ((A @ X.T) @ WX)
+```
+
+This removes U+U.T and the large W temporary, reduces memory traffic, and works whether or not U is symmetric.
+
+###################

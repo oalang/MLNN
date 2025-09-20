@@ -7,10 +7,12 @@ USE_ALT_FUNCS = True
 
 
 def compute_T(Y):
+    Y = np.ravel(Y)
     return np.where(np.equal.outer(Y, Y), 1, -1)
 
 
 def alt_compute_T(Y):
+    Y = np.ravel(Y)
     return np.equal.outer(Y, Y)
 
 
